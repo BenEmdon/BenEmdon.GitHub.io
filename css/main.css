@@ -2,7 +2,10 @@
   margin: 0px;
   padding: 0px;
 }
-hr {
+body {
+  text-align: center;
+}
+#top-bar {
   width: 100%;
   position: fixed;
   height: 3px;
@@ -29,11 +32,29 @@ li {
   display: inline;
   padding: 0px 10px 0px 10px;
 }
-.floatright {
-  float: right;
-  margin-right: 40px;
+.jumbotron {
+  background-color: white;
 }
-.floatleft {
-  float: left;
-  margin-left: 40px;
+.jumbotron h1 {
+  color: #5a5a5a;
+  text-decoration: none;
+  font-weight: bold;
+}
+.jumbotron hr {
+    width: 30%;
+    height: 3px;
+    border: 0 none;
+    background: #5a5a5a;
+    padding-bottom: 0px;
+    margin: auto;
+    margin-bottom: 20px;
+
+}
+
+.jumbotron img {
+  width: 260px;
+  height: auto;
+  vertical-align: middle;
+  border: 10px solid #eee;
+  border-radius: 130px;
 }
