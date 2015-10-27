@@ -8,10 +8,8 @@ hr {
   height: 3px;
   border: 0 none;
   background: #28b4f7;
-}
-header {
-  background-size: cover;
-  color: white;
+  padding: 0px;
+  margin: 0px;
 }
 a {
     color: #5a5a5a;
@@ -38,20 +36,4 @@ li {
 .floatleft {
   float: left;
   margin-left: 40px;
-}
-@media (max-width: 500px) {
-  li {
-    text-align: center;
-    display: block;
-    padding: 5px;
-  }
-  .floatright {
-    float: center;
-    margin: 0;
-  }
-  .floatleft {
-    float: center;
-    margin: 0;
-  }
-
 }
