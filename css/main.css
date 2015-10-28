@@ -48,13 +48,14 @@ li {
     padding-bottom: 0px;
     margin: auto;
     margin-bottom: 20px;
-
 }
-
 .jumbotron img {
   width: 260px;
   height: auto;
   vertical-align: middle;
   border: 10px solid #eee;
   border-radius: 130px;
+}
+.jumbotron p {
+  text-align: left;
 }
