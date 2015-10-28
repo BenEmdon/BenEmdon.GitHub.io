@@ -14,6 +14,7 @@ body {
   padding: 0px;
   margin: 0px;
 }
+/*
 a {
     color: #5a5a5a;
     text-decoration: none;
@@ -32,6 +33,26 @@ li {
   display: inline;
   padding: 0px 10px 0px 10px;
 }
+*/
+/* navbar */
+.navbar-default {
+    background-color: #eee;
+    border-color: #ddd;
+}
+.navbar a {
+  font-weight: bold;
+}
+.navbar-default .navbar-nav > li > a {
+    color: #5a5a5a;
+}
+.navbar-default .navbar-nav > li > a:hover,
+.navbar-default .navbar-nav > li > a:focus {
+    color: #333;
+}
+
+
+
+
 .jumbotron {
   background-color: white;
 }
@@ -58,4 +79,11 @@ li {
 }
 .jumbotron p {
   text-align: left;
+}
+
+.fa-stack.fa-2x {
+  color: #5a5a5a;
+}
+.fa-stack:hover .fa-circle {
+  color: #28b4f7;
 }
