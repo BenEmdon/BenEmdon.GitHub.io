@@ -2,9 +2,6 @@
   margin: 0px;
   padding: 0px;
 }
-body {
-  text-align: center;
-}
 #top-bar {
   width: 100%;
   position: fixed;
@@ -100,6 +97,9 @@ body {
 .navbar-default .navbar-nav > li > a:hover, .navbar-default .navbar-nav > li > a:focus {
   color: #333;
 }
+body {
+  text-align: center;
+}
 .jumbotron {
   background-color: white;
 }
@@ -145,4 +145,13 @@ body {
   .jumbotron p {
     margin-top: 15px;
   }
+}
+footer hr {
+  width: 100%;
+  height: 1px;
+  border: 0 none;
+  background: #ddd;
+}
+footer {
+  background-color: #eee;
 }
