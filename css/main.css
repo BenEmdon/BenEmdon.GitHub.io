@@ -125,6 +125,7 @@ body {
   border-radius: 130px;
 }
 .jumbotron p {
+  margin-top: 10px;
   text-align: left;
 }
 .fa-stack.fa-2x {
@@ -140,5 +141,8 @@ body {
   }
   .jumbotron {
     margin-top: 25px;
+  }
+  .jumbotron p {
+    margin-top: 15px;
   }
 }
