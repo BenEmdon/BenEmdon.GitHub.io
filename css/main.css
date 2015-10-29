@@ -128,12 +128,6 @@ body {
   margin-top: 10px;
   text-align: left;
 }
-.fa-stack.fa-2x {
-  color: #5a5a5a;
-}
-.fa-stack:hover .fa-circle {
-  color: #28b4f7;
-}
 @media (max-width: 767px) {
   .navbar li {
     padding-left: 15px;
@@ -154,4 +148,10 @@ footer hr {
 }
 footer {
   background-color: #eee;
+}
+.fa-stack.fa-2x {
+  color: #5a5a5a;
+}
+.fa-stack:hover .fa-circle {
+  color: #28b4f7;
 }
