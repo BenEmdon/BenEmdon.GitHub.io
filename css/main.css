@@ -2,16 +2,9 @@
   margin: 0px;
   padding: 0px;
 }
-#top-bar {
-  width: 100%;
-  position: fixed;
-  height: 3px;
-  border: 0 none;
-  background: #28b4f7;
-  padding: 0px;
-  margin: 0px;
+a {
+  color: #42a5f5;
 }
-
 /*
 --navbar
 .navbar-default {
@@ -85,17 +78,37 @@
 */
 /*#42a5f5*/
 .navbar-default {
-  background-color: #eee;
-  border-color: #ddd;
+  background-color: #42a5f5;
+  border-color: #42a5f5;
+}
+.navbar-default div.navbar-collapse
+{
+    border-top:none;
+    box-shadow:none;
+}
+.navbar-default .navbar-toggle{
+    border-color: #fff;
+}
+.navbar-default .navbar-toggle .icon-bar {
+    background-color: #fff;
+}
+.navbar-default .navbar-toggle:hover,
+.navbar-default .navbar-toggle:focus {
+  background-color: white;
+}
+.navbar-default .navbar-toggle:hover .icon-bar,
+.navbar-default .navbar-toggle:focus .icon-bar{
+  background-color: #42a5f5;
 }
 .navbar a {
   font-weight: bold;
+  color: #fff;
 }
 .navbar-default .navbar-nav > li > a {
-  color: #5a5a5a;
+  color: #fff;
 }
 .navbar-default .navbar-nav > li > a:hover, .navbar-default .navbar-nav > li > a:focus {
-  color: #333;
+  color: #fff;
 }
 body {
   text-align: center;
@@ -153,5 +166,5 @@ footer {
   color: #5a5a5a;
 }
 .fa-stack:hover .fa-circle {
-  color: #28b4f7;
+  color: #42a5f5;
 }
