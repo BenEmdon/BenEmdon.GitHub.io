@@ -1,0 +1,31 @@
+.jumbotron {
+  text-align: left;
+  background-color: #42a5f5;
+  margin: 0px;
+  color: #fff;
+}
+.jumbotron h1 {
+  color: #fff;
+  text-decoration: none;
+  font-weight: bold;
+}
+.jumbotron p {
+  margin-top: 10px;
+  text-align: left;
+}
+.jumbotron a {
+  color: #fff;
+  text-decoration: none;
+  font-weight: bold;
+  border: solid 1px;
+  border-radius: 5px;
+  padding: 2px 4px 2px 4px;
+}
+@media (max-width: 767px) {
+  .jumbotron {
+    margin-top: 0px;
+  }
+  .jumbotron p {
+    margin-top: 15px;
+  }
+}
