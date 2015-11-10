@@ -18,6 +18,7 @@
 
   <title>Ben Emdon</title>
 
+
 </head>
 
 <!--header-->
@@ -58,12 +59,10 @@
   <!--Acorcordionn-->
   <div class="wrapper">
     <div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
-      <div class="panel panel-default">
+      <div class="panel panel-default" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
         <div class="panel-heading" role="tab" id="headingOne">
           <h4 class="panel-title">
-            <a role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-          Carleton Engineering Competition 2015
-        </a>
+            <a><span class="glyphicon glyphicon-minus pull-left"></span>Carleton Engineering Competition 2015</a>
           </h4>
         </div>
         <div id="collapseOne" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="headingOne">
@@ -74,12 +73,10 @@
           </div>
         </div>
       </div>
-      <div class="panel panel-default">
+      <div class="panel panel-default" class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
         <div class="panel-heading" role="tab" id="headingTwo">
           <h4 class="panel-title">
-            <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-          BenEmdon.GitHub.io
-        </a>
+            <a><span class="glyphicon glyphicon-plus pull-left"></span>BenEmdon.GitHub.io</a>
           </h4>
         </div>
         <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
@@ -90,12 +87,11 @@
           </div>
         </div>
       </div>
-      <div class="panel panel-default">
+      <div class="panel panel-default" class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
         <div class="panel-heading" role="tab" id="headingThree">
           <!--img src="images/TicTacToe.png"-->
           <h4 class="panel-title">
-            <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-              Tic Tac Toe for iOS</a>
+            <a><span class="glyphicon glyphicon-plus pull-left"></span>Tic Tac Toe for iOS</a>
           </h4>
         </div>
         <div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
@@ -150,9 +146,14 @@
 </footer>
 
 
-
-
 <script src="js/jquery-2.1.4.min.js">
 </script>
 <script src="js/bootstrap.min.js">
+</script>
+<script>
+  $('.collapse').on('shown.bs.collapse', function() {
+    $(this).parent().find(".glyphicon-plus").removeClass("glyphicon-plus").addClass("glyphicon-minus");
+  }).on('hidden.bs.collapse', function() {
+    $(this).parent().find(".glyphicon-minus").removeClass("glyphicon-minus").addClass("glyphicon-plus");
+  });
 </script>
