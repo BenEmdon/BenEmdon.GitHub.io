@@ -21,6 +21,25 @@
   border-radius: 5px;
   padding: 2px 4px 2px 4px;
 }
+.wrapper {
+  width: 500px;
+  margin: 0 auto;
+  margin-top: 20px;
+}
+@media (max-width: 625px) {
+  .wrapper {
+    width: 80%;
+  }
+}
+.wrapper img{
+  max-width: 100%;
+  max-height: 100%;
+  padding-bottom: 10px;
+  padding-top: 5px;
+}
+.panel-title a:before {
+  content: "\2b":
+}
 @media (max-width: 767px) {
   .jumbotron {
     margin-top: 0px;
