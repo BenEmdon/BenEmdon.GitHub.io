@@ -26,22 +26,23 @@
   margin: 0 auto;
   margin-top: 20px;
 }
-.pannel-image {
-  max-width: 100%;
+.panel-heading {
   height: 200px;
   background-size: cover;
   background-position: center;
-  border: 4px solid #5a5a5a;
-/*
-  -webkit-filter: blur(5px);
-  -moz-filter: blur(5px);
-  -o-filter: blur(5px);
-  -ms-filter: blur(5px);
-  filter: blur(5px);
-  */
 }
-#image3 {
-  background-image: url("../images/TicTacToe.png");
+#headingOne {
+  background-image: url('http://jackychiu.github.io/img/engcomp2015.png');
+}
+#headingThree {
+  background-image: url('../images/TicTacToe.png');
+}
+.panel-title {
+  background-color: #eee;
+  padding: 5px 10px 5px 10px;
+  border-radius: 1em;
+  display: inline-block;
+  margin-top: 80px;
 }
 @media (max-width: 625px) {
   .wrapper {
