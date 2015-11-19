@@ -22,7 +22,7 @@
   padding: 2px 4px 2px 4px;
 }
 .wrapper {
-  width: 500px;
+  width: 600px;
   margin: 0 auto;
   margin-top: 20px;
 }
@@ -48,9 +48,14 @@
   margin-top: 250px;
   box-shadow: 1px 1px 3px #5a5a5a;
 }
-@media (max-width: 625px) {
+@media (max-width: 667px) {
   .wrapper {
-    width: 80%;
+    width: 90%;
+  }
+}
+@media (max-width: 393px) {
+  #headingOne .panel-title {
+    margin-top: 233px;
   }
 }
 @media (max-width: 767px) {
