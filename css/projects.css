@@ -30,7 +30,10 @@
   height: 300px;
   background-size: cover;
   background-position: center;
-cursor: pointer;
+  cursor: pointer;
+}
+.panel-heading:hover, .panel-heading:focus {
+  opacity: 0.8;
 }
 #headingOne {
   background-image: url('../images/team-wing.png');
@@ -49,7 +52,10 @@ cursor: pointer;
   margin-top: 250px;
   box-shadow: 1px 1px 3px #5a5a5a;
 }
-.panel-body h4{
+.panel-title:hover, .panel-title:focus {
+  text-decoration: none;
+}
+.panel-body h4 {
   font-weight: lighter;
   text-align: center;
   margin: 10px;
