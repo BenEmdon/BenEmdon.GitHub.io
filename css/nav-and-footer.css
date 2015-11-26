@@ -114,9 +114,11 @@ body {
 }
 .navbar-default .navbar-nav > li > a {
   color: #fff;
+  border-bottom: 2px solid #42a5f5;
 }
 .navbar-default .navbar-nav > li > a:hover, .navbar-default .navbar-nav > li > a:focus {
   color: #fff;
+  border-bottom: 2px solid #fff;
 }
 @media (max-width: 767px) {
   .navbar li {
