@@ -1,6 +1,8 @@
 #jumbo1 {
   text-align: left;
-  background-color: #42a5f5;
+  background-image: url('../images/gradient2.jpg');
+  background-repeat: repeat-x;
+  background-size: 70% 100%;
   margin: 0px;
   color: #fff;
 }
