@@ -112,6 +112,12 @@ body {
   font-weight: bold;
   color: #fff;
 }
+.navbar-default .navbar-brand {
+  border-bottom: 2px solid #42a5f5;
+}
+.navbar-default .navbar-brand:hover ,.navbar-default .navbar-brand:focus {
+  border-bottom: 2px solid #fff;
+}
 .navbar-default .navbar-nav > li > a {
   color: #fff;
   border-bottom: 2px solid #42a5f5;
