@@ -46,7 +46,8 @@
   .jumbotron {
     margin-top: 25px;
   }
-  .jumbotron p {
+  #jumbo2 p {
     margin-top: 15px;
+    text-align: center;
   }
 }

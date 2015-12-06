@@ -133,6 +133,16 @@ body {
   }
 }
 
+/*--jumbotron a--*/
+
+.jumbotron a {
+  text-decoration: none;
+  font-weight: bold;
+  border: solid 1px;
+  border-radius: 5px;
+  padding: 2px 4px 2px 4px;
+}
+
 /*--Footer--*/
 
 footer hr {

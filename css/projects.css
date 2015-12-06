@@ -17,16 +17,14 @@
 }
 .jumbotron a {
   color: #fff;
-  text-decoration: none;
-  font-weight: bold;
-  border: solid 1px;
-  border-radius: 5px;
-  padding: 2px 4px 2px 4px;
 }
 .wrapper {
   width: 600px;
   margin: 0 auto;
   margin-top: 20px;
+}
+.panel-default {
+  margin-top: 10px;
 }
 .panel-heading {
   height: 300px;
