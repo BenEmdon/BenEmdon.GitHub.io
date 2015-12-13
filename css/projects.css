@@ -51,6 +51,7 @@
   display: inline-block;
   margin-top: 250px;
   box-shadow: 1px 1px 3px #5a5a5a;
+  font-size: 20px;
 }
 .panel-title:hover, .panel-title:focus {
   text-decoration: none;
@@ -62,6 +63,9 @@
   margin-top: 0px;
   font-style: italic;
 }
+.panel-body {
+  font-size: 17px;
+}
 @media (max-width: 667px) {
   .wrapper {
     width: 90%;
@@ -69,7 +73,7 @@
 }
 @media (max-width: 393px) {
   #headingOne .panel-title {
-    margin-top: 233px;
+    margin-top: 226px;
   }
 }
 @media (max-width: 767px) {
