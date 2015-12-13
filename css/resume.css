@@ -1,0 +1,55 @@
+.jumbotron {
+  background-color: white;
+}
+.jumbotron h1 {
+  text-decoration: none;
+  font-weight: bold;
+}
+#jumbo1 {
+  text-align: center;
+  background-image: url('../images/gradient2.jpg');
+  background-repeat: repeat-x;
+  background-size: 70% 100%;
+  margin: 0px;
+  color: #fff;
+}
+#jumbo1 h1 {
+  font-size: 4.3em;
+  color: #fff;
+  text-decoration: none;
+  font-weight: bold;
+}
+#jumbo1 a {
+  color: #fff;
+  text-decoration: none;
+  font-weight: normal;
+  font-size: 18px;
+  text-align: left;
+}
+.resume .container {
+  max-width: 55%;
+  font-size: 20px;
+  text-align: left;
+  font-weight: 200;
+}
+.resume .container hr {
+  display: block;
+  height: 1px;
+  border: 0;
+  border-top: 1px solid #000;
+  margin: 0.5em 0;
+  padding: 0;
+}
+.resume .container b {
+  font-weight: 500;
+}
+.resume .container ul {
+  margin-top: 0;
+  padding-left: 1.5em;
+}
+
+@media (max-width: 960px) {
+  .resume .container {
+    max-width: 96%;
+  }
+}
