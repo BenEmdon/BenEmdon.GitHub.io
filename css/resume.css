@@ -50,6 +50,6 @@
 
 @media (max-width: 960px) {
   .resume .container {
-    max-width: 96%;
+    max-width: 100%;
   }
 }
