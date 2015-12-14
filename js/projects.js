@@ -1,3 +1,4 @@
+//unused
 function detectmob() {
   if (window.innerWidth <= 625) {
     return true;
