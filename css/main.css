@@ -25,6 +25,9 @@
 #jumbo2 .col-md-4 {
   margin-top: 35px;
 }
+#jumbo2 a {
+  color: #7ab55c;
+}
 .jumbotron hr {
   width: 30%;
   height: 3px;
