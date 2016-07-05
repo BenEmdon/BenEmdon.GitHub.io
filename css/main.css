@@ -22,6 +22,9 @@
 #jumbo2 {
   padding-top: 0px;
 }
+#jumbo2 .col-md-4 {
+  margin-top: 35px;
+}
 .jumbotron hr {
   width: 30%;
   height: 3px;
