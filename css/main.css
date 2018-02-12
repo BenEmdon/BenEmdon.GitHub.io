@@ -25,8 +25,14 @@
 #jumbo2 .col-md-4 {
   margin-top: 35px;
 }
-#jumbo2 a {
-  color: #7ab55c;
+#github {
+  color: #333;
+}
+#shopify {
+  color: #96bf48;
+}
+#wwdc {
+  color: #1da1f2;
 }
 .jumbotron hr {
   width: 30%;
