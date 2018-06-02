@@ -143,6 +143,12 @@ body {
   padding: 2px 4px 2px 4px;
 }
 
+@media (max-width: 767px) {
+  .jumbotron a {
+    padding: 1px 4px 1px 4px;
+  }
+}
+
 /*--Footer--*/
 
 footer hr {
@@ -153,6 +159,7 @@ footer hr {
 }
 footer {
   background-color: #eee;
+  padding-bottom: 100px;
 }
 .fa-stack.fa-2x {
   color: #5a5a5a;
