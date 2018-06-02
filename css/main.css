@@ -25,6 +25,14 @@
 #jumbo2 .col-md-4 {
   margin-top: 35px;
 }
+#swift {
+  font-weight: bold;
+  color: #ffac45;
+}
+#ruby {
+  font-weight: bold;
+  color: #701516;
+}
 #github {
   color: #333;
 }
@@ -61,5 +69,8 @@
   #jumbo2 p {
     margin-top: 15px;
     text-align: center;
+  }
+  .navbar-right {
+    visibility: hidden;
   }
 }
