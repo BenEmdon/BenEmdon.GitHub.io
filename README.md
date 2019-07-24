@@ -1,3 +1,2 @@
 # BenEmdon.GitHub.io
-Lets see if this works
-This uses an app token
+This site is LONG overdue for a refresh
