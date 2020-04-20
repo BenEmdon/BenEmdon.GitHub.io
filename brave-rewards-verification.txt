@@ -1,0 +1,4 @@
+This is a Brave Rewards publisher verification file.
+
+Domain: benemdon.github.io
+Token: 7c0105c2c28451dde66fb47de966030cc4fc89e3fe4ec9ff262d041fd91569dc
