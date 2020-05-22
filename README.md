@@ -1,5 +1,4 @@
 # BenEmdon.GitHub.io
-This site is LONG overdue for a refresh...
 😵
 ✨
 😬
@@ -11,5 +10,6 @@ This site is LONG overdue for a refresh...
 🐸
 🦑
 
+Feel free to use this website as a template for your own! 
 
-Will be updating this soon. Hopefully to a Jekyll blog or something..
+Author: [BenEmdon](https://github.com/benemdon)
