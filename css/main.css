@@ -42,6 +42,9 @@
 #wwdc {
   color: #1da1f2;
 }
+#blog-post {
+  border: 0;
+}
 .jumbotron hr {
   width: 75%;
   height: 3px;
