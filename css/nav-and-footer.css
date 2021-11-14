@@ -65,13 +65,16 @@ body {
 .jumbotron a {
   text-decoration: none;
   font-weight: bold;
+}
+
+.special-link {
   border: solid 1px;
   border-radius: 5px;
   padding: 2px 4px 2px 4px;
 }
 
 @media (max-width: 767px) {
-  .jumbotron a {
+  .special-link a {
     padding: 1px 4px 1px 4px;
   }
 }
