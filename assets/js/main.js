@@ -59,6 +59,59 @@ function setUp() {
   });
 
   syncToggle();
+
+  /* ---------- section anchors ---------- */
+
+  const toast = document.querySelector("[data-toast]");
+  let toastTimer;
+
+  function showToast(message) {
+    if (!toast) return;
+    toast.textContent = "";
+    toast.append(
+      Object.assign(document.createElement("span"), { className: "toast__bracket", textContent: "[" }),
+      ` ${message} `,
+      Object.assign(document.createElement("span"), { className: "toast__bracket", textContent: "]" })
+    );
+    toast.classList.add("is-visible");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 2000);
+  }
+
+  // Restarts a CSS animation on repeat clicks: swapping the class back in on
+  // the same tick is a no-op, so the old run has to be flushed first. Cleans
+  // its own class up afterwards rather than leaving every visited section
+  // permanently marked.
+  function highlight(section) {
+    if (!section) return;
+    section.classList.remove("is-highlighted");
+    void section.offsetWidth;
+    section.classList.add("is-highlighted");
+    section.addEventListener(
+      "animationend",
+      () => section.classList.remove("is-highlighted"),
+      { once: true }
+    );
+  }
+
+  function sectionForHash(hash) {
+    const heading = document.getElementById(hash.slice(1));
+    return heading?.closest(".section") ?? null;
+  }
+
+  for (const link of document.querySelectorAll(".anchor")) {
+    link.addEventListener("click", () => {
+      const url = `${location.origin}${location.pathname}${link.getAttribute("href")}`;
+      navigator.clipboard?.writeText(url).then(
+        () => showToast("copied link to clipboard"),
+        () => {} // clipboard permission denied; the hash still navigates fine
+      );
+      highlight(link.closest(".section"));
+    });
+  }
+
+  if (location.hash) highlight(sectionForHash(location.hash));
+  window.addEventListener("hashchange", () => highlight(sectionForHash(location.hash)));
 }
 
 setUp();

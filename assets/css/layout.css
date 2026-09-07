@@ -71,6 +71,34 @@
   }
 }
 
+/* Clicking a heading's anchor (or arriving with a #hash already in the URL)
+   briefly outlines the section it jumped to — git-merge.com's own
+   .section-highlight move, so a jump that lands you mid-page still confirms
+   where you landed. steps(1, end) holds the accent colour, then snaps to
+   transparent on the last frame, rather than fading. */
+.section {
+  outline: 2px solid transparent;
+  outline-offset: var(--step-half);
+}
+
+.section__title {
+  scroll-margin-top: var(--step);
+}
+
+@keyframes section-highlight {
+  0%,
+  92% {
+    outline-color: var(--accent-color);
+  }
+  100% {
+    outline-color: transparent;
+  }
+}
+
+.section.is-highlighted {
+  animation: section-highlight calc(var(--motion-step) * 24) steps(1, end);
+}
+
 .section > p + p {
   margin-block-start: var(--step);
 }

@@ -51,3 +51,35 @@
     width: 6rem; /* 4 × --step */
   }
 }
+
+/*
+  Toast, shown when a heading anchor is clicked (see main.js). Inverted chip
+  regardless of theme — the same page-color/inverted-color pairing the
+  wordmark used to use — so it reads as a fixed piece of UI chrome rather
+  than page content. Modelled on git-merge.com's own .toast.
+*/
+.toast {
+  position: fixed;
+  z-index: 10;
+  left: 50%;
+  bottom: var(--step);
+  transform: translate(-50%, 0.5rem);
+  padding: var(--step-half) var(--step);
+  background: var(--page-color);
+  color: var(--inverted-color);
+  font-size: var(--text-small);
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity calc(var(--motion-step) * 3) linear,
+    transform calc(var(--motion-step) * 3) linear;
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.toast__bracket {
+  color: var(--accent-color);
+}
