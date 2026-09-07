@@ -11,17 +11,18 @@
 
 /* ---------- masthead ---------- */
 
-/* Hand-built block art, 49 columns x 4 rows, set solid in the accent colour —
-   a logo rather than a paragraph. Block glyphs (U+2580/2584/2588) aren't in
-   the webfont's latin subset, so this renders from a local mono, or mixing
-   would break the column alignment the art depends on. Heights are whole
-   steps so the baseline grid survives. */
+/* Solid block-letter art, 77 columns x 5 rows, set in the accent colour — a
+   logo rather than a paragraph. Renders from the dedicated JetBrains Mono
+   glyph subset loaded in <head> (see the comment there), not a local system
+   font, so the exact glyph and advance width are guaranteed rather than
+   whatever happens to be installed. block-size is a whole --step multiple so
+   the baseline grid survives. */
 .wordmark {
   display: block;
-  block-size: var(--step-2);
+  block-size: calc(var(--step) * 2);
   color: var(--accent-color);
-  font-family: ui-monospace, SFMono-Regular, Menlo, "DejaVu Sans Mono", monospace;
-  font-size: min(12px, 3vw);
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: min(9px, 1.9vw);
   line-height: 1;
   white-space: pre;
   overflow: hidden;
@@ -172,10 +173,12 @@
   text-decoration: none;
 }
 
-/* Roomier wordmark once there is width for it. */
+/* Roomier wordmark once there is width for it. 77 columns at 12px caps out
+   around 554px, comfortably inside the 576px (36rem) content-width. */
 @media (min-width: 34rem) {
   .wordmark {
-    block-size: 4.5rem;
+    font-size: 12px;
+    block-size: calc(var(--step) * 3);
   }
 }
 

@@ -42,6 +42,17 @@
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
       rel="stylesheet"
     />
+    <!-- The wordmark and dividers are built from block glyphs (█▀▄░) that
+         aren't in the request above (Google's default latin subset omits
+         them) — a system-font fallback would substitute per-platform, and
+         since fallback fonts don't share JetBrains Mono's advance width, the
+         art's columns would drift apart. This second request pulls exactly
+         those glyphs from JetBrains Mono itself; display=block holds the art
+         off-screen rather than flashing a misaligned fallback first. -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=block&text=%20%E2%96%80%E2%96%84%E2%96%88%E2%96%91"
+      rel="stylesheet"
+    />
 
     <link rel="stylesheet" href="assets/css/tokens.css" />
     <link rel="stylesheet" href="assets/css/base.css" />
@@ -54,10 +65,11 @@
       <header>
         <h1>
           <span class="sr-only">Ben Emdon</span>
-          <pre class="wordmark" aria-hidden="true">█▀▀▀▄ █▀▀▀▀ █▄  █   █▀▀▀▀ █▄ ▄█ █▀▀▀▄ ▄▀▀▀▄ █▄  █
-█▄▄▄▀ █▄▄▄  █▀▄ █   █▄▄▄  █ █ █ █   █ █   █ █▀▄ █
-█   █ █     █  ██   █     █   █ █   █ █   █ █  ██
-▀▀▀▀  ▀▀▀▀▀ ▀   ▀   ▀▀▀▀▀ ▀   ▀ ▀▀▀▀   ▀▀▀  ▀   ▀</pre>
+          <pre class="wordmark" aria-hidden="true">██████  ███████ ███    ██     ███████ ███    ███ ██████   ██████  ███    ██
+██   ██ ██      ████   ██     ██      ████  ████ ██   ██ ██    ██ ████   ██
+██████  █████   ██ ██  ██     █████   ██ ████ ██ ██   ██ ██    ██ ██ ██  ██
+██   ██ ██      ██  ██ ██     ██      ██  ██  ██ ██   ██ ██    ██ ██  ██ ██
+██████  ███████ ██   ████     ███████ ██      ██ ██████   ██████  ██   ████</pre>
         </h1>
       </header>
 
