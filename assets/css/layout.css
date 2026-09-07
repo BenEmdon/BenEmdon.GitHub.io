@@ -17,17 +17,13 @@
    font, so the exact glyph and advance width are guaranteed rather than
    whatever happens to be installed. block-size is a whole --step multiple so
    the baseline grid survives. */
-/* Fixed white-on-black, not theme-relative — the masthead reads as its own
-   slab regardless of light/dark mode. The accent colour does its work
-   everywhere else on the page; the header doesn't need it too. block-size
-   already has a few pixels of slack over the glyphs' own height (see the
-   sizing math in the media query below), which reads as breathing room
-   under the text rather than needing explicit padding. */
+/* Neutral page-color, not the accent green — the accent colour does its work
+   everywhere else on the page; the header doesn't need it too. No background:
+   it sits directly on the page like the rest of the type, just bigger. */
 .wordmark {
   display: block;
   block-size: calc(var(--step) * 2);
-  background: var(--ink-900);
-  color: var(--ink-50);
+  color: var(--page-color);
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   font-size: min(9px, 1.9vw);
   line-height: 1;
