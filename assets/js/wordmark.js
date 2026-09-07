@@ -3,7 +3,11 @@
 // come loose drift free of the letterforms.
 
 const TEXT = "BEN EMDON";
-const FONT_STACK = `"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace`;
+// A grotesque black, not the site's mono: at this resolution JetBrains Mono's
+// curves and diagonals broke up into noise, while a heavy square-cut face
+// like this one survives as flat, blocky strokes — closer to hand-built LCD
+// block letters.
+const FONT_STACK = `"Arial Black", "Helvetica Neue", Helvetica, Arial, sans-serif`;
 const CELL = 4; // CSS pixels per grid cell
 const ACCENT_SHARE = 0.14; // share of *dissolving* cells that take the accent
 const MAX_MOTES = 48;
@@ -82,10 +86,16 @@ export function createWordmark(canvas) {
     ctx.fillStyle = "#fff";
     ctx.textBaseline = "middle";
 
-    // Fit by height, not width: filling the column would make the glyphs
-    // taller than the box and clip their cap line.
-    const size = rows * 0.85;
-    ctx.font = `700 ${size}px ${FONT_STACK}`;
+    // Fit by height first, then re-check width: a wider face than the one
+    // this was tuned against would otherwise clip silently against the right
+    // edge of a fixed-width canvas.
+    let size = rows * 0.85;
+    ctx.font = `900 ${size}px ${FONT_STACK}`;
+    const width = ctx.measureText(TEXT).width;
+    if (width > cols) {
+      size *= cols / width;
+      ctx.font = `900 ${size}px ${FONT_STACK}`;
+    }
     ctx.fillText(TEXT, 0, rows / 2);
 
     const lum = ctx.getImageData(0, 0, cols, rows).data;
