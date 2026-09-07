@@ -7,7 +7,7 @@
     <title>Ben Emdon</title>
     <meta
       name="description"
-      content="Ben Emdon — engineering manager working on developer productivity at Stripe. Previously GitHub."
+      content="Ben Emdon. Engineering manager working on developer productivity at Stripe. Previously GitHub."
     />
 
     <meta property="og:type" content="website" />
@@ -36,19 +36,26 @@
       } catch {}
     </script>
 
+    <!-- Body/UI text: Iosevka — the same base typeface opentui.com's own
+         "OpenTUI Mono" is a custom build of (confirmed via their public
+         build plan: packages/web/src/font/private-build-plans.toml in their
+         GitHub repo). That exact build isn't published, so this uses stock
+         Iosevka rather than hotlinking their brand asset — same family, same
+         terminal character, openly licensed (SIL OFL) via Fontsource. -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/400.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/700.css" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
-      rel="stylesheet"
-    />
-    <!-- The wordmark and dividers are built from block glyphs (█▀▄░) that
-         aren't in the request above (Google's default latin subset omits
-         them) — a system-font fallback would substitute per-platform, and
+    <!-- The wordmark (and only the wordmark — it keeps its own identity,
+         white-on-black, separate from the body type) is built from block
+         glyphs (█▀▄) that aren't in Iosevka's or Google's default latin
+         subsets. A system-font fallback would substitute per-platform, and
          since fallback fonts don't share JetBrains Mono's advance width, the
-         art's columns would drift apart. This second request pulls exactly
-         those glyphs from JetBrains Mono itself; display=block holds the art
-         off-screen rather than flashing a misaligned fallback first. -->
+         art's columns would drift apart. This pulls exactly those glyphs
+         from JetBrains Mono itself; display=block holds the art off-screen
+         rather than flashing a misaligned fallback first. -->
     <link
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=block&text=%20%E2%96%80%E2%96%84%E2%96%88%E2%96%91"
       rel="stylesheet"
@@ -80,7 +87,7 @@
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
       <section class="section">
-        <h2 class="section__title"><span class="prompt">$</span> whoami</h2>
+        <h2 class="section__title" id="whoami"><span class="prompt">$</span> whoami<a class="anchor" href="#whoami" aria-label="Link to this section">#</a></h2>
         <div class="id">
           <button class="dither" type="button" data-dither aria-label="Show the undithered photo">
             <img
@@ -116,16 +123,15 @@
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
       <section class="section">
-        <h2 class="section__title"><span class="prompt">$</span> about</h2>
+        <h2 class="section__title" id="about"><span class="prompt">$</span> about<a class="anchor" href="#about" aria-label="Link to this section">#</a></h2>
         <p>
-          I manage the code team within developer productivity at Stripe — source control
-          management and code review, including AI code review. We work at the frontiers of
-          Git scalability, building review systems fast enough that engineers ship with
-          confidence.
+          I manage the code team within developer productivity at Stripe. We're building the
+          future of source control management and the future of code review. That means our
+          own code review tooling, and a genuinely smart code reviewer.
         </p>
         <p>
           Before Stripe I was at GitHub, where I owned the platform's most write-heavy
-          surfaces — checks, commit statuses, deploy statuses — and built the
+          surfaces: checks, commit statuses, and deploy statuses. I also built the
           <a href="https://github.blog/changelog/2021-10-27-command-palette-beta/">command palette</a>.
           The throughline is that I like the unglamorous parts being good: the build that
           finishes, the review that doesn't block, the tool that gets out of the way.
@@ -139,23 +145,23 @@
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
       <section class="section">
-        <h2 class="section__title"><span class="prompt">$</span> work</h2>
+        <h2 class="section__title" id="work"><span class="prompt">$</span> work<a class="anchor" href="#work" aria-label="Link to this section">#</a></h2>
 
         <div class="entry">
           <p class="entry__head">
             <span class="entry__when">now</span>
-            <span class="entry__title">Stripe — Engineering Manager</span>
+            <span class="entry__title">Stripe: Engineering Manager</span>
           </p>
           <p class="entry__detail">
-            Source control management and code review, including AI code review. Leading a
-            team of 11 engineers.
+            Building the future of source control management and code review: our own review
+            tooling, and a genuinely smart code reviewer. Leading a team of 11 engineers.
           </p>
         </div>
 
         <div class="entry">
           <p class="entry__head">
             <span class="entry__when">before</span>
-            <span class="entry__title">GitHub — Software Engineer</span>
+            <span class="entry__title">GitHub: Software Engineer</span>
           </p>
           <p class="entry__detail">
             Owned checks, commit statuses, and deploy statuses. Built the command palette and
@@ -166,7 +172,7 @@
         <div class="entry">
           <p class="entry__head">
             <span class="entry__when">earlier</span>
-            <span class="entry__title">Carleton University — B.C.S. (Honours), Distinction</span>
+            <span class="entry__title">Carleton University: B.C.S. (Honours), Distinction</span>
           </p>
           <p class="entry__detail">
             Honours thesis on GraphQL vs. REST, published by IEEE. Apple WWDC Scholar, 2017
@@ -178,7 +184,7 @@
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
       <section class="section">
-        <h2 class="section__title"><span class="prompt">$</span> elsewhere</h2>
+        <h2 class="section__title" id="elsewhere"><span class="prompt">$</span> elsewhere<a class="anchor" href="#elsewhere" aria-label="Link to this section">#</a></h2>
         <nav class="links" aria-label="Social profiles">
           <a href="https://x.com/BenEmdon" rel="me">
             <span class="links__key">x</span>

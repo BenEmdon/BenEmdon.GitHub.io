@@ -17,10 +17,17 @@
    font, so the exact glyph and advance width are guaranteed rather than
    whatever happens to be installed. block-size is a whole --step multiple so
    the baseline grid survives. */
+/* Fixed white-on-black, not theme-relative — the masthead reads as its own
+   slab regardless of light/dark mode. The accent colour does its work
+   everywhere else on the page; the header doesn't need it too. block-size
+   already has a few pixels of slack over the glyphs' own height (see the
+   sizing math in the media query below), which reads as breathing room
+   under the text rather than needing explicit padding. */
 .wordmark {
   display: block;
   block-size: calc(var(--step) * 2);
-  color: var(--accent-color);
+  background: var(--ink-900);
+  color: var(--ink-50);
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   font-size: min(9px, 1.9vw);
   line-height: 1;
@@ -46,6 +53,28 @@
   user-select: none;
 }
 
+/* Hover-revealed heading anchor, opentui.com's own pattern (their
+   .prose .anchor rule): hidden until the heading is hovered or the link
+   itself is focused, so it doesn't clutter the reading view. Touch devices
+   have no hover to reveal it, so it stays visible there. */
+.anchor {
+  margin-inline-start: 0.75ch;
+  color: var(--accent-color);
+  text-decoration: none;
+  opacity: 0;
+}
+
+.section__title:hover .anchor,
+.anchor:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .anchor {
+    opacity: 1;
+  }
+}
+
 .section > p + p {
   margin-block-start: var(--step);
 }
@@ -54,6 +83,9 @@
 
 .divider {
   color: var(--page-rule);
+  /* Body text is Iosevka now; ░ isn't in its charset, so this stays pinned to
+     the dedicated block-glyph subset loaded for the wordmark. */
+  font-family: "JetBrains Mono", ui-monospace, monospace;
   white-space: pre;
   overflow: hidden;
   user-select: none;

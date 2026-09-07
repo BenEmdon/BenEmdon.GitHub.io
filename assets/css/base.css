@@ -15,7 +15,7 @@ body {
   padding: var(--step-2) var(--page-gutter);
   background: var(--page-background);
   color: var(--page-color);
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: "Iosevka", ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: var(--text-body);
   /* Absolute, not a ratio: every line sits on the --step grid regardless of
      the size of the text sitting on it. */

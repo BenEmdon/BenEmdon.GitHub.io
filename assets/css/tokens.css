@@ -45,10 +45,14 @@
   --link-color: var(--accent-color);
   --inverted-color: light-dark(var(--ink-50), var(--ink-900));
 
-  /* Duotone for the portrait. Point --dither-ink at --accent-color for a
+  /* Duotone for the portrait. Fixed, not light-dark(): dark parts of the
+     photo (hair, shadow) must map to the dark tone and light parts (skin,
+     background) to the light tone regardless of site theme. Swapping these
+     per theme would invert the photo like a negative in dark mode rather
+     than just recolouring it. Point --dither-ink at --accent-color for a
      greener cast. */
-  --dither-ink: light-dark(#101311, #e8ebe8);
-  --dither-paper: var(--page-background);
+  --dither-ink: #101311;
+  --dither-paper: var(--ink-50);
 
   /* --- type: three sizes, nothing else --- */
   --text-body: 1rem;
