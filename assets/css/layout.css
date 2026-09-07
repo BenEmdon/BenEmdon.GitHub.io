@@ -106,6 +106,14 @@
   width: 5.5rem;
 }
 
+/* Without flex-basis and min-width, a content-sized flex item can't shrink to
+   wrap in place — flex-wrap just pushes the whole item to the next line
+   instead, orphaning .entry__when above it. */
+.entry__title {
+  flex: 1 1 0;
+  min-width: 12rem;
+}
+
 .entry__detail {
   color: var(--muted-color);
   font-size: var(--text-small);
