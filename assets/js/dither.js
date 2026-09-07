@@ -17,9 +17,7 @@ const MATRIX = 8;
 const LEVELS = MATRIX * MATRIX;
 
 // Quantizes an ImageData in place to two colours along the Bayer thresholds.
-// Shared by the portrait and the wordmark so the whole site speaks one
-// halftone language.
-export function quantize(frame, ink, paper, { contrast = 1, brightness = 0 } = {}) {
+function quantize(frame, ink, paper, { contrast = 1, brightness = 0 } = {}) {
   const px = frame.data;
   const [ir, ig, ib] = toRgb(ink);
   const [pr, pg, pb] = toRgb(paper);

@@ -1,5 +1,4 @@
 import { attach } from "./dither.js";
-import { createWordmark } from "./wordmark.js";
 
 const THEME_KEY = "theme";
 const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
@@ -11,11 +10,6 @@ function activeTheme() {
 
 function setUp() {
   const repaints = [];
-
-  /* ---------- wordmark ---------- */
-
-  const wordmarkCanvas = document.querySelector("[data-wordmark-canvas]");
-  if (wordmarkCanvas) repaints.push(createWordmark(wordmarkCanvas));
 
   /* ---------- portrait ---------- */
 

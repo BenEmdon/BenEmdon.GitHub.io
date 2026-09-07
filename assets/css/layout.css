@@ -11,30 +11,22 @@
 
 /* ---------- masthead ---------- */
 
-/* The name is rasterized onto a coarse pixel grid and scaled up pixelated, so
-   it reads as something a terminal had to draw. Heights are whole steps so the
-   baseline grid survives. */
+/* Hand-built block art, 49 columns x 4 rows, set solid in the accent colour —
+   a logo rather than a paragraph. Block glyphs (U+2580/2584/2588) aren't in
+   the webfont's latin subset, so this renders from a local mono, or mixing
+   would break the column alignment the art depends on. Heights are whole
+   steps so the baseline grid survives. */
 .wordmark {
-  position: relative;
   display: block;
   block-size: var(--step-2);
-  color: var(--page-color);
-  background: var(--page-background);
+  color: var(--accent-color);
+  font-family: ui-monospace, SFMono-Regular, Menlo, "DejaVu Sans Mono", monospace;
+  font-size: min(12px, 3vw);
+  line-height: 1;
+  white-space: pre;
+  overflow: hidden;
+  user-select: none;
   cursor: default;
-}
-
-.wordmark__grid {
-  position: absolute;
-  inset: 0;
-  inline-size: 100%;
-  block-size: 100%;
-  image-rendering: pixelated;
-}
-
-.wordmark__fallback {
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
 }
 
 .tagline {
