@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <rect width="16" height="16" fill="#0c0e0d" />
+  <!-- A prompt caret on the same pixel grid as the wordmark, shedding a pixel. -->
+  <path fill="#e8ebe8" d="M3 3h2v2H3zM5 5h2v2H5zM7 7h2v2H7zM5 9h2v2H5zM3 11h2v2H3z" />
+  <path fill="#4d9375" d="M9 11h4v2H9zM11 3h1v1h-1z" />
+</svg>

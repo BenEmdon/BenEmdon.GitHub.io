@@ -1,0 +1,227 @@
+.page {
+  width: min(100%, var(--content-width));
+  margin-inline: auto;
+}
+
+/* Every block below is spaced in whole --step units, so the page keeps one
+   vertical grid from the wordmark to the footer. */
+.page > * + * {
+  margin-block-start: var(--step);
+}
+
+/* ---------- masthead ---------- */
+
+/* The name is rasterized onto a coarse pixel grid and scaled up pixelated, so
+   it reads as something a terminal had to draw. Heights are whole steps so the
+   baseline grid survives. */
+.wordmark {
+  position: relative;
+  display: block;
+  block-size: var(--step-2);
+  color: var(--page-color);
+  background: var(--page-background);
+  cursor: default;
+}
+
+.wordmark__grid {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  image-rendering: pixelated;
+}
+
+.wordmark__fallback {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.tagline {
+  color: var(--muted-color);
+}
+
+/* ---------- section ---------- */
+
+.section__title {
+  color: var(--page-color);
+  margin-block-end: var(--step);
+}
+
+.section__title .prompt {
+  color: var(--accent-color);
+  user-select: none;
+}
+
+.section > p + p {
+  margin-block-start: var(--step);
+}
+
+/* ---------- divider ---------- */
+
+.divider {
+  color: var(--page-rule);
+  white-space: pre;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ---------- identity ---------- */
+
+.id {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--step);
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.facts__row {
+  display: flex;
+  gap: var(--step-half);
+}
+
+.facts__key {
+  color: var(--muted-color);
+  flex: none;
+  width: 5.5rem;
+}
+
+.facts__value {
+  min-width: 0;
+}
+
+/* ---------- work ---------- */
+
+.entry + .entry {
+  margin-block-start: var(--step);
+}
+
+.entry__head {
+  display: flex;
+  gap: var(--step-half);
+  flex-wrap: wrap;
+}
+
+.entry__when {
+  color: var(--muted-color);
+  flex: none;
+  width: 5.5rem;
+}
+
+.entry__detail {
+  color: var(--muted-color);
+  font-size: var(--text-small);
+  /* Absolute, not a ratio: small text has to keep the same 24px baseline as
+     body text or the grid drifts. */
+  line-height: var(--step);
+  padding-inline-start: calc(5.5rem + var(--step-half));
+}
+
+/* ---------- links ---------- */
+
+.links {
+  display: flex;
+  flex-direction: column;
+}
+
+.links a {
+  display: flex;
+  gap: var(--step-half);
+  width: fit-content;
+  max-width: 100%;
+  text-decoration: none;
+}
+
+.links a:hover .links__key,
+.links a:focus-visible .links__key,
+.links a:hover .links__value,
+.links a:focus-visible .links__value {
+  color: inherit;
+}
+
+/* Wide enough for "instagram" (9 columns) at every breakpoint. */
+.links__key {
+  color: var(--accent-color);
+  flex: none;
+  width: 6.5rem;
+}
+
+.links__value {
+  color: var(--muted-color);
+}
+
+/* ---------- footer ---------- */
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--step);
+  color: var(--muted-color);
+  font-size: var(--text-small);
+  line-height: var(--step);
+}
+
+.theme-toggle {
+  color: var(--muted-color);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus-visible {
+  background: var(--accent-color);
+  color: var(--inverted-color);
+  text-decoration: none;
+}
+
+/* Roomier wordmark once there is width for it. */
+@media (min-width: 34rem) {
+  .wordmark {
+    block-size: 4.5rem;
+  }
+}
+
+/* ---------- mobile ---------- */
+
+@media (max-width: 34rem) {
+  :root {
+    --page-gutter: 1rem;
+  }
+
+  body {
+    padding-block: var(--step) var(--step-2);
+  }
+
+  /* Side by side, the portrait leaves too little room for a value like
+     "Software Engineering Manager", so it moves above the facts. */
+  .id {
+    flex-direction: column;
+    /* Stacked, this gap is vertical, so it has to be a whole step. */
+    gap: var(--step);
+  }
+
+  .facts__key {
+    width: 5rem;
+  }
+
+  /* There is not enough width for a label column beside a job title, and
+     letting it wrap made some rows inline and others not. Stack every one. */
+  .entry__head {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .entry__when {
+    width: auto;
+  }
+
+  .entry__detail {
+    padding-inline-start: 0;
+  }
+}

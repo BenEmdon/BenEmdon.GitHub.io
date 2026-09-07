@@ -1,0 +1,80 @@
+/*
+  Design tokens.
+
+  Primitives name colours; semantics name roles. Components only reference
+  semantics, so retheming means remapping a handful of variables.
+
+  Each semantic is declared once as light-dark(light, dark). The active side
+  follows `color-scheme`, which the OS sets and [data-theme] overrides — so
+  there is no second copy of the palette to drift out of sync.
+
+  Palette: high-contrast near-white / near-black, both carrying a trace of
+  green, with a single muted green accent (in the Vitesse / Everforest family
+  rather than a neon terminal green).
+
+  The vertical rhythm is one number: --step (1.5rem = 24px). body line-height is
+  set to --step as an absolute, so every line of text sits on that grid no
+  matter what size the text is.
+*/
+:root {
+  color-scheme: light dark;
+
+  /* --- primitives: neutrals, faintly green so the accent feels native --- */
+  --ink-50: #ffffff;
+  --ink-100: #f4f6f4;
+  --ink-200: #e2e6e2;
+  --ink-300: #c2c9c4;
+  --ink-400: #8c968f;
+  --ink-500: #5b655e;
+  --ink-600: #3a423d;
+  --ink-700: #262c28;
+  --ink-800: #161a18;
+  --ink-900: #0c0e0d;
+
+  /* --- primitives: the accent --- */
+  --green-light: #1e754f;
+  --green-dark: #4d9375;
+
+  /* --- semantics --- */
+  --page-background: light-dark(var(--ink-50), var(--ink-900));
+  --page-subtle: light-dark(var(--ink-100), var(--ink-800));
+  --page-rule: light-dark(var(--ink-200), var(--ink-700));
+  --page-color: light-dark(#101311, #e8ebe8);
+  --muted-color: light-dark(var(--ink-500), var(--ink-400));
+  --accent-color: light-dark(var(--green-light), var(--green-dark));
+  --link-color: var(--accent-color);
+  --inverted-color: light-dark(var(--ink-50), var(--ink-900));
+
+  /* Duotone for the portrait. Point --dither-ink at --accent-color for a
+     greener cast. */
+  --dither-ink: light-dark(#101311, #e8ebe8);
+  --dither-paper: var(--page-background);
+
+  /* --- type: three sizes, nothing else --- */
+  --text-body: 1rem;
+  --text-small: 0.875rem;
+  --text-caption: 0.75rem;
+
+  /* --- rhythm --- */
+  --step: 1.5rem;
+  --step-half: 0.75rem;
+  --step-2: 3rem;
+  --content-width: 36rem;
+  --page-gutter: 1.5rem;
+
+  --motion-step: 75ms;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-step: 0ms;
+  }
+}

@@ -1,121 +1,198 @@
-<!DOCTYPE html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta charset = "utf8"/>
+    <title>Ben Emdon</title>
+    <meta
+      name="description"
+      content="Ben Emdon — software engineering manager working on developer productivity at Stripe. Previously GitHub."
+    />
 
-  <!-- Global site tag (gtag.js) - Google Analytics -->
-  <!-- Be sure to remove/change this if you copy this file -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-159963492-1"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Ben Emdon" />
+    <meta
+      property="og:description"
+      content="Software engineering manager working on developer productivity at Stripe. Previously GitHub."
+    />
+    <meta property="og:url" content="https://benemdon.github.io" />
+    <meta name="twitter:card" content="summary" />
 
-    gtag('config', 'UA-159963492-1');
-  </script>
+    <link rel="canonical" href="https://benemdon.github.io" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 
-  <!-- Bootstrap css -->
-  <link rel="stylesheet" href="css/bootstrap.min.css">
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fdf6e3" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#14251f" />
 
-  <!-- Custom index css -->
-  <link rel="stylesheet" href="css/main.css">
+    <!-- Applied before first paint so a saved theme never flashes the other one. -->
+    <script>
+      try {
+        const saved = localStorage.getItem("theme");
+        if (saved === "light" || saved === "dark") {
+          document.documentElement.dataset.theme = saved;
+        }
+      } catch {}
+    </script>
 
-  <!-- Custom navbar and footer css -->
-  <link rel="stylesheet" href="css/nav-and-footer.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
 
-  <!-- Custom fonts -->
-  <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="assets/css/tokens.css" />
+    <link rel="stylesheet" href="assets/css/base.css" />
+    <link rel="stylesheet" href="assets/css/layout.css" />
+    <link rel="stylesheet" href="assets/css/components.css" />
+  </head>
 
-  <!-- Website icon-->
-  <link rel="shortcut icon" href="images/gradient.ico">
+  <body>
+    <main class="page">
+      <header>
+        <h1 class="wordmark" data-wordmark>
+          <span class="sr-only">Ben Emdon</span>
+          <canvas class="wordmark__grid" data-wordmark-canvas aria-hidden="true"></canvas>
+          <noscript
+            ><span class="wordmark__fallback" aria-hidden="true">BEN EMDON</span></noscript
+          >
+        </h1>
+      </header>
 
-  <title>Ben Emdon ✨</title>
-</head>
+      <p class="tagline">
+        Software engineering manager. I work on developer productivity at Stripe.
+      </p>
 
-<header>
-  <div class="navbar navbar-default navbar-static-top">
-    <div class="container">
-      <div class="navbar-brand" style="color: white;"><strong>Ben Emdon</strong></a>
-    </div>
-  </div>
-</header>
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
-<body>
-  <div class="jumbotron" id="jumbo1">
-    <div class="container">
-      <h1>Software Engineering Manager</h1>
-      <p>Ottawa, ON, Canada</p>
-    </div>
-  </div>
-
-  <div class="jumbotron" id="jumbo2">
-    <div class="container">
-      <div class="row">
-        <div class="col-md-4">
-          <img src="https://github.com/BenEmdon.png">
+      <section class="section">
+        <h2 class="section__title"><span class="prompt">$</span> whoami</h2>
+        <div class="id">
+          <button class="dither" type="button" data-dither aria-label="Show the undithered photo">
+            <img
+              class="dither__photo"
+              src="assets/img/ben.jpg"
+              alt="Ben Emdon"
+              width="400"
+              height="400"
+            />
+            <canvas class="dither__canvas" data-dither-canvas aria-hidden="true"></canvas>
+          </button>
+          <div class="facts">
+            <p class="facts__row">
+              <span class="facts__key">role</span>
+              <span class="facts__value">Software Engineering Manager</span>
+            </p>
+            <p class="facts__row">
+              <span class="facts__key">team</span>
+              <span class="facts__value">Developer Productivity</span>
+            </p>
+            <p class="facts__row">
+              <span class="facts__key">org</span>
+              <span class="facts__value"><a href="https://stripe.com">Stripe</a></span>
+            </p>
+            <p class="facts__row">
+              <span class="facts__key">where</span>
+              <span class="facts__value">Ottawa, ON, Canada</span>
+            </p>
+          </div>
         </div>
-        <div class="col-md-8">
-          <h1>Hey, I'm Ben</h1>
-          <hr align="center">
-          <p>
-            I'm a software engineering manager at <a class="special-link" href="https://www.stripe.com" id="stripe">Stripe</a> on their developer productivity team.
-            Previously I built the <a href="https://github.blog/changelog/2021-10-27-command-palette-beta/">command palette</a> at <a class="special-link" href="https://www.github.com/home" id="github">GitHub</a>.
+      </section>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <section class="section">
+        <h2 class="section__title"><span class="prompt">$</span> about</h2>
+        <p>
+          I manage a developer productivity team at Stripe — the environments, tooling, and
+          infrastructure that decide whether shipping code feels quick or feels like wading
+          through wet cement.
+        </p>
+        <p>
+          Before Stripe I was at GitHub, where I built the
+          <a href="https://github.blog/changelog/2021-10-27-command-palette-beta/">command palette</a>.
+          The throughline is that I like the unglamorous parts being good: the build that
+          finishes, the environment that comes up clean, the tool that gets out of the way.
+        </p>
+        <p class="muted">
+          Off the clock: exploring cities near and far, film photography, an indefensible number
+          of hours in video games, and maximum effort at karaoke.
+        </p>
+      </section>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <section class="section">
+        <h2 class="section__title"><span class="prompt">$</span> work</h2>
+
+        <div class="entry">
+          <p class="entry__head">
+            <span class="entry__when">now</span>
+            <span>Stripe — Software Engineering Manager</span>
           </p>
-          <p>
-            In my free time I like to explore cities –local and afar, play sports, take photos on film, and play a heroic amount of videogames.
+          <p class="entry__detail">
+            Developer productivity: engineering environments, tooling, and the AI-shaped parts
+            of the inner loop.
           </p>
         </div>
-      </div>
-    </div>
-  </div>
-</body>
 
-<footer>
-  <div class="container text-center">
-    <div class="row">
-      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
-        <ul class="list-inline text-center">
-          <li>
-            <a href="https://www.twitter.com/BenEmdon">
-              <span class="fa-stack fa-2x">
-                <i class="fa fa-circle fa-stack-2x"></i>
-                <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
-              </span>
-            </a>
-          </li>
-          <li>
-            <a href="https://github.com/BenEmdon">
-              <span class="fa-stack fa-2x">
-                <i class="fa fa-circle fa-stack-2x"></i>
-                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
-              </span>
-            </a>
-          </li>
-          <li>
-            <a href="https://www.linkedin.com/in/benemdon">
-              <span class="fa-stack fa-2x">
-                <i class="fa fa-circle fa-stack-2x"></i>
-                <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
-              </span>
-            </a>
-          </li>
-           <li>
-            <a href="https://www.instagram.com/ben.emdon/">
-              <span class="fa-stack fa-2x">
-                <i class="fa fa-circle fa-stack-2x"></i>
-                <i class="fa fa-instagram fa-stack-1x fa-inverse"></i>
-              </span>
-            </a>
-          </li>
-        </ul>
-        <p>Ben Emdon 2025 &copy;</p>
-      </div>
-    </div>
-  </div>
-</footer>
+        <div class="entry">
+          <p class="entry__head">
+            <span class="entry__when">before</span>
+            <span>GitHub — Software Engineer</span>
+          </p>
+          <p class="entry__detail">
+            Built the command palette. Earlier, GitHub Education — the systems that hand starter
+            code to a few million students.
+          </p>
+        </div>
 
-<script src="js/bootstrap.min.js"></script>
+        <div class="entry">
+          <p class="entry__head">
+            <span class="entry__when">earlier</span>
+            <span>Carleton University — B.Eng, Software Engineering</span>
+          </p>
+          <p class="entry__detail">
+            Honours thesis on GraphQL against REST, published by IEEE. Apple WWDC Scholar, 2017
+            and 2018.
+          </p>
+        </div>
+      </section>
 
-<!-- Website Template Designed by Ben Emdon 2025 -->
-<!-- benemdon.github.io -->
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <section class="section">
+        <h2 class="section__title"><span class="prompt">$</span> elsewhere</h2>
+        <nav class="links" aria-label="Social profiles">
+          <a href="https://x.com/BenEmdon" rel="me">
+            <span class="links__key">x</span>
+            <span class="links__value">@BenEmdon</span>
+          </a>
+          <a href="https://www.linkedin.com/in/benemdon" rel="me">
+            <span class="links__key">linkedin</span>
+            <span class="links__value">in/benemdon</span>
+          </a>
+          <a href="https://www.instagram.com/ben.emdon/" rel="me">
+            <span class="links__key">instagram</span>
+            <span class="links__value">@ben.emdon</span>
+          </a>
+          <a href="https://github.com/BenEmdon" rel="me">
+            <span class="links__key">github</span>
+            <span class="links__value">@BenEmdon</span>
+          </a>
+        </nav>
+      </section>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <footer class="footer">
+        <p>Ottawa, ON</p>
+        <button class="theme-toggle" type="button" data-theme-toggle>dark</button>
+      </footer>
+    </main>
+
+    <script type="module" src="assets/js/main.js"></script>
+  </body>
+</html>
