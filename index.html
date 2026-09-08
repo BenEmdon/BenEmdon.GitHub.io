@@ -65,6 +65,40 @@
     <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="assets/css/layout.css" />
     <link rel="stylesheet" href="assets/css/components.css" />
+
+    <!-- Visit counting: GoatCounter. No cookies, no fingerprinting, no
+         persistent identifier, nothing personal stored — so there is nothing
+         to consent to and no banner to show.
+
+         The site code in data-goatcounter is public on purpose. It is a
+         write-only endpoint that hits are posted to, not a key, and it grants
+         no read access to the dashboard. Anything that counts visits from the
+         browser has to name its destination in the page source; there is no
+         version of this that stays private.
+
+         What that does leave open is someone pointing a mirror of this page at
+         the same endpoint, so the path callback below drops any hit that did
+         not come from the real host. It has to live in `path` and not in
+         `filter`: count.js assigns over `goatcounter.filter` when it loads, but
+         reads `goatcounter.path`, and a null path aborts the hit. If this site
+         ever moves to a custom domain, add that hostname here or counting stops.
+
+         count.js already skips localhost, file://, iframes and prerenders. It
+         does not check Do Not Track, so that check is here too. -->
+    <script>
+      window.goatcounter = {
+        path(p) {
+          if (location.hostname !== "benemdon.github.io") return null;
+          if (navigator.doNotTrack === "1" || navigator.globalPrivacyControl) return null;
+          return p;
+        },
+      };
+    </script>
+    <script
+      data-goatcounter="https://benemdon.goatcounter.com/count"
+      async
+      src="https://gc.zgo.at/count.js"
+    ></script>
   </head>
 
   <body>
