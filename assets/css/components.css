@@ -106,3 +106,52 @@
     animation: none;
   }
 }
+
+/*
+  The key legend, opened with ? and from the footer. Parked in the corner
+  rather than centred over the page: it is a reference card, not a dialog, and
+  nothing behind it needs to be dismissed to keep reading.
+*/
+.keys {
+  position: fixed;
+  z-index: 10;
+  inset-block-end: var(--step);
+  inset-inline-end: var(--step);
+  padding: var(--step-half) var(--step);
+  background: var(--page-background);
+  border: 1px solid var(--accent-color);
+  font-size: var(--text-small);
+  line-height: var(--step);
+}
+
+.keys[hidden] {
+  display: none;
+}
+
+.keys__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.keys__list li {
+  display: flex;
+  gap: var(--step);
+}
+
+.keys kbd {
+  flex: none;
+  width: 2ch;
+  color: var(--accent-color);
+  font: inherit;
+}
+
+.keys__label {
+  color: var(--muted-color);
+}
+
+/* Nothing here can be pressed on a touch device. */
+@media (hover: none) {
+  .keys {
+    display: none;
+  }
+}

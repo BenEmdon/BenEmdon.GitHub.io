@@ -282,9 +282,35 @@
             ></span
           >
         </p>
-        <button class="theme-toggle" type="button" data-theme-toggle>dark</button>
+        <div class="footer__controls">
+          <button
+            class="footer__button"
+            type="button"
+            data-keys-toggle
+            aria-expanded="false"
+            aria-controls="keys"
+          >
+            <kbd>?</kbd> keys
+          </button>
+          <button class="footer__button" type="button" data-theme-toggle>
+            dark
+          </button>
+        </div>
       </footer>
     </main>
+
+    <!-- Ships hidden and stays hidden without JS, since every key it lists is
+         wired up there. data-key matches the section ids in document order. -->
+    <div class="keys" id="keys" data-keys hidden>
+      <ul class="keys__list">
+        <li><kbd>1</kbd><span class="keys__label">whoami</span></li>
+        <li><kbd>2</kbd><span class="keys__label">about</span></li>
+        <li><kbd>3</kbd><span class="keys__label">work</span></li>
+        <li><kbd>4</kbd><span class="keys__label">elsewhere</span></li>
+        <li><kbd>t</kbd><span class="keys__label">theme</span></li>
+        <li><kbd>?</kbd><span class="keys__label">this</span></li>
+      </ul>
+    </div>
 
     <script type="module" src="assets/js/main.js"></script>
   </body>
