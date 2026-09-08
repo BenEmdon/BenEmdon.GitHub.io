@@ -33,6 +33,34 @@
   cursor: default;
 }
 
+/* The wordmark paints in from the top on load, one band per step, like a
+   terminal drawing a frame. Class-gated rather than automatic: the block
+   glyphs load with display=block, so the art is invisible for the first
+   moment and an animation started at page load would finish before there was
+   anything to see. main.js waits for the font, then adds .is-booting — which
+   also means the wordmark is simply visible if the script never runs.
+
+   jump-start so the first row is already there on frame one; the default
+   (jump-end) opens on a blank frame and wastes a fifth of the run. */
+@keyframes wordmark-boot {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.wordmark.is-booting {
+  animation: wordmark-boot calc(var(--motion-step) * 6) steps(5, jump-start) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wordmark.is-booting {
+    animation: none;
+  }
+}
+
 .tagline {
   color: var(--muted-color);
 }

@@ -86,6 +86,51 @@ function setUp() {
   );
 
   for (const section of sections) centreLine.observe(section);
+
+  /* ---------- wordmark boot ---------- */
+
+  const wordmark = document.querySelector(".wordmark");
+
+  // The block glyphs are served display=block, so for up to three seconds the
+  // wordmark is laid out but painting nothing. Starting the reveal on load
+  // would run it against an empty box and pop the finished art in afterwards.
+  // fonts.ready resolves either way — on a failed load too — so the class is
+  // always eventually added.
+  document.fonts.ready.then(() => wordmark?.classList.add("is-booting"));
+
+  /* ---------- clock ---------- */
+
+  const clock = document.querySelector("[data-clock]");
+  const clockTime = document.querySelector("[data-clock-time]");
+  const hours = document.querySelector("[data-clock-hours]");
+  const minutes = document.querySelector("[data-clock-minutes]");
+
+  // His time, not the reader's: the footer already says Ottawa. hourCycle
+  // rather than hour12: false, which resolves to h24 in some locales and
+  // prints midnight as 24:07.
+  const inOttawa = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Toronto",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+
+  function tick() {
+    const now = new Date();
+    const parts = Object.fromEntries(
+      inOttawa.formatToParts(now).map(({ type, value }) => [type, value])
+    );
+    hours.textContent = parts.hour;
+    minutes.textContent = parts.minute;
+    clockTime.dateTime = `${parts.hour}:${parts.minute}`;
+    clock.hidden = false;
+
+    // Land on the minute rather than drifting a second past it, which a fixed
+    // 60s interval would do a little more of every hour.
+    setTimeout(tick, 60_000 - (now.getSeconds() * 1000 + now.getMilliseconds()));
+  }
+
+  if (clock) tick();
 }
 
 setUp();

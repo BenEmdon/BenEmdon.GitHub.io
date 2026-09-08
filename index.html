@@ -114,8 +114,12 @@
         </h1>
       </header>
 
+      <!-- No whitespace before the caret: a space would be a line-break
+           opportunity, and the caret would strand itself on its own line when
+           the tagline wraps. -->
       <p class="tagline">
-        SCM, code review (AI), and dev productivity at Stripe. Previously GitHub.
+        SCM, code review (AI), and dev productivity at Stripe. Previously
+        GitHub.<span class="caret" aria-hidden="true">█</span>
       </p>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
@@ -266,8 +270,18 @@
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
+      <!-- The clock ships hidden and is unwrapped by main.js, so a visitor
+           without JS sees "Ottawa, ON" rather than a dead --:--. -->
       <footer class="footer">
-        <p>Ottawa, ON</p>
+        <p>
+          Ottawa, ON<span class="clock" data-clock hidden
+            ><time class="clock__time" data-clock-time
+              ><span data-clock-hours>--</span
+              ><span class="clock__tick" aria-hidden="true">:</span
+              ><span data-clock-minutes>--</span></time
+            ></span
+          >
+        </p>
         <button class="theme-toggle" type="button" data-theme-toggle>dark</button>
       </footer>
     </main>
