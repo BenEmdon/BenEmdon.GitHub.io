@@ -59,6 +59,33 @@ function setUp() {
   });
 
   syncToggle();
+
+  /* ---------- section in view ---------- */
+
+  const sections = document.querySelectorAll(".section");
+
+  // A zero-height band pinned to the middle of the viewport: inset the root
+  // 50% from top and bottom and no box is left, so a section "intersects"
+  // exactly while it straddles the centre line. Sections do not overlap, so at
+  // most one qualifies at a time. Cheaper and steadier than measuring rects on
+  // every scroll event.
+  const centreLine = new IntersectionObserver(
+    (entries) => {
+      // Between two sections sit a divider and its margins — about 72px where
+      // nothing is at the centre. Clearing the frame there makes it strobe, so
+      // whichever section reached the middle last keeps it until the next one
+      // arrives.
+      const arrived = entries.findLast((entry) => entry.isIntersecting);
+      if (!arrived) return;
+
+      for (const section of sections) {
+        section.classList.toggle("is-active", section === arrived.target);
+      }
+    },
+    { rootMargin: "-50% 0px -50% 0px" }
+  );
+
+  for (const section of sections) centreLine.observe(section);
 }
 
 setUp();

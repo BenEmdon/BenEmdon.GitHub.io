@@ -39,6 +39,38 @@
 
 /* ---------- section ---------- */
 
+/* The section you are reading gets an accent frame. Two sources feed it: a
+   pointer resting on the section, and — see main.js — the section crossing the
+   middle of the viewport as you scroll.
+
+   outline, not border: an outline is drawn outside the box and takes no
+   layout space, so switching it on cannot shift a single line off the --step
+   grid. --step-half of offset puts it midway between the section and the ░
+   rule above it, so the frame never collides with the divider. */
+.section {
+  outline: 1px solid transparent;
+  outline-offset: var(--step-half);
+  transition: outline-color calc(var(--motion-step) * 2) linear;
+}
+
+.section.is-active {
+  outline-color: var(--accent-color);
+}
+
+@media (hover: hover) {
+  .section:hover {
+    outline-color: var(--accent-color);
+  }
+
+  /* Both sources can be live at once — the pointer on one section while
+     another sits at the centre line — and two frames read as a bug. The
+     pointer is the more deliberate signal, so while it is over any section
+     the scroll-tracked frame stands down. */
+  .page:has(.section:hover) .section.is-active:not(:hover) {
+    outline-color: transparent;
+  }
+}
+
 .section__title {
   color: var(--page-color);
   margin-block-end: var(--step);
