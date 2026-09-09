@@ -33,6 +33,34 @@
   cursor: default;
 }
 
+/* The wordmark paints in from the top on load, one band per step, like a
+   terminal drawing a frame. Class-gated rather than automatic: the block
+   glyphs load with display=block, so the art is invisible for the first
+   moment and an animation started at page load would finish before there was
+   anything to see. main.js waits for the font, then adds .is-booting — which
+   also means the wordmark is simply visible if the script never runs.
+
+   jump-start so the first row is already there on frame one; the default
+   (jump-end) opens on a blank frame and wastes a fifth of the run. */
+@keyframes wordmark-boot {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.wordmark.is-booting {
+  animation: wordmark-boot calc(var(--motion-step) * 6) steps(5, jump-start) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wordmark.is-booting {
+    animation: none;
+  }
+}
+
 .tagline {
   color: var(--muted-color);
 }
@@ -51,6 +79,9 @@
   outline: 1px solid transparent;
   outline-offset: var(--step-half);
   transition: outline-color calc(var(--motion-step) * 2) linear;
+  /* A keyed jump lands the heading here rather than flush against the top
+     edge, leaving room for the frame's own offset. */
+  scroll-margin-block-start: var(--step-2);
 }
 
 .section.is-active {
@@ -218,9 +249,11 @@
 
 /* ---------- footer ---------- */
 
+/* Everything sits left and the right end stays empty, because the key legend
+   is parked in that corner: pushed apart, the theme toggle ended up underneath
+   the panel whenever you opened it at the foot of the page. */
 .footer {
   display: flex;
-  justify-content: space-between;
   align-items: baseline;
   gap: var(--step);
   color: var(--muted-color);
@@ -228,17 +261,33 @@
   line-height: var(--step);
 }
 
-.theme-toggle {
+.footer__controls {
+  display: flex;
+  gap: var(--step);
+}
+
+.footer__button {
   color: var(--muted-color);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
-.theme-toggle:hover,
-.theme-toggle:focus-visible {
+.footer__button:hover,
+.footer__button:focus-visible {
   background: var(--accent-color);
   color: var(--inverted-color);
   text-decoration: none;
+}
+
+.footer__button kbd {
+  font: inherit;
+}
+
+/* A keyboard hint is noise on a device with no keyboard. */
+@media (hover: none) {
+  [data-keys-toggle] {
+    display: none;
+  }
 }
 
 /* Roomier wordmark once there is width for it. 77 columns at 12px caps out

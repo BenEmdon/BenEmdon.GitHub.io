@@ -114,8 +114,12 @@
         </h1>
       </header>
 
+      <!-- No whitespace before the caret: a space would be a line-break
+           opportunity, and the caret would strand itself on its own line when
+           the tagline wraps. -->
       <p class="tagline">
-        SCM, code review (AI), and dev productivity at Stripe. Previously GitHub.
+        SCM, code review (AI), and dev productivity at Stripe. Previously
+        GitHub.<span class="caret" aria-hidden="true">█</span>
       </p>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
@@ -267,11 +271,47 @@
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
+      <!-- The clock ships hidden and is unwrapped by main.js, so a visitor
+           without JS sees "Ottawa, ON" rather than a dead --:--. -->
       <footer class="footer">
-        <p>Ottawa, ON</p>
-        <button class="theme-toggle" type="button" data-theme-toggle>dark</button>
+        <p>
+          Ottawa, ON<span class="clock" data-clock hidden
+            ><time class="clock__time" data-clock-time
+              ><span data-clock-hours>--</span
+              ><span class="clock__tick" aria-hidden="true">:</span
+              ><span data-clock-minutes>--</span></time
+            ></span
+          >
+        </p>
+        <div class="footer__controls">
+          <button
+            class="footer__button"
+            type="button"
+            data-keys-toggle
+            aria-expanded="false"
+            aria-controls="keys"
+          >
+            <kbd>?</kbd> keys
+          </button>
+          <button class="footer__button" type="button" data-theme-toggle>
+            dark
+          </button>
+        </div>
       </footer>
     </main>
+
+    <!-- Ships hidden and stays hidden without JS, since every key it lists is
+         wired up there. data-key matches the section ids in document order. -->
+    <div class="keys" id="keys" data-keys hidden>
+      <ul class="keys__list">
+        <li><kbd>1</kbd><span class="keys__label">whoami</span></li>
+        <li><kbd>2</kbd><span class="keys__label">about</span></li>
+        <li><kbd>3</kbd><span class="keys__label">work</span></li>
+        <li><kbd>4</kbd><span class="keys__label">elsewhere</span></li>
+        <li><kbd>t</kbd><span class="keys__label">theme</span></li>
+        <li><kbd>?</kbd><span class="keys__label">this</span></li>
+      </ul>
+    </div>
 
     <script type="module" src="assets/js/main.js"></script>
   </body>

@@ -51,3 +51,107 @@
     width: 6rem; /* 4 × --step */
   }
 }
+
+/*
+  One blink, shared by the caret and the clock's colon. step-end, not a fade:
+  a cursor is on or it is off, and easing between the two reads as a pulse
+  rather than a terminal.
+
+  --blink-off is how far off "off" is. A caret goes all the way; the clock's
+  colon only dims, because at 0 the footer spends half of every second reading
+  "09 19", which looks like a typo rather than a clock. (git-merge lands on
+  .45 for their own ticking colon for the same reason.)
+*/
+@keyframes blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: var(--blink-off, 0);
+  }
+}
+
+/* The caret that closes the tagline: the page's one claim to being live.
+
+   Deliberately NOT pinned to the JetBrains Mono block subset the way the
+   divider and wordmark are. Iosevka carries █ itself (verified: it advances
+   at Iosevka's own 0.5em rather than the fallback's), and mixing the two
+   fonts on one line made the line box 25px instead of 24 — the two faces put
+   their inline boxes in different places around the shared baseline, so the
+   union of the two was taller than the strut, and every section below the
+   tagline slid 1px off the grid. One glyph with nothing to align to does not
+   need the subset anyway. */
+.caret {
+  margin-inline-start: 0.5ch;
+  color: var(--accent-color);
+  animation: blink 1.2s step-end infinite;
+}
+
+/* Local time where he is, not where the reader is — the line already says
+   Ottawa, so the clock is the rest of that sentence. */
+.clock {
+  margin-inline-start: 2ch;
+}
+
+.clock__tick {
+  --blink-off: 0.45;
+  animation: blink 1s step-end infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caret,
+  .clock__tick {
+    animation: none;
+  }
+}
+
+/*
+  The key legend, opened with ? and from the footer. Parked in the corner
+  rather than centred over the page: it is a reference card, not a dialog, and
+  nothing behind it needs to be dismissed to keep reading.
+*/
+.keys {
+  position: fixed;
+  z-index: 10;
+  inset-block-end: var(--step);
+  inset-inline-end: var(--step);
+  padding: var(--step-half) var(--step);
+  background: var(--page-background);
+  border: 1px solid var(--accent-color);
+  font-size: var(--text-small);
+  line-height: var(--step);
+}
+
+.keys[hidden] {
+  display: none;
+}
+
+.keys__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.keys__list li {
+  display: flex;
+  gap: var(--step);
+}
+
+.keys kbd {
+  flex: none;
+  width: 2ch;
+  color: var(--accent-color);
+  font: inherit;
+}
+
+.keys__label {
+  color: var(--muted-color);
+}
+
+/* Nothing here can be pressed on a touch device. */
+@media (hover: none) {
+  .keys {
+    display: none;
+  }
+}
