@@ -80,21 +80,61 @@ export function render(canvas, img, { size = 112, ink, paper, contrast = 0.95, b
   ctx.putImageData(frame, 0, 0);
 }
 
-// Returns a repaint function so a theme change can re-dither against the new
-// palette without reloading the image.
+// The dither is cleared away one Bayer cell at a time rather than faded out.
+// Scrambled so it dissolves rather than wiping, and scrambled once and kept, so
+// the same cells go in the same order every time — hovering twice should not
+// look like two different pictures.
+function scrambledCells(canvas) {
+  const cells = [];
+  for (let y = 0; y < canvas.height; y += MATRIX) {
+    for (let x = 0; x < canvas.width; x += MATRIX) cells.push([x, y]);
+  }
+
+  for (let i = cells.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cells[i], cells[j]] = [cells[j], cells[i]];
+  }
+
+  return cells;
+}
+
+// Returns repaint, so a theme change can re-dither against the new palette
+// without reloading the image, and reveal, which sets how much of the dither
+// has been cleared away. Both go through the same paint, so the two never
+// disagree: re-dithering mid-reveal keeps the cells that were already open.
 export async function attach(canvas, img, options = {}) {
   await decoded(img);
+
+  const cells = scrambledCells(canvas);
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  let open = 0;
 
   // Read the palette off resolved properties rather than the custom properties
   // themselves: those hold light-dark(), which getPropertyValue hands back
   // unevaluated. `color` and `background-color` always come back as rgb().
-  const repaint = () =>
+  function paint() {
     render(canvas, img, {
       ...options,
       ink: getComputedStyle(canvas).color,
       paper: getComputedStyle(canvas.parentElement).backgroundColor,
     });
 
-  repaint();
-  return repaint;
+    // Clearing to transparent rather than drawing the photo into the canvas:
+    // the untouched <img> is already sitting underneath, so a hole is enough.
+    for (let i = 0; i < open; i += 1) {
+      ctx.clearRect(cells[i][0], cells[i][1], MATRIX, MATRIX);
+    }
+  }
+
+  paint();
+
+  return {
+    repaint: paint,
+    reveal(fraction) {
+      const next = Math.round(cells.length * Math.min(Math.max(fraction, 0), 1));
+      if (next === open) return;
+      open = next;
+      paint();
+    },
+  };
 }
