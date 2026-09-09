@@ -151,3 +151,93 @@
     display: none;
   }
 }
+
+/*
+  The boot screen, borrowed wholesale from git-merge.com's own page load: a
+  short fake startup log that resolves line by line and then gets out of the
+  way.
+
+  It covers the page rather than replacing it, so the real content is in the
+  DOM and laid out the whole time. The padding below deliberately repeats
+  body's, and .boot__inner repeats .page's width and centring, so the wordmark
+  sits on exactly the pixel it will occupy once this is gone — lifting the
+  overlay is a cut, not a jump.
+*/
+.boot {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  padding: var(--step-2) var(--page-gutter);
+  background: var(--page-background);
+  overflow: hidden;
+}
+
+.boot[hidden] {
+  display: none;
+}
+
+.boot__inner {
+  width: min(100%, var(--content-width));
+  margin-inline: auto;
+}
+
+.boot__log {
+  margin-block-start: var(--step);
+  color: var(--muted-color);
+  font-size: var(--text-small);
+  /* Absolute, like everywhere else, so the log sits on the same 24px grid the
+     page behind it does. */
+  line-height: var(--step);
+}
+
+/* Fixed columns rather than padded strings. Iosevka draws ✓ at two columns
+   while its monospace advance is one, so a run of lines marked with a mix of
+   ✓ and a one-column spinner would not line up if the mark were just text in
+   the flow. Given the mark its own box, the glyph inside can be any width. */
+.boot__line {
+  display: flex;
+}
+
+.boot__mark {
+  flex: none;
+  width: 3ch;
+  color: var(--accent-color);
+}
+
+.boot__task {
+  flex: none;
+}
+
+/* The leader is one long run of dots that simply overflows. Sized by flex and
+   clipped, it fills whatever gap is left on any width, and collapses to
+   nothing on a narrow screen instead of wrapping the line. */
+.boot__dots {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--page-rule);
+}
+
+.boot__value {
+  flex: none;
+  width: 24ch;
+  color: var(--page-color);
+}
+
+/* Still waiting: an underscore doing what a cursor does. */
+.boot__value.is-pending {
+  animation: blink 1s step-end infinite;
+}
+
+@media (max-width: 34rem) {
+  .boot {
+    padding-block: var(--step) var(--step-2);
+  }
+
+  /* Nothing like enough width for a 24-column value column beside a task and
+     a leader; let the value take what it needs and the dots take the rest. */
+  .boot__value {
+    width: auto;
+  }
+}

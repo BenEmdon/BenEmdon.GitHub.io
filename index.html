@@ -313,6 +313,18 @@
       </ul>
     </div>
 
+    <!-- The boot screen. Ships hidden and empty: without JS it never appears,
+         and a crawler is handed the real page rather than a splash. main.js
+         fills it and takes it away again. aria-hidden because it is theatre —
+         a screen reader should be reading the page underneath it, which is
+         already there. -->
+    <div class="boot" data-boot aria-hidden="true" hidden>
+      <div class="boot__inner">
+        <div data-boot-logo></div>
+        <ul class="boot__log" data-boot-log></ul>
+      </div>
+    </div>
+
     <script type="module" src="assets/js/main.js"></script>
   </body>
 </html>

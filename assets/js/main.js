@@ -268,6 +268,109 @@ function setUp() {
     });
   }
 
+  /* ---------- boot ---------- */
+
+  // Every value here is already stated somewhere further down the page. The
+  // log is a bit of theatre; it is not the place to introduce a fact.
+  const BOOT_LOG = [
+    ["initializing", "ok"],
+    ["resolving identity", "ben emdon"],
+    ["mounting teams", "code forge, code review"],
+    ["locating", "ottawa, ca"],
+  ];
+
+  // Braille rather than the circle spinners git-merge uses: Iosevka draws
+  // those at two columns and these at one, so these keep the mark column the
+  // same width from frame to frame.
+  const SPINNER = [..."⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"];
+  const LINE_EVERY = 140;
+  const LINE_SETTLES = 170;
+
+  const boot = document.querySelector("[data-boot]");
+
+  // Runs on every load, the way the page it is borrowed from does, and takes
+  // under a second. Skipped outright for anyone who asked not to be animated:
+  // for them it is a blank screen between them and the content, which is the
+  // opposite of the point.
+  if (boot && !reduced.matches) {
+    const log = boot.querySelector("[data-boot-log]");
+    const logo = wordmark.cloneNode(true);
+    boot.querySelector("[data-boot-logo]").append(logo);
+    boot.hidden = false;
+
+    // The clone is taken before the block glyphs have loaded, since they are
+    // served display=block and the boot starts immediately. Rather than hold
+    // the whole screen for the font, let the logo run the same paint-in the
+    // real one does, the moment it can.
+    document.fonts.ready.then(() => logo.classList.add("is-booting"));
+
+    const timers = [];
+    const marks = [];
+    let frame = 0;
+
+    const spin = setInterval(() => {
+      frame = (frame + 1) % SPINNER.length;
+      for (const mark of marks) {
+        if (!mark.dataset.done) mark.textContent = SPINNER[frame];
+      }
+    }, 80);
+
+    function done() {
+      clearInterval(spin);
+      timers.forEach(clearTimeout);
+      removeEventListener("keydown", done);
+      boot.remove();
+    }
+
+    // Nobody should be held here. Any key or any click cuts to the page. The
+    // click listener leaves with the element; the keydown one has to be taken
+    // off by hand, or it outlives the boot and fires on the first key the
+    // visitor presses at the real page.
+    addEventListener("keydown", done);
+    boot.addEventListener("click", done);
+
+    function span(className, text) {
+      const el = document.createElement("span");
+      el.className = className;
+      el.textContent = text;
+      return el;
+    }
+
+    BOOT_LOG.forEach(([task, value], i) => {
+      timers.push(
+        setTimeout(() => {
+          const line = document.createElement("li");
+          line.className = "boot__line";
+
+          const mark = span("boot__mark", SPINNER[frame]);
+          const result = span("boot__value is-pending", "_");
+          marks.push(mark);
+
+          line.append(
+            mark,
+            span("boot__task", task),
+            // Longer than any gap it has to fill; the overflow is clipped.
+            span("boot__dots", ".".repeat(80)),
+            result
+          );
+          log.append(line);
+
+          timers.push(
+            setTimeout(() => {
+              mark.dataset.done = "1";
+              mark.textContent = "\u2713";
+              result.className = "boot__value";
+              result.textContent = value;
+            }, LINE_SETTLES)
+          );
+        }, i * LINE_EVERY)
+      );
+    });
+
+    // A beat on the finished log, then out.
+    timers.push(setTimeout(done, BOOT_LOG.length * LINE_EVERY + LINE_SETTLES + 220));
+  }
+
   /* ---------- clock ---------- */
 
   const clock = document.querySelector("[data-clock]");
