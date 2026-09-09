@@ -1,4 +1,5 @@
 import { attach } from "./dither.js";
+import { animateWordmark } from "./wordmark.js";
 
 const THEME_KEY = "theme";
 const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
@@ -204,69 +205,7 @@ function setUp() {
   // always eventually added.
   document.fonts.ready.then(() => wordmark?.classList.add("is-booting"));
 
-  /* ---------- wordmark spotlight ---------- */
-
-  // Listens on the document rather than the wordmark: the art is 72px tall, so
-  // a listener bound to it would only ever fire once the pointer was already
-  // on top of the name, and would never hear about the pointer leaving the
-  // window at all.
-  if (wordmark && window.matchMedia("(hover: hover)").matches) {
-    // Counted off the art itself rather than hardcoded, so re-rendering the
-    // name at a different size or in a different font can't desync the grid.
-    // The widest row, not the first: rows here are ragged, and sizing cells by
-    // a short one walks the light off the end of the long ones.
-    const rows = wordmark.textContent.split("\n");
-    const columns = Math.max(...rows.map((row) => row.length));
-    const range = document.createRange();
-    let cell = { w: 1, h: 1 };
-    let last = null;
-
-    // Measured from the laid-out text, not from the element. The <pre> is a
-    // block, so it is as wide as the column (576px) while the art inside it is
-    // 540px — sizing cells by the box put the light five characters adrift by
-    // the end of the name. A Range over the contents reports what was actually
-    // painted.
-    function measure() {
-      range.selectNodeContents(wordmark);
-      const art = range.getBoundingClientRect();
-      cell = { w: art.width / columns, h: art.height / rows.length };
-      // The gradient sizes its bands off this, so its edges land on character
-      // boundaries instead of slicing a glyph down the middle.
-      wordmark.style.setProperty("--cell", `${cell.w}px`);
-    }
-
-    measure();
-    // Again once the block glyphs arrive. The subset loads display=block, so
-    // the first measurement is taken against whatever the fallback was and
-    // comes back with the wrong advance width — enough to put the light half a
-    // dozen characters off by the end of the name.
-    document.fonts.ready.then(measure);
-    window.addEventListener("resize", measure);
-
-    document.addEventListener("pointermove", (event) => {
-      const box = wordmark.getBoundingClientRect();
-
-      // The band is full height, so it would sit lit while you read the rest of
-      // the page. Past a couple of rows' clearance above or below the art the
-      // light is parked instead, and the name goes back to being type.
-      const away =
-        event.clientY < box.top - box.height || event.clientY > box.bottom + box.height;
-
-      // Snapped to a boundary rather than a centre: the gradient's stops are
-      // whole cells out from here, so this has to be a cell edge for them to
-      // land on one too.
-      const x = away
-        ? -999
-        : Math.round(Math.floor((event.clientX - box.left) / cell.w) * cell.w);
-
-      // Most moves land in the cell the last one did. Bailing keeps this to one
-      // style write per cell crossed rather than one per pointer event.
-      if (x === last) return;
-      last = x;
-
-      wordmark.style.setProperty("--spot-x", `${x}px`);
-    });
-  }
+  animateWordmark(wordmark, reduced);
 
   /* ---------- boot ---------- */
 

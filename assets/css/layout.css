@@ -23,6 +23,7 @@
 .wordmark {
   display: block;
   block-size: calc(var(--step) * 2);
+  padding-block-start: 3px;
   color: var(--page-color);
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   font-size: min(9px, 1.9vw);
@@ -61,50 +62,15 @@
   }
 }
 
-/* The name lights up under the pointer.
+/* Each block can scatter without changing the name's layout. */
+.wordmark__cell {
+  display: inline-block;
+  width: 1ch;
+  white-space: pre;
+}
 
-   Painted as a background clipped to the glyphs rather than by wrapping each
-   of the 375 characters in its own span: one element, one repaint, and the art
-   in the HTML stays a plain block of text.
-
-   A column band rather than a circle. The first cut of this was a radial
-   gradient and it read as a smudge — round edges cutting curves through square
-   blocks, the one shape this page has none of. The vertical axis is not much
-   of a loss: the art is five rows tall and seventy-five wide, so the
-   interesting direction is sideways, and lighting a run of columns full height
-   is what a terminal does anyway.
-
-   Every stop is a whole number of --cell, which main.js measures off the
-   rendered art, so the edges land on character boundaries rather than
-   quartering a glyph. Parked far off to the left by default: without the
-   script, or before the pointer arrives, the whole name takes the outermost
-   colour and the wordmark is exactly what it was. */
-@supports (background-clip: text) or (-webkit-background-clip: text) {
-  @media (hover: hover) {
-    .wordmark {
-      --cell: 0.6em; /* main.js replaces this with the measured advance */
-      --spot-x: -999px;
-      --spot-core: calc(var(--cell) * 3);
-      --spot-edge: calc(var(--cell) * 6);
-      --spot-dim: color-mix(in oklab, var(--accent-color) 55%, var(--page-color));
-
-      background-image: linear-gradient(
-        to right,
-        var(--page-color) 0 calc(var(--spot-x) - var(--spot-edge)),
-        var(--spot-dim) calc(var(--spot-x) - var(--spot-edge))
-          calc(var(--spot-x) - var(--spot-core)),
-        var(--accent-color) calc(var(--spot-x) - var(--spot-core))
-          calc(var(--spot-x) + var(--spot-core)),
-        var(--spot-dim) calc(var(--spot-x) + var(--spot-core))
-          calc(var(--spot-x) + var(--spot-edge)),
-        var(--page-color) calc(var(--spot-x) + var(--spot-edge))
-      );
-      background-clip: text;
-      -webkit-background-clip: text;
-      color: transparent;
-      -webkit-text-fill-color: transparent;
-    }
-  }
+.wordmark__cell.is-energized {
+  color: var(--accent-color);
 }
 
 .tagline {
@@ -300,6 +266,7 @@
    the panel whenever you opened it at the foot of the page. */
 .footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: var(--step);
   color: var(--muted-color);
@@ -353,7 +320,7 @@
   }
 
   body {
-    padding-block: var(--step) var(--step-2);
+    padding-block: var(--step);
   }
 
   /* Side by side, the portrait leaves too little room for a value like
@@ -381,5 +348,42 @@
 
   .entry__detail {
     padding-inline-start: 0;
+  }
+}
+
+/* Whole 48px rows keep touch targets comfortable and preserve the 24px grid. */
+@media (max-width: 34rem), (pointer: coarse) {
+  .links a {
+    min-height: calc(var(--step) * 2);
+    align-items: center;
+    width: 100%;
+  }
+
+  .links__value {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .footer__button {
+    min-width: calc(var(--step) * 2);
+    min-height: calc(var(--step) * 2);
+  }
+
+  .section__title {
+    position: relative;
+    padding-inline-end: calc(var(--step) * 2);
+  }
+
+  .anchor {
+    position: absolute;
+    inset-inline-end: 0;
+    inset-block-start: calc(-1 * var(--step-half));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(var(--step) * 2);
+    height: calc(var(--step) * 2);
+    margin: 0;
+    opacity: 1;
   }
 }
