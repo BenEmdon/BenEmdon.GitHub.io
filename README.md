@@ -10,8 +10,8 @@ index.html            all of the copy
 assets/css/tokens.css design tokens (colour, type, spacing)
 assets/css/base.css   reset and element defaults
 assets/css/layout.css page structure
-assets/css/components.css  the dithered portrait
-assets/js/wordmark.js the pixel-grid name
+assets/css/components.css  portrait, Ottawa map, and small UI components
+assets/js/wordmark.js pointer-driven letter wave and fading accent trail
 assets/js/dither.js   ordered dithering, shared by portrait and wordmark
 assets/js/main.js     wiring and the theme toggle
 ```

@@ -271,9 +271,12 @@
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
+    </main>
+
+    <footer class="site-footer">
       <!-- The clock ships hidden and is unwrapped by main.js, so a visitor
            without JS sees "Ottawa, ON" rather than a dead --:--. -->
-      <footer class="footer">
+      <div class="footer page">
         <p>
           Ottawa, ON<span class="clock" data-clock hidden
             ><time class="clock__time" data-clock-time
@@ -297,8 +300,64 @@
             dark
           </button>
         </div>
-      </footer>
-    </main>
+      </div>
+      <figure class="ottawa">
+        <div class="ottawa__heading"><span>Ottawa, ON</span><span>CA</span></div>
+        <!-- The art is aria-hidden and the link carries the name: a screen
+             reader has no use for four hundred shading characters. -->
+        <a
+          class="ottawa__map"
+          href="https://www.google.com/maps/place/Ottawa,+ON"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Ottawa, Ontario on Google Maps"
+        >
+          <pre class="ottawa__art" aria-hidden="true">  ^^^   ^^^^^^   ^^^  ^^^^^^^^   ^^^^^  ^^^   ^^^^^^^   ^^
+ ^^^^^^^  ^^^  ^^^^^^^^^   ^^^^^^^  ^^^^^^^   ^^^  ^^^^^^^
+░░░░ ^^ ░░░░░░░░ ^^^^ ░░░░░░░░ ^^^ ░░░░░░ ^^^^ ░░░░░░░ ^^░
+░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+░░░░░░░░░░░░░░░░░░░░░░░░░<span class="ottawa__label">gatineau</span>░░░░░░░░░░░░░░░░░░░░░░░░░
+═════════╗░░░░╔═════════════╗░░░░░░░░░░░╔═══╗░░░░░╔═══════
+<span class="ottawa__water">~~~~~~~~~</span>╚════╝<span class="ottawa__water">~~~~~~~~~~~~~</span>╚═══════════╝<span class="ottawa__water">~~~</span>╚═════╝<span class="ottawa__water">~~~~~~~</span>
+<span class="ottawa__water">~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</span>
+<span class="ottawa__water">~~~~~~~~~~</span><span class="ottawa__label">ottawa river</span><span class="ottawa__water">~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</span>
+<span class="ottawa__water">~~~~~~~~~~~~~~~~~~~~~~~~~~</span><span class="ottawa__pin">▄</span><span class="ottawa__water">~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</span>
+<span class="ottawa__water">~~~~~~~~~~~~~~~~~~~~~~~~~~</span><span class="ottawa__pin">█</span><span class="ottawa__water">~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</span>
+════════════╗<span class="ottawa__water">~~~~~~~~~~</span>╔═<span class="ottawa__pin">▄█▄</span>═╗<span class="ottawa__water">~~</span>╔═══════════╗<span class="ottawa__water">~~~~~~~~~~~~~</span>
+░░░░░░░░░░░░╚══════════╝░<span class="ottawa__pin">███</span>░║<span class="ottawa__water">~~</span>║░░░░░░░░░░░╚═══════╗<span class="ottawa__water">~~~~~</span>
+░░░░░░░░░░░░░░░░░░▒▒▒▒▒▒▒<span class="ottawa__pin">███</span>▒║<span class="ottawa__water">~~</span>║▒▒▒▒▒░░░░░░░░░░░░░░╚═════
+░░░░░░░░░░░░░░░▒▒▒▒▒▒<span class="ottawa__label">parliament</span><span class="ottawa__water">~</span>║▒▒▒▒▒▒▒▒░░░░░░░░░░░░░░░░░
+░<span class="ottawa__label">westboro</span>░░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒║<span class="ottawa__water">~~</span>║▒▒▒▒▒▒▒▒▒▒░░░░░░░░░░░░░░░
+░░░░░░░░░░░░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒╚╗<span class="ottawa__water">~</span>╚╗▒▒▒▒▒▒▒▒░░░░░░░░░░░░░░░░
+░░░░░░░░░░░░░░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒░║<span class="ottawa__water">~~</span>║▒▒▒▒▒▒░░░░░░░░░░░░░░░░░░
+░░░░░░░░░░░░░░░░░▒▒▒▒▒▒▒▒▒▒▒░░╚╗<span class="ottawa__water">~~</span>╚╗▒▒░░░░░░░░░░░░░░░<span class="ottawa__water">~~~</span>░░
+░░░░░░░░░░░░░░░░░░░░▒▒▒▒▒▒░░░░░║<span class="ottawa__water">~~~~</span>║░░░░░░░░░░░░░░<span class="ottawa__water">~~~~</span>░░░
+░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░╔╝<span class="ottawa__water">~~~~</span>╚╗░<span class="ottawa__label">rideau canal</span><span class="ottawa__water">~~</span>░░░░░
+░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░║<span class="ottawa__water">~~~~~~</span>║░░░░░░░░░<span class="ottawa__water">~~~~</span>░░░░░░░
+░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░╚╗<span class="ottawa__water">~~~~</span>╔╝░░░░░░░<span class="ottawa__water">~~~~</span>░░░░░░░░░
+░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░╚═╗<span class="ottawa__water">~</span>╔╝░░░░░░<span class="ottawa__water">~~~~</span>░░░░░░░░░░░</pre>
+          <pre class="ottawa__art ottawa__art--compact" aria-hidden="true"> ^^^  ^^^^^   ^^^  ^^^^^^  ^^^
+░░ ^^ ░░░░ ^^^ ░░░░░ ^^^ ░░░░ 
+░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+═════╗░░░╔═════════╗░░░╔══════
+<span class="ottawa__water">~~~~~</span>╚═══╝<span class="ottawa__water">~~~~~~~~~</span>╚═══╝<span class="ottawa__water">~~~~~~</span>
+<span class="ottawa__water">~</span><span class="ottawa__label">ottawa river</span><span class="ottawa__water">~~~~~~~~~~~~~~~~~</span>
+<span class="ottawa__water">~~~~~~~~~~~~~</span><span class="ottawa__pin">▄</span><span class="ottawa__water">~~~~~~~~~~~~~~~~</span>
+══════╗<span class="ottawa__water">~~~~</span>╔═<span class="ottawa__pin">█</span>═╗<span class="ottawa__water">~~</span>╔═══════════
+░░░░░░╚════╝<span class="ottawa__pin">▄█▄</span>║<span class="ottawa__water">~~</span>║░░░░░░░░░░░
+░░░░░░░░░▒▒▒<span class="ottawa__pin">███</span>▒║<span class="ottawa__water">~~</span>║<span class="ottawa__label">parliament</span>
+<span class="ottawa__label">westboro</span>▒▒▒▒▒▒▒▒║<span class="ottawa__water">~~</span>║▒▒▒▒▒░░░░░
+░░░░░░░░▒▒▒▒▒▒▒▒╚╗<span class="ottawa__water">~</span>╚╗▒▒▒░░░░░░
+░░░░░░░░░░▒▒▒▒▒▒░║<span class="ottawa__water">~~</span>║░░░░░<span class="ottawa__water">~~</span>░░
+░░░░░░░░░░░░░░░░░╚╗<span class="ottawa__water">~~</span>╚╗░░<span class="ottawa__water">~~~</span>░░
+░<span class="ottawa__label">canal</span>░░░░░░░░░░░░║<span class="ottawa__water">~~~</span>║░<span class="ottawa__water">~~~</span>░░░
+░░░░░░░░░░░░░░░░░░╚═╗<span class="ottawa__water">~</span>╚╗<span class="ottawa__water">~~</span>░░░░</pre>
+          <span class="ottawa__overlay" aria-hidden="true">Open Google Maps ↗</span>
+        </a>
+        <figcaption class="ottawa__note">Not to scale.</figcaption>
+      </figure>
+
+    </footer>
 
     <!-- Ships hidden and stays hidden without JS, since every key it lists is
          wired up there. data-key matches the section ids in document order. -->
