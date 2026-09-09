@@ -1,6 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
-  <rect width="16" height="16" fill="#0c0e0d" />
-  <!-- A prompt caret on the same pixel grid as the wordmark, shedding a pixel. -->
-  <path fill="#e8ebe8" d="M3 3h2v2H3zM5 5h2v2H5zM7 7h2v2H7zM5 9h2v2H5zM3 11h2v2H3z" />
-  <path fill="#4d9375" d="M9 11h4v2H9zM11 3h1v1h-1z" />
+  <title>Ben Emdon</title>
+  <!--
+    The # from the heading anchors, drawn on a pixel grid. Two-pixel strokes,
+    square corners, no slant: at 16px a hairline hash turns to grey mush and a
+    slanted one turns to stairs, and neither looks like anything this page does.
+
+    shape-rendering=crispEdges keeps the browser from antialiasing the grid
+    away. The fills are the site's own accent tokens, so the tab follows the
+    browser's theme the way the page follows the OS.
+  -->
+  <style>
+    path { fill: #1e754f; }
+    @media (prefers-color-scheme: dark) {
+      path { fill: #4d9375; }
+    }
+  </style>
+  <path d="M4 2h2v12H4zM10 2h2v12h-2zM2 5h12v2H2zM2 9h12v2H2z"/>
 </svg>
