@@ -11,7 +11,7 @@
 
 /* ---------- masthead ---------- */
 
-/* Solid block-letter art, 77 columns x 5 rows, set in the accent colour — a
+/* Solid block-letter art, 75 columns x 5 rows, set in the accent colour — a
    logo rather than a paragraph. Renders from the dedicated JetBrains Mono
    glyph subset loaded in <head> (see the comment there), not a local system
    font, so the exact glyph and advance width are guaranteed rather than
@@ -58,6 +58,52 @@
 @media (prefers-reduced-motion: reduce) {
   .wordmark.is-booting {
     animation: none;
+  }
+}
+
+/* The name lights up under the pointer.
+
+   Painted as a background clipped to the glyphs rather than by wrapping each
+   of the 375 characters in its own span: one element, one repaint, and the art
+   in the HTML stays a plain block of text.
+
+   A column band rather than a circle. The first cut of this was a radial
+   gradient and it read as a smudge — round edges cutting curves through square
+   blocks, the one shape this page has none of. The vertical axis is not much
+   of a loss: the art is five rows tall and seventy-five wide, so the
+   interesting direction is sideways, and lighting a run of columns full height
+   is what a terminal does anyway.
+
+   Every stop is a whole number of --cell, which main.js measures off the
+   rendered art, so the edges land on character boundaries rather than
+   quartering a glyph. Parked far off to the left by default: without the
+   script, or before the pointer arrives, the whole name takes the outermost
+   colour and the wordmark is exactly what it was. */
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  @media (hover: hover) {
+    .wordmark {
+      --cell: 0.6em; /* main.js replaces this with the measured advance */
+      --spot-x: -999px;
+      --spot-core: calc(var(--cell) * 3);
+      --spot-edge: calc(var(--cell) * 6);
+      --spot-dim: color-mix(in oklab, var(--accent-color) 55%, var(--page-color));
+
+      background-image: linear-gradient(
+        to right,
+        var(--page-color) 0 calc(var(--spot-x) - var(--spot-edge)),
+        var(--spot-dim) calc(var(--spot-x) - var(--spot-edge))
+          calc(var(--spot-x) - var(--spot-core)),
+        var(--accent-color) calc(var(--spot-x) - var(--spot-core))
+          calc(var(--spot-x) + var(--spot-core)),
+        var(--spot-dim) calc(var(--spot-x) + var(--spot-core))
+          calc(var(--spot-x) + var(--spot-edge)),
+        var(--page-color) calc(var(--spot-x) + var(--spot-edge))
+      );
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+    }
   }
 }
 
