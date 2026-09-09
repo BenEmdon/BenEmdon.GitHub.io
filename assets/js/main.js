@@ -11,12 +11,15 @@ function activeTheme() {
 function setUp() {
   const repaints = [];
 
+  // Read by the portrait dissolve and by keyed jumps, so it sits above both
+  // rather than inside whichever one happened to need it first.
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+
   /* ---------- portrait ---------- */
 
   // Eight steps of it, matching the wordmark's own reveal. Few enough that each
   // one lands as a separate frame rather than reading as a fade.
   const DISSOLVE_STEPS = 8;
-  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   for (const frame of document.querySelectorAll("[data-dither]")) {
     const canvas = frame.querySelector("[data-dither-canvas]");
@@ -143,7 +146,6 @@ function setUp() {
 
   /* ---------- keys ---------- */
 
-  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
   const keys = document.querySelector("[data-keys]");
   const keysToggle = document.querySelector("[data-keys-toggle]");
 
