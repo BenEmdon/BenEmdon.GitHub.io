@@ -283,13 +283,19 @@ function setUp() {
   // those at two columns and these at one, so these keep the mark column the
   // same width from frame to frame.
   const SPINNER = [..."⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"];
-  const LINE_EVERY = 140;
-  const LINE_SETTLES = 170;
+
+  // Roughly 1.3s of log, plus however long main.js took to arrive. Slow enough
+  // that each line lands as its own event and the spinner gets a few frames on
+  // screen before it resolves, rather than the whole thing reading as one
+  // flash. Anything much past this stops being a flourish and starts being a
+  // wait, which is what the skip is for.
+  const LINE_EVERY = 200;
+  const LINE_SETTLES = 240;
+  const LAST_BEAT = 300;
 
   const boot = document.querySelector("[data-boot]");
 
-  // Runs on every load, the way the page it is borrowed from does, and takes
-  // under a second. Skipped outright for anyone who asked not to be animated:
+  // Runs on every load, the way the page it is borrowed from does. Skipped outright for anyone who asked not to be animated:
   // for them it is a blank screen between them and the content, which is the
   // opposite of the point.
   if (boot && !reduced.matches) {
@@ -368,7 +374,7 @@ function setUp() {
     });
 
     // A beat on the finished log, then out.
-    timers.push(setTimeout(done, BOOT_LOG.length * LINE_EVERY + LINE_SETTLES + 220));
+    timers.push(setTimeout(done, BOOT_LOG.length * LINE_EVERY + LINE_SETTLES + LAST_BEAT));
   }
 
   /* ---------- clock ---------- */
