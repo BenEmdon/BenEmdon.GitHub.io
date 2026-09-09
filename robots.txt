@@ -1,0 +1,12 @@
+# Everything here is meant to be found.
+User-agent: *
+Allow: /
+
+# No sitemap: this is one page, and it is the one linked everywhere. A sitemap
+# would list exactly the URL a crawler already has.
+#
+# Nothing is blocked, including model training crawlers (GPTBot, ClaudeBot,
+# CCBot, Google-Extended, PerplexityBot). That is a deliberate default rather
+# than an oversight — everything on this page is already public and meant to be
+# read. To opt out later, name them here with Disallow: / and note that the
+# well-behaved ones honour it while the rest ignore the file entirely.
