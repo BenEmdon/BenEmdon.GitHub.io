@@ -1,7 +1,11 @@
 /*
   The portrait ships dithered and resolves to the real photograph on hover —
   the dither is a cover, not the picture. Touch devices get the same reveal by
-  tapping, via .is-revealed.
+  tapping.
+
+  The reveal itself lives in main.js, not here: it clears cells out of the
+  dither in a scrambled order so the picture comes apart in blocks. There is no
+  opacity involved, which is why this file no longer has a transition on it.
 */
 .dither {
   position: relative;
@@ -31,14 +35,6 @@
   height: 100%;
   image-rendering: pixelated;
   color: var(--dither-ink); /* read back resolved by dither.js */
-  /* Stepped, not smooth — it should read as a mode switch, not a crossfade. */
-  transition: opacity calc(var(--motion-step) * 4) steps(5, end);
-}
-
-.dither:hover .dither__canvas,
-.dither:focus-visible .dither__canvas,
-.dither.is-revealed .dither__canvas {
-  opacity: 0;
 }
 
 .dither:focus-visible {

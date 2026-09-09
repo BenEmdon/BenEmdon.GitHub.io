@@ -13,20 +13,69 @@ function setUp() {
 
   /* ---------- portrait ---------- */
 
+  // Eight steps of it, matching the wordmark's own reveal. Few enough that each
+  // one lands as a separate frame rather than reading as a fade.
+  const DISSOLVE_STEPS = 8;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+
   for (const frame of document.querySelectorAll("[data-dither]")) {
     const canvas = frame.querySelector("[data-dither-canvas]");
     const photo = frame.querySelector("img");
 
     attach(canvas, photo)
-      .then((repaint) => repaints.push(repaint))
+      .then((portrait) => {
+        repaints.push(portrait.repaint);
+
+        let step = 0;
+        let timer;
+
+        // Driven from here rather than by a CSS transition on opacity, because
+        // the point is that the dither comes apart in blocks: cells of it wink
+        // out in a scrambled order until the photograph underneath is all that
+        // is left. A fade would just make it fainter.
+        function dissolve(toward) {
+          clearInterval(timer);
+
+          // One jump for anyone who asked not to be animated. They still get
+          // the photograph, just not the six frames on the way to it.
+          if (reduced.matches) {
+            step = toward;
+            portrait.reveal(step / DISSOLVE_STEPS);
+            return;
+          }
+
+          timer = setInterval(() => {
+            step += Math.sign(toward - step);
+            portrait.reveal(step / DISSOLVE_STEPS);
+            if (step === toward) clearInterval(timer);
+          }, 320 / DISSOLVE_STEPS);
+        }
+
+        const show = () => dissolve(DISSOLVE_STEPS);
+        const hide = () => dissolve(0);
+
+        // Keyboard gets it either way.
+        frame.addEventListener("focus", show);
+        frame.addEventListener("blur", hide);
+
+        if (window.matchMedia("(hover: hover)").matches) {
+          frame.addEventListener("pointerenter", show);
+          frame.addEventListener("pointerleave", hide);
+        } else {
+          // Touch has no hover to hold it open, so a tap latches. These cannot
+          // both be bound: on touch a tap fires pointerenter, then click, then
+          // pointerleave the moment the finger lifts, which would close the
+          // photo again the instant the tap opened it.
+          let latched = false;
+          frame.addEventListener("click", () => {
+            latched = !latched;
+            dissolve(latched ? DISSOLVE_STEPS : 0);
+          });
+        }
+      })
       // Without the dither the photo simply shows through, so there is nothing
       // to clean up on failure.
       .catch(() => {});
-
-    // Hover handles the reveal on pointer devices; this covers touch.
-    frame.addEventListener("click", () => {
-      frame.classList.toggle("is-revealed");
-    });
   }
 
   /* ---------- theme ---------- */
