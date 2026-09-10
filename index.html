@@ -63,8 +63,8 @@
 
     <link rel="stylesheet" href="assets/css/tokens.css" />
     <link rel="stylesheet" href="assets/css/base.css" />
-    <link rel="stylesheet" href="assets/css/layout.css" />
-    <link rel="stylesheet" href="assets/css/components.css" />
+    <link rel="stylesheet" href="assets/css/layout.css?v=20260910" />
+    <link rel="stylesheet" href="assets/css/components.css?v=20260910" />
 
     <!-- Visit counting: GoatCounter. No cookies, no fingerprinting, no
          persistent identifier, nothing personal stored — so there is nothing
@@ -180,66 +180,74 @@
       <section class="section">
         <h2 class="section__title" id="work"><span class="prompt" aria-hidden="true">$</span> work<a class="anchor" href="#work" aria-label="Link to this section">#</a></h2>
 
-        <div class="rail">
-          <p class="rail__year">now</p>
-          <div class="rail__role">
-            <p class="rail__title">Stripe: Engineering Manager</p>
-            <p class="rail__detail">
-              Leading Code Forge and Code Review at Stripe: 11 direct reports, plus 3 cross-appointed engineers, spanning source control management and AI-assisted code review.
-            </p>
-          </div>
-          <p class="rail__year">2025</p>
-          <div class="rail__role">
-            <p class="rail__title">Stripe: Software Engineer</p>
-            <p class="rail__detail">
-              Pioneered stacked pull request tooling, so engineers work on dependent changes without blocking on review, and built an auto-merge system that cut time-to-production by over an hour per pull request company-wide. Built the centralized ownership infrastructure for code, service, and feature-flag ownership across every platform team, and led Stripe's Black Friday/Cyber Monday code freeze across 10+ infra teams.
-            </p>
-          </div>
-          <p class="rail__year">2022</p>
-          <div class="rail__role">
-            <p class="rail__title">GitHub: Software Engineer</p>
-            <p class="rail__detail">
-              On the Extensibility team: the Checks, Commit Statuses and Deployment
-              Statuses APIs, driving reliability and lowering tail latency, and an
-              unreleased API that would have given apps a Block Kit style interface and
-              interaction model inside GitHub. Shipped the
-              <a href="https://github.blog/changelog/2021-10-27-command-palette-beta/">command palette</a>,
-              slash commands,
-              <a href="https://github.blog/changelog/2021-06-23-issues-forms-beta-for-public-repositories/">issue forms</a>
-              and
-              <a href="https://github.blog/changelog/2023-03-15-introducing-the-github-markdown-helpers-public-beta/">markdown helpers</a>,
-              and worked on
-              <a href="https://github.blog/enterprise-software/devops/improving-how-we-deploy-github/">how GitHub deploys itself</a>.
-            </p>
-          </div>
-          <p class="rail__year">2019</p>
-          <div class="rail__role">
-            <p class="rail__title">GitHub: Intern, then Contractor</p>
-            <p class="rail__detail">
-              Lead maintainer of the open source project
-              <a href="https://github.com/github-education-resources/classroom">GitHub Classroom</a>.
-            </p>
-          </div>
-          <p class="rail__year">2018</p>
-          <p class="rail__year">2017</p>
-          <div class="rail__role">
-            <p class="rail__title">Shopify: Software Engineer Intern</p>
-            <p class="rail__detail">
-              A year across three terms. On the iOS team, helped kickstart the Shopify mobile app before its initial launch. On the Graph team, helped kickstart Shopify's GraphQL API. <a href="https://shopify.engineering/intern-blog-post">Written up by Shopify Engineering</a>.
-            </p>
-          </div>
-          <p class="rail__year">2016</p>
+        <div class="entry">
+          <p class="entry__when">
+            <span class="sr-only">2025 to now</span>
+            <span aria-hidden="true">now</span>
+            <span aria-hidden="true">2025</span>
+          </p>
+          <p class="entry__title">Stripe: Engineering Manager</p>
+          <ul class="entry__detail entry__list">
+            <li>Leading Code Forge and Code Review at Stripe across Source Control Management and the code review process.</li>
+            <li>11 direct reports, plus 3 cross-appointed engineers.</li>
+            <li>Building SCM infrastructure, a form-fitting code review process, and a superhuman AI code reviewer.</li>
+          </ul>
         </div>
 
-        <div class="rail rail--aside">
-          <p class="rail__year">2020</p>
-          <div class="rail__role">
-            <p class="rail__title">Carleton University: B.C.S. (Honours), Distinction</p>
-            <p class="rail__detail">
-              Honours thesis on GraphQL vs. REST, published by IEEE. Apple WWDC Scholar, 2017 and 2018.
-            </p>
-          </div>
-          <p class="rail__year">2015</p>
+        <div class="entry">
+          <p class="entry__when">
+            <span class="sr-only">2022 to 2025</span>
+            <span aria-hidden="true">2025</span>
+            <span aria-hidden="true">2022</span>
+          </p>
+          <p class="entry__title">Stripe: Software Engineer</p>
+          <ul class="entry__detail entry__list">
+            <li>Launched stacked pull request tooling so engineers work on dependent changes without blocking on review.</li>
+            <li>Built an auto-merge system that cut time-to-production by over an hour per pull request company-wide.</li>
+            <li>Built centralized ownership infrastructure for code, service, and feature-flag ownership across every platform team.</li>
+            <li>Led Stripe's Black Friday/Cyber Monday code freeze across 10+ infra teams.</li>
+          </ul>
+        </div>
+
+        <div class="entry">
+          <p class="entry__when">
+            <span class="sr-only">2018 to 2022</span>
+            <span aria-hidden="true">2022</span>
+            <span aria-hidden="true">2018</span>
+          </p>
+          <p class="entry__title">GitHub: Software Engineer</p>
+          <ul class="entry__detail entry__list">
+            <li>Shipped the <a href="https://github.blog/changelog/2021-10-27-command-palette-beta/">command palette</a>, <a href="https://github.blog/changelog/2023-03-15-introducing-the-github-markdown-helpers-public-beta/">slash commands</a>, <a href="https://github.blog/changelog/2021-06-23-issues-forms-beta-for-public-repositories/">issue forms</a>, and <a href="https://github.blog/changelog/2023-03-15-introducing-the-github-markdown-helpers-public-beta/">markdown helpers</a>, and worked on <a href="https://github.blog/enterprise-software/devops/improving-how-we-deploy-github/">how GitHub deploys itself</a>.</li>
+            <li>Maintained the Checks, Commit Statuses, and Deployment Statuses APIs, some of the most write-heavy APIs at the time.</li>
+            <li>Lead maintainer of the open source project <a href="https://github.com/github-education-resources/classroom">GitHub Classroom</a>.</li>
+          </ul>
+        </div>
+
+        <div class="entry">
+          <p class="entry__when">
+            <span class="sr-only">2016 to 2017</span>
+            <span aria-hidden="true">2017</span>
+            <span aria-hidden="true">2016</span>
+          </p>
+          <p class="entry__title">Shopify: Software Engineer Intern</p>
+          <ul class="entry__detail entry__list">
+            <li>On the iOS team, helped kickstart the Shopify mobile app before its initial launch, including the dashboard users see when they open it.</li>
+            <li>On the Graph team, helped kickstart Shopify's first GraphQL API.</li>
+            <li><a href="https://shopify.engineering/intern-blog-post">Written up by Shopify Engineering</a>.</li>
+          </ul>
+        </div>
+
+        <div class="entry">
+          <p class="entry__when">
+            <span class="sr-only">2015 to 2020</span>
+            <span aria-hidden="true">2020</span>
+            <span aria-hidden="true">2015</span>
+          </p>
+          <p class="entry__title">Carleton University: B.C.S. (Honours), Distinction</p>
+          <ul class="entry__detail entry__list">
+            <li>Honours thesis on GraphQL vs. REST, published by IEEE.</li>
+            <li>Apple WWDC Scholar, 2017 and 2018.</li>
+          </ul>
         </div>
 
       </section>
@@ -297,9 +305,6 @@
           </button>
         </div>
       </footer>
-
-      <!-- The page ends on a cursor, waiting. -->
-      <p class="tail" aria-hidden="true"><span class="caret">█</span></p>
     </main>
 
     <!-- Ships hidden and stays hidden without JS, since every key it lists is

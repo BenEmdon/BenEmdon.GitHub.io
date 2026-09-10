@@ -77,13 +77,6 @@
   color: var(--muted-color);
 }
 
-/* The last line on the page: a prompt with nothing typed at it yet. Its own
-   block so it lands on the --step grid like everything else, and aria-hidden
-   in the markup because it is a mood, not content. */
-.tail {
-  color: var(--accent-color);
-}
-
 /* ---------- section ---------- */
 
 /* The section you are reading gets an accent frame. Two sources feed it: a
@@ -200,55 +193,56 @@
 
 /* ---------- work ---------- */
 
-/*
-  A vertical timeline read newest first. Years are markers on a rail and the
-  roles sit between them, so a year that ends one role and starts the next —
-  2025, 2022 — is written once rather than twice.
-
-  The rail is the block's own left border, which is why the years and the
-  roles are siblings inside it: the line then runs unbroken past both, and a
-  gap between two rails is a real break rather than a styling accident.
-*/
-.rail {
-  margin-inline-start: 4rem;
-  border-inline-start: 1px solid var(--page-rule);
-  padding-inline-start: var(--step);
+.entry {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  column-gap: var(--step-half);
+  align-items: start;
 }
 
-/* Hung out into the margin to the left of the rail. The negative start margin
-   is exactly the rail's offset, border and padding, so the number's box ends
-   on the line itself and --step-half of padding keeps the digits off it. */
-.rail__year {
-  margin-inline-start: calc(-4rem - var(--step) - 1px);
-  width: 4rem;
-  padding-inline-end: var(--step-half);
-  text-align: right;
-  color: var(--muted-color);
-}
-
-/* The gap belongs above each marker, so a year introduces the role beneath
-   it rather than floating between two. */
-.rail__year + .rail__role {
-  margin-block-start: 0;
-}
-
-.rail > * + .rail__year {
+.entry + .entry {
   margin-block-start: var(--step);
 }
 
-.rail__detail {
+/* The visible range reads newest first. The single screen-reader phrase in
+   the markup keeps its spoken order chronological. */
+.entry__when {
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  color: var(--muted-color);
+}
+
+.entry__title,
+.entry__detail {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.entry__detail {
   color: var(--muted-color);
   font-size: var(--text-small);
-  /* Absolute, not a ratio: small text has to keep the same 24px baseline as
-     body text or the grid drifts. */
   line-height: var(--step);
 }
 
-/* The degree runs 2015-2020, which encloses the Shopify co-op terms, so it
-   cannot join the rail above without the years reading as a mistake. It gets
-   its own, and the break between them is the point. */
-.rail--aside {
-  margin-block-start: var(--step-2);
+/* Output-style markers make dense experience notes easier to scan without
+   introducing a second visual language beside the terminal's prompts. */
+.entry__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry__list li {
+  position: relative;
+  padding-inline-start: 2ch;
+}
+
+.entry__list li::before {
+  content: ">";
+  position: absolute;
+  inset-inline-start: 0;
+  color: var(--accent-color);
 }
 
 /* ---------- links ---------- */
@@ -360,16 +354,13 @@
     width: 5rem;
   }
 
-  /* 4rem of rail gutter is a lot of a narrow screen. Pull it in and let the
-     years sit tighter to the line. */
-  .rail {
-    margin-inline-start: 3rem;
-    padding-inline-start: var(--step-half);
+  .entry {
+    grid-template-columns: 3.5rem minmax(0, 1fr);
   }
 
-  .rail__year {
-    margin-inline-start: calc(-3rem - var(--step-half) - 1px);
-    width: 3rem;
+  .entry__detail {
+    grid-column: 1 / -1;
+    margin-block-start: var(--step);
   }
 }
 
