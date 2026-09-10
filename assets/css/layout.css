@@ -210,10 +210,23 @@
   flex-wrap: wrap;
 }
 
+/* Start year over end year, stacked. The column is narrow enough that a
+   horizontal range would crowd the title, and stacking keeps the head at two
+   whole steps, so the grid survives.
+
+   The dash between them is only for the one-line arrangement further down and
+   is aria-hidden; the "to" beside it is screen-reader-only and always there,
+   so the two numbers are never read as a bare pair. */
 .entry__when {
+  display: flex;
+  flex-direction: column;
   color: var(--muted-color);
   flex: none;
   width: 5.5rem;
+}
+
+.entry__dash {
+  display: none;
 }
 
 /* Without flex-basis and min-width, a content-sized flex item can't shrink to
@@ -225,6 +238,12 @@
 }
 
 .entry__detail {
+  /* The head is two lines tall now that the years are stacked, but the title
+     only uses the first, which left a blank line as wide as the gap between
+     entries — so an entry read as two loose things rather than one. Pulling
+     the detail up one whole step sits its first line beside the end year.
+     Whole steps only, so the grid is untouched. */
+  margin-block-start: calc(var(--step) * -1);
   color: var(--muted-color);
   font-size: var(--text-small);
   /* Absolute, not a ratio: small text has to keep the same 24px baseline as
@@ -349,11 +368,24 @@
     gap: 0;
   }
 
+  /* Stacked years under a stacked title is three lines of preamble before any
+     content. On a narrow screen the range goes back on one line. */
   .entry__when {
+    flex-direction: row;
+    /* Each year is its own flex item, so the spaces around the dash in the
+       markup get trimmed and it renders as 2025-now. The gap puts them back. */
+    gap: 0.5ch;
     width: auto;
   }
 
+  .entry__dash {
+    display: inline;
+  }
+
+  /* No blank line to reclaim here: the head stacks, so the title already sits
+     directly above the detail. */
   .entry__detail {
+    margin-block-start: 0;
     padding-inline-start: 0;
   }
 }
