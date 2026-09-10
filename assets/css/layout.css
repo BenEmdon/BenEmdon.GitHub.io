@@ -77,6 +77,13 @@
   color: var(--muted-color);
 }
 
+/* The last line on the page: a prompt with nothing typed at it yet. Its own
+   block so it lands on the --step grid like everything else, and aria-hidden
+   in the markup because it is a mood, not content. */
+.tail {
+  color: var(--accent-color);
+}
+
 /* ---------- section ---------- */
 
 /* The section you are reading gets an accent frame. Two sources feed it: a

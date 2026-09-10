@@ -2,12 +2,23 @@ import { attach } from "./dither.js";
 import { animateWordmark } from "./wordmark.js";
 
 const THEME_KEY = "theme";
+// The cycle the toggle walks. "system" is where everyone starts, and it is
+// less a stored preference than the absence of one: in that mode nothing is
+// pinned and color-scheme follows the OS.
+const MODES = ["system", "light", "dark"];
 const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
 
-// [data-theme] is only set once the visitor chooses; until then the OS decides.
-function activeTheme() {
-  return document.documentElement.dataset.theme ?? (systemDark.matches ? "dark" : "light");
+function storedMode() {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    return MODES.includes(saved) ? saved : "system";
+  } catch {
+    // Private-mode Safari refuses reads as well as writes.
+    return "system";
+  }
 }
+
+const nextMode = (mode) => MODES[(MODES.indexOf(mode) + 1) % MODES.length];
 
 function setUp() {
   const repaints = [];
@@ -85,33 +96,47 @@ function setUp() {
   /* ---------- theme ---------- */
 
   const toggle = document.querySelector("[data-theme-toggle]");
+  let mode = storedMode();
 
-  const syncToggle = () => {
-    const next = activeTheme() === "dark" ? "light" : "dark";
-    toggle.textContent = next;
-    toggle.setAttribute("aria-label", `Switch to ${next} theme`);
-  };
+  // Only light and dark pin [data-theme]. System mode removes it, which is the
+  // same state the inline script in <head> leaves the page in before first
+  // paint, so there is nothing to flash on load either way.
+  function applyMode() {
+    if (mode === "system") {
+      delete document.documentElement.dataset.theme;
+    } else {
+      document.documentElement.dataset.theme = mode;
+    }
+
+    const resolved = systemDark.matches ? "dark" : "light";
+    toggle.textContent = mode;
+    toggle.setAttribute(
+      "aria-label",
+      `Theme: ${mode === "system" ? `system (${resolved})` : mode}. ` +
+        `Switch to ${nextMode(mode)}.`
+    );
+
+    // The dither reads its two colours back out of CSS, so it has to be
+    // redrawn whenever the resolved theme could have moved under it.
+    repaints.forEach((repaint) => repaint());
+  }
 
   toggle.addEventListener("click", () => {
-    const next = activeTheme() === "dark" ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
+    mode = nextMode(mode);
     try {
-      localStorage.setItem(THEME_KEY, next);
+      localStorage.setItem(THEME_KEY, mode);
     } catch {
-      // Private-mode Safari refuses writes; the theme still applies this visit.
+      // Private-mode Safari refuses writes; the choice still holds this visit.
     }
-    syncToggle();
-    repaints.forEach((repaint) => repaint());
+    applyMode();
   });
 
-  // Untouched, the page follows the OS.
+  // Only in system mode does the OS still get a vote.
   systemDark.addEventListener("change", () => {
-    if (document.documentElement.dataset.theme) return;
-    syncToggle();
-    repaints.forEach((repaint) => repaint());
+    if (mode === "system") applyMode();
   });
 
-  syncToggle();
+  applyMode();
 
   /* ---------- section in view ---------- */
 

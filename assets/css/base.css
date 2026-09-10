@@ -12,7 +12,7 @@ html {
 }
 
 body {
-  padding: var(--step-2) var(--page-gutter) var(--step);
+  padding: var(--step-2) var(--page-gutter);
   background: var(--page-background);
   color: var(--page-color);
   font-family: "Iosevka", ui-monospace, SFMono-Regular, Menlo, monospace;
