@@ -200,56 +200,55 @@
 
 /* ---------- work ---------- */
 
-.entry + .entry {
+/*
+  A vertical timeline read newest first. Years are markers on a rail and the
+  roles sit between them, so a year that ends one role and starts the next —
+  2025, 2022 — is written once rather than twice.
+
+  The rail is the block's own left border, which is why the years and the
+  roles are siblings inside it: the line then runs unbroken past both, and a
+  gap between two rails is a real break rather than a styling accident.
+*/
+.rail {
+  margin-inline-start: 4rem;
+  border-inline-start: 1px solid var(--page-rule);
+  padding-inline-start: var(--step);
+}
+
+/* Hung out into the margin to the left of the rail. The negative start margin
+   is exactly the rail's offset, border and padding, so the number's box ends
+   on the line itself and --step-half of padding keeps the digits off it. */
+.rail__year {
+  margin-inline-start: calc(-4rem - var(--step) - 1px);
+  width: 4rem;
+  padding-inline-end: var(--step-half);
+  text-align: right;
+  color: var(--muted-color);
+}
+
+/* The gap belongs above each marker, so a year introduces the role beneath
+   it rather than floating between two. */
+.rail__year + .rail__role {
+  margin-block-start: 0;
+}
+
+.rail > * + .rail__year {
   margin-block-start: var(--step);
 }
 
-.entry__head {
-  display: flex;
-  gap: var(--step-half);
-  flex-wrap: wrap;
-}
-
-/* Start year over end year, stacked. The column is narrow enough that a
-   horizontal range would crowd the title, and stacking keeps the head at two
-   whole steps, so the grid survives.
-
-   The dash between them is only for the one-line arrangement further down and
-   is aria-hidden; the "to" beside it is screen-reader-only and always there,
-   so the two numbers are never read as a bare pair. */
-.entry__when {
-  display: flex;
-  flex-direction: column;
-  color: var(--muted-color);
-  flex: none;
-  width: 5.5rem;
-}
-
-.entry__dash {
-  display: none;
-}
-
-/* Without flex-basis and min-width, a content-sized flex item can't shrink to
-   wrap in place — flex-wrap just pushes the whole item to the next line
-   instead, orphaning .entry__when above it. */
-.entry__title {
-  flex: 1 1 0;
-  min-width: 12rem;
-}
-
-.entry__detail {
-  /* The head is two lines tall now that the years are stacked, but the title
-     only uses the first, which left a blank line as wide as the gap between
-     entries — so an entry read as two loose things rather than one. Pulling
-     the detail up one whole step sits its first line beside the end year.
-     Whole steps only, so the grid is untouched. */
-  margin-block-start: calc(var(--step) * -1);
+.rail__detail {
   color: var(--muted-color);
   font-size: var(--text-small);
   /* Absolute, not a ratio: small text has to keep the same 24px baseline as
      body text or the grid drifts. */
   line-height: var(--step);
-  padding-inline-start: calc(5.5rem + var(--step-half));
+}
+
+/* The degree runs 2015-2020, which encloses the Shopify co-op terms, so it
+   cannot join the rail above without the years reading as a mistake. It gets
+   its own, and the break between them is the point. */
+.rail--aside {
+  margin-block-start: var(--step-2);
 }
 
 /* ---------- links ---------- */
@@ -361,32 +360,16 @@
     width: 5rem;
   }
 
-  /* There is not enough width for a label column beside a job title, and
-     letting it wrap made some rows inline and others not. Stack every one. */
-  .entry__head {
-    flex-direction: column;
-    gap: 0;
+  /* 4rem of rail gutter is a lot of a narrow screen. Pull it in and let the
+     years sit tighter to the line. */
+  .rail {
+    margin-inline-start: 3rem;
+    padding-inline-start: var(--step-half);
   }
 
-  /* Stacked years under a stacked title is three lines of preamble before any
-     content. On a narrow screen the range goes back on one line. */
-  .entry__when {
-    flex-direction: row;
-    /* Each year is its own flex item, so the spaces around the dash in the
-       markup get trimmed and it renders as 2025-now. The gap puts them back. */
-    gap: 0.5ch;
-    width: auto;
-  }
-
-  .entry__dash {
-    display: inline;
-  }
-
-  /* No blank line to reclaim here: the head stacks, so the title already sits
-     directly above the detail. */
-  .entry__detail {
-    margin-block-start: 0;
-    padding-inline-start: 0;
+  .rail__year {
+    margin-inline-start: calc(-3rem - var(--step-half) - 1px);
+    width: 3rem;
   }
 }
 
