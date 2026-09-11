@@ -248,14 +248,14 @@ function setUp() {
   // same width from frame to frame.
   const SPINNER = [..."⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"];
 
-  // Roughly 1.3s of log, plus however long main.js took to arrive. Slow enough
+  // Roughly 2.3s of log, plus however long main.js took to arrive. Slow enough
   // that each line lands as its own event and the spinner gets a few frames on
   // screen before it resolves, rather than the whole thing reading as one
   // flash. Anything much past this stops being a flourish and starts being a
   // wait, which is what the skip is for.
   const LINE_EVERY = 200;
   const LINE_SETTLES = 240;
-  const LAST_BEAT = 300;
+  const LAST_BEAT = 1300;
 
   const boot = document.querySelector("[data-boot]");
 
