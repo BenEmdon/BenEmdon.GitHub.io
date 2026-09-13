@@ -158,7 +158,7 @@ function setUp() {
     (entries) => {
       if (performance.now() < jumpingUntil) return;
 
-      // Between two sections sit a divider and its margins — about 72px where
+      // Between two sections sit a divider and its margins, about 72px where
       // nothing is at the centre. Clearing the frame there makes it strobe, so
       // whichever section reached the middle last keeps it until the next one
       // arrives.
@@ -226,7 +226,7 @@ function setUp() {
   // The block glyphs are served display=block, so for up to three seconds the
   // wordmark is laid out but painting nothing. Starting the reveal on load
   // would run it against an empty box and pop the finished art in afterwards.
-  // fonts.ready resolves either way — on a failed load too — so the class is
+  // fonts.ready resolves either way, including on a failed load, so the class is
   // always eventually added.
   document.fonts.ready.then(() => wordmark?.classList.add("is-booting"));
 
