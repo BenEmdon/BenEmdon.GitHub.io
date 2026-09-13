@@ -82,7 +82,7 @@ export function render(canvas, img, { size = 112, ink, paper, contrast = 0.95, b
 
 // The dither is cleared away one Bayer cell at a time rather than faded out.
 // Scrambled so it dissolves rather than wiping, and scrambled once and kept, so
-// the same cells go in the same order every time — hovering twice should not
+// the same cells go in the same order every time; hovering twice should not
 // look like two different pictures.
 function scrambledCells(canvas) {
   const cells = [];
