@@ -36,11 +36,11 @@
       } catch {}
     </script>
 
-    <!-- Body/UI text: Iosevka — the same base typeface opentui.com's own
+    <!-- Body/UI text: Iosevka, the same base typeface opentui.com's own
          "OpenTUI Mono" is a custom build of (confirmed via their public
          build plan: packages/web/src/font/private-build-plans.toml in their
          GitHub repo). That exact build isn't published, so this uses stock
-         Iosevka rather than hotlinking their brand asset — same family, same
+         Iosevka rather than hotlinking their brand asset: same family, same
          terminal character, openly licensed (SIL OFL) via Fontsource. -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/400.css" />
@@ -48,7 +48,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-    <!-- The wordmark (and only the wordmark — it keeps its own identity,
+    <!-- The wordmark (and only the wordmark; it keeps its own identity,
          white-on-black, separate from the body type) is built from block
          glyphs (█▀▄) that aren't in Iosevka's or Google's default latin
          subsets. A system-font fallback would substitute per-platform, and
@@ -67,7 +67,7 @@
     <link rel="stylesheet" href="assets/css/components.css?v=20260910" />
 
     <!-- Visit counting: GoatCounter. No cookies, no fingerprinting, no
-         persistent identifier, nothing personal stored — so there is nothing
+         persistent identifier, nothing personal stored, so there is nothing
          to consent to and no banner to show.
 
          The site code in data-goatcounter is public on purpose. It is a
@@ -161,7 +161,7 @@
         <p>
           I lead Code Forge and Code Review at Stripe. Code Forge builds the source control
           infrastructure that keeps Stripe's massive, fast-moving Git monorepo productive. Code
-          Review improves the quality, confidence, and speed of every change—including an AI
+          Review improves the quality, confidence, and speed of every change, including an AI
           reviewer designed to catch problems before production and eventually approve
           lower-risk changes.
         </p>
@@ -322,7 +322,7 @@
 
     <!-- The boot screen. Ships hidden and empty: without JS it never appears,
          and a crawler is handed the real page rather than a splash. main.js
-         fills it and takes it away again. aria-hidden because it is theatre —
+         fills it and takes it away again. aria-hidden because it is theatre;
          a screen reader should be reading the page underneath it, which is
          already there. -->
     <div class="boot" data-boot aria-hidden="true" hidden>
