@@ -1,7 +1,7 @@
 # benemdon.github.io
 
-My personal site. A static page served straight from this repo by GitHub Pages —
-no build step, no dependencies, no framework.
+My personal site. A static page served straight from this repo by GitHub Pages,
+with no build step, dependencies, or framework.
 
 ## Layout
 
@@ -19,7 +19,7 @@ assets/js/main.js     wiring and the theme toggle
 ## The two rules worth knowing
 
 **Vertical rhythm.** `--step` is `1.5rem` (24px) and `line-height` is set to that
-same absolute value, so every line of text — at any size — lands on a 24px grid.
+same absolute value, so every line of text, at any size, lands on a 24px grid.
 Vertical spacing is only ever whole steps. Adding a half-step anywhere breaks the
 grid for everything below it.
 
@@ -32,12 +32,12 @@ so there is no second copy of the palette to keep in sync.
 Visits are counted by [GoatCounter](https://www.goatcounter.com), free for
 personal sites. The dashboard is at <https://benemdon.goatcounter.com>. It sets
 no cookies, stores no personal data and needs no consent banner, and the whole
-integration is the two script tags at the bottom of `index.html`'s `<head>` —
-still no build step.
+integration is the two script tags at the bottom of `index.html`'s `<head>`,
+with still no build step.
 
 The site code in `data-goatcounter` is public, and has to be: anything counting
 visits from the browser names its destination in the page source. It is a
-write-only endpoint, not a key — it cannot read the dashboard, so putting it in
+write-only endpoint, not a key; it cannot read the dashboard, so putting it in
 a GitHub secret would hide it from the repo and not from anyone viewing source.
 The one thing it does allow is a mirrored copy of the page reporting into the
 same dashboard, which the hostname check in the `path` callback blocks. **Moving
