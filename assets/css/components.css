@@ -1,5 +1,5 @@
 /*
-  The portrait ships dithered and resolves to the real photograph on hover —
+  The portrait ships dithered and resolves to the real photograph on hover;
   the dither is a cover, not the picture. Touch devices get the same reveal by
   tapping.
 
@@ -64,7 +64,7 @@
   }
 }
 
-/* Local time where he is, not where the reader is — the line already says
+/* Local time where he is, not where the reader is; the line already says
    Ottawa, so the clock is the rest of that sentence. */
 .clock {
   margin-inline-start: 2ch;
@@ -138,7 +138,7 @@
   It covers the page rather than replacing it, so the real content is in the
   DOM and laid out the whole time. The padding below deliberately repeats
   body's, and .boot__inner repeats .page's width and centring, so the wordmark
-  sits on exactly the pixel it will occupy once this is gone — lifting the
+  sits on exactly the pixel it will occupy once this is gone, lifting the
   overlay is a cut, not a jump.
 */
 .boot {
