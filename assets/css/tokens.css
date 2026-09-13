@@ -5,7 +5,7 @@
   semantics, so retheming means remapping a handful of variables.
 
   Each semantic is declared once as light-dark(light, dark). The active side
-  follows `color-scheme`, which the OS sets and [data-theme] overrides — so
+  follows `color-scheme`, which the OS sets and [data-theme] overrides, so
   there is no second copy of the palette to drift out of sync.
 
   Palette: high-contrast near-white / near-black, both carrying a trace of
