@@ -11,13 +11,13 @@
 
 /* ---------- masthead ---------- */
 
-/* Solid block-letter art, 75 columns x 5 rows, set in the accent colour — a
+/* Solid block-letter art, 75 columns x 5 rows, set in the accent colour: a
    logo rather than a paragraph. Renders from the dedicated JetBrains Mono
    glyph subset loaded in <head> (see the comment there), not a local system
    font, so the exact glyph and advance width are guaranteed rather than
    whatever happens to be installed. block-size is a whole --step multiple so
    the baseline grid survives. */
-/* Neutral page-color, not the accent green — the accent colour does its work
+/* Neutral page-color, not the accent green; the accent colour does its work
    everywhere else on the page; the header doesn't need it too. No background:
    it sits directly on the page like the rest of the type, just bigger. */
 .wordmark {
@@ -38,7 +38,7 @@
    terminal drawing a frame. Class-gated rather than automatic: the block
    glyphs load with display=block, so the art is invisible for the first
    moment and an animation started at page load would finish before there was
-   anything to see. main.js waits for the font, then adds .is-booting — which
+   anything to see. main.js waits for the font, then adds .is-booting, which
    also means the wordmark is simply visible if the script never runs.
 
    jump-start so the first row is already there on frame one; the default
@@ -80,7 +80,7 @@
 /* ---------- section ---------- */
 
 /* The section you are reading gets an accent frame. Two sources feed it: a
-   pointer resting on the section, and — see main.js — the section crossing the
+   pointer resting on the section, and, as described in main.js, the section crossing the
    middle of the viewport as you scroll.
 
    outline, not border: an outline is drawn outside the box and takes no
@@ -105,8 +105,8 @@
     outline-color: var(--accent-color);
   }
 
-  /* Both sources can be live at once — the pointer on one section while
-     another sits at the centre line — and two frames read as a bug. The
+  /* Both sources can be live at once: the pointer on one section while
+     another sits at the centre line, and two frames read as a bug. The
      pointer is the more deliberate signal, so while it is over any section
      the scroll-tracked frame stands down. */
   .page:has(.section:hover) .section.is-active:not(:hover) {
