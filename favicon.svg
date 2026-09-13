@@ -1,19 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
   <title>Ben Emdon</title>
   <!--
-    The # from the heading anchors, drawn on a pixel grid. Two-pixel strokes,
-    square corners, no slant: at 16px a hairline hash turns to grey mush and a
-    slanted one turns to stairs, and neither looks like anything this page does.
-
-    shape-rendering=crispEdges keeps the browser from antialiasing the grid
-    away. The fills are the site's own accent tokens, so the tab follows the
-    browser's theme the way the page follows the OS.
+    A chunky capital B built on a 16px grid. The second tone samples an ordered
+    Bayer pattern like the profile portrait, while the three-pixel stem keeps
+    the initial legible at native favicon size.
   -->
   <style>
-    path { fill: #1e754f; }
+    .ink { fill: #1e754f; }
+    .dither { fill: #4d9375; }
+
     @media (prefers-color-scheme: dark) {
-      path { fill: #4d9375; }
+      .ink { fill: #4d9375; }
+      .dither { fill: #1e754f; }
     }
   </style>
-  <path d="M4 2h2v12H4zM10 2h2v12h-2zM2 5h12v2H2zM2 9h12v2H2z"/>
+
+  <path
+    class="ink"
+    d="M2 1h9v1H2z M2 2h10v1H2z M2 3h3v1H2z M10 3h3v1h-3z M2 4h3v1H2z M10 4h3v1h-3z M2 5h3v1H2z M10 5h3v1h-3z M2 6h10v1H2z M2 7h9v1H2z M2 8h10v1H2z M2 9h3v1H2z M10 9h3v1h-3z M2 10h3v1H2z M10 10h3v1h-3z M2 11h3v1H2z M10 11h3v1h-3z M2 12h3v1H2z M10 12h3v1h-3z M2 13h10v1H2z M2 14h9v1H2z"
+  />
+  <path
+    class="dither"
+    d="M7 1h1v1H7z M9 1h1v1H9z M6 2h1v1H6z M8 2h1v1H8z M10 2h1v1h-1z M11 2h1v1h-1z M11 3h1v1h-1z M4 4h1v1H4z M10 4h1v1h-1z M11 4h1v1h-1z M12 4h1v1h-1z M11 5h1v1h-1z M12 5h1v1h-1z M6 6h1v1H6z M8 6h1v1H8z M10 6h1v1h-1z M11 6h1v1h-1z M7 7h1v1H7z M9 7h1v1H9z M4 8h1v1H4z M6 8h1v1H6z M8 8h1v1H8z M9 8h1v1H9z M10 8h1v1h-1z M11 8h1v1h-1z M11 9h1v1h-1z M12 9h1v1h-1z M10 10h1v1h-1z M11 10h1v1h-1z M12 10h1v1h-1z M11 11h1v1h-1z M4 12h1v1H4z M10 12h1v1h-1z M11 12h1v1h-1z M12 12h1v1h-1z M7 13h1v1H7z M9 13h1v1H9z M11 13h1v1h-1z M6 14h1v1H6z M8 14h1v1H8z M10 14h1v1h-1z"
+  />
 </svg>
