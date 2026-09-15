@@ -1,0 +1,132 @@
+/* A small interactive model, presented as terminal output rather than a
+   dashboard so it stays inside the site's existing visual language. */
+.blob-lab {
+  margin-block-start: var(--step);
+  background: var(--page-subtle);
+  outline: 1px solid var(--page-rule);
+  outline-offset: -1px;
+}
+
+.blob-lab__screen,
+.blob-lab__metrics,
+.blob-lab__controls,
+.blob-lab__status {
+  padding-inline: var(--step);
+}
+
+.blob-lab__screen {
+  padding-block: var(--step);
+  background: var(--page-background);
+  box-shadow: inset 0 -1px var(--page-rule);
+  font-size: var(--text-small);
+}
+
+.blob-lab__manifest {
+  color: var(--accent-color);
+  overflow-wrap: anywhere;
+}
+
+.blob-lab__objects {
+  margin-block-start: var(--step-half);
+}
+
+.blob-lab__objects li,
+.blob-lab__trace {
+  color: var(--muted-color);
+  overflow-wrap: anywhere;
+}
+
+.blob-lab__objects li::before {
+  content: "> ";
+  color: var(--accent-color);
+}
+
+.blob-lab__trace {
+  margin-block-start: var(--step-half);
+}
+
+.blob-lab__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--step-half);
+  padding-block: var(--step-half);
+  box-shadow: inset 0 -1px var(--page-rule);
+  font-size: var(--text-caption);
+}
+
+.blob-lab__metrics div {
+  min-width: 0;
+}
+
+.blob-lab__metrics dt {
+  color: var(--muted-color);
+}
+
+.blob-lab__metrics dd {
+  color: var(--page-color);
+}
+
+.blob-lab__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--step-half);
+  padding-block: var(--step-half);
+}
+
+.blob-lab__controls[hidden],
+.blob-lab__status[hidden] {
+  display: none;
+}
+
+.blob-lab__controls button {
+  min-height: var(--step-2);
+  padding-inline: var(--step-half);
+  color: var(--accent-color);
+  border: 1px solid var(--page-rule);
+  background: var(--page-background);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.blob-lab__controls button:hover,
+.blob-lab__controls button:focus-visible {
+  color: var(--inverted-color);
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  text-decoration: none;
+}
+
+.blob-lab__controls button:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.blob-lab__status {
+  min-height: var(--step-2);
+  padding-block: var(--step-half);
+  box-shadow: inset 0 1px var(--page-rule);
+  font-size: var(--text-caption);
+}
+
+@media (max-width: 34rem) {
+  .blob-lab__screen,
+  .blob-lab__metrics,
+  .blob-lab__controls,
+  .blob-lab__status {
+    padding-inline: var(--step-half);
+  }
+
+  .blob-lab__metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .blob-lab__metrics div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--step-half);
+  }
+
+  .blob-lab__controls button {
+    flex: 1 1 calc(50% - var(--step-half));
+  }
+}
