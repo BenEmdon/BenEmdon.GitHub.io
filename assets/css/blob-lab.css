@@ -1,5 +1,4 @@
-/* A small interactive model, presented as terminal output rather than a
-   dashboard so it stays inside the site's existing visual language. */
+/* A small storage model presented as terminal output rather than a dashboard. */
 .blob-lab {
   margin-block-start: var(--step);
   background: var(--page-subtle);
@@ -7,11 +6,25 @@
   outline-offset: -1px;
 }
 
+.blob-lab__command,
 .blob-lab__screen,
 .blob-lab__metrics,
 .blob-lab__controls,
 .blob-lab__status {
   padding-inline: var(--step);
+}
+
+.blob-lab__command {
+  min-height: var(--step-2);
+  display: flex;
+  align-items: center;
+  gap: var(--step-half);
+  overflow-wrap: anywhere;
+  box-shadow: inset 0 -1px var(--page-rule);
+}
+
+.blob-lab__command code {
+  color: var(--page-color);
 }
 
 .blob-lab__screen {
@@ -21,33 +34,80 @@
   font-size: var(--text-small);
 }
 
-.blob-lab__manifest {
-  color: var(--accent-color);
-  overflow-wrap: anywhere;
+.blob-lab__stores {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(11rem, 2fr);
+  gap: var(--step);
 }
 
-.blob-lab__objects {
-  margin-block-start: var(--step-half);
+.blob-lab__stores h3 {
+  margin: 0 0 var(--step-half);
+  color: var(--accent-color);
+  font-size: inherit;
+  font-weight: 400;
+}
+
+.blob-lab__objects,
+.blob-lab__trace {
+  margin: 0;
+  color: var(--muted-color);
 }
 
 .blob-lab__objects li,
-.blob-lab__trace {
-  color: var(--muted-color);
+.blob-lab__trace li {
   overflow-wrap: anywhere;
+}
+
+.blob-lab__objects li::before,
+.blob-lab__trace li::before {
+  color: var(--accent-color);
 }
 
 .blob-lab__objects li::before {
   content: "> ";
+}
+
+.blob-lab__objects span {
+  color: var(--page-color);
+}
+
+.blob-lab__objects [data-kind="derived"] span {
   color: var(--accent-color);
 }
 
+.blob-lab__metadata div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--step-half);
+}
+
+.blob-lab__metadata dt {
+  color: var(--muted-color);
+}
+
+.blob-lab__metadata dd {
+  color: var(--page-color);
+  text-align: end;
+}
+
 .blob-lab__trace {
-  margin-block-start: var(--step-half);
+  margin-block-start: var(--step);
+  padding-block-start: var(--step-half);
+  border-block-start: 1px solid var(--page-rule);
+  list-style: none;
+}
+
+.blob-lab__trace li::before {
+  content: "| ";
+}
+
+.blob-lab__trace li:last-child::before {
+  content: "└ ";
 }
 
 .blob-lab__metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--step-half);
   padding-block: var(--step-half);
   box-shadow: inset 0 -1px var(--page-rule);
@@ -67,8 +127,8 @@
 }
 
 .blob-lab__controls {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--step-half);
   padding-block: var(--step-half);
 }
@@ -80,12 +140,11 @@
 
 .blob-lab__controls button {
   min-height: var(--step-2);
-  padding-inline: var(--step-half);
+  padding: var(--step-half);
   color: var(--accent-color);
   border: 1px solid var(--page-rule);
   background: var(--page-background);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-align: start;
 }
 
 .blob-lab__controls button:hover,
@@ -93,12 +152,15 @@
   color: var(--inverted-color);
   background: var(--accent-color);
   border-color: var(--accent-color);
-  text-decoration: none;
 }
 
 .blob-lab__controls button:focus-visible {
   outline: 2px solid var(--accent-color);
   outline-offset: 2px;
+}
+
+.blob-lab__controls button:last-child {
+  grid-column: 1 / -1;
 }
 
 .blob-lab__status {
@@ -109,6 +171,7 @@
 }
 
 @media (max-width: 34rem) {
+  .blob-lab__command,
   .blob-lab__screen,
   .blob-lab__metrics,
   .blob-lab__controls,
@@ -116,8 +179,15 @@
     padding-inline: var(--step-half);
   }
 
-  .blob-lab__metrics {
+  .blob-lab__stores,
+  .blob-lab__metrics,
+  .blob-lab__controls {
     grid-template-columns: 1fr;
+  }
+
+  .blob-lab__stores section + section {
+    padding-block-start: var(--step-half);
+    border-block-start: 1px solid var(--page-rule);
   }
 
   .blob-lab__metrics div {
@@ -126,7 +196,7 @@
     gap: var(--step-half);
   }
 
-  .blob-lab__controls button {
-    flex: 1 1 calc(50% - var(--step-half));
+  .blob-lab__controls button:last-child {
+    grid-column: auto;
   }
 }

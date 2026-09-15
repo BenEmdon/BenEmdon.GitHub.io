@@ -207,46 +207,72 @@
       <section class="section">
         <h2 class="section__title" id="lab"><span class="prompt" aria-hidden="true">$</span> lab<a class="anchor" href="#lab" aria-label="Link to this section">#</a></h2>
         <p>
-          A tiny database made from immutable blobs. Append changes cheaply, trace a read, then
-          compact the objects to trade more writing for fewer reads.
+          A tiny model of <a href="https://github.com/facebook/sapling/tree/main/eden/mononoke">Mononoke-style storage</a>,
+          operated through JJ-shaped commands. Watch immutable Bonsai objects accumulate while
+          bookmarks and indexes move separately in mutable metadata.
         </p>
 
         <div class="blob-lab" data-blob-lab>
+          <p class="blob-lab__command" aria-live="polite">
+            <span class="prompt" aria-hidden="true">$</span>
+            <code data-blob-command>jj log -r '::main'</code>
+          </p>
+
           <div class="blob-lab__screen">
-            <p class="blob-lab__manifest" data-blob-manifest>
-              manifest-v2 -&gt; delta-02, base-01
-            </p>
-            <ul class="blob-lab__objects" data-blob-objects aria-label="Active immutable blobs">
-              <li>delta-02 { beta: 5 }</li>
-              <li>base-01 { alpha: 1, beta: 2, gamma: 3 }</li>
-            </ul>
-            <p class="blob-lab__trace" data-blob-trace>read trace: not run</p>
+            <div class="blob-lab__stores">
+              <section aria-labelledby="blobstore-title">
+                <h3 id="blobstore-title">immutable blobstore</h3>
+                <ul class="blob-lab__objects" data-blob-objects>
+                  <li><span>bonsai.b1</span> initial changeset, src/app.js -&gt; content.c1</li>
+                  <li><span>content.c1</span> src/app.js bytes</li>
+                </ul>
+              </section>
+
+              <section aria-labelledby="metadata-title">
+                <h3 id="metadata-title">mutable metadata</h3>
+                <dl class="blob-lab__metadata">
+                  <div><dt>client @</dt><dd data-blob-at>b1</dd></div>
+                  <div><dt>bookmark main</dt><dd data-blob-bookmark>b1</dd></div>
+                  <div><dt>commit graph</dt><dd data-blob-graph>1 node</dd></div>
+                </dl>
+              </section>
+            </div>
+            <ol class="blob-lab__trace" data-blob-trace aria-label="Storage operation trace">
+              <li>metadata: main -&gt; b1</li>
+              <li>blobstore: get bonsai.b1</li>
+            </ol>
           </div>
 
           <dl class="blob-lab__metrics">
             <div>
-              <dt>active blobs</dt>
+              <dt>immutable blobs</dt>
               <dd data-blob-count>2</dd>
             </div>
             <div>
-              <dt>last read</dt>
-              <dd data-blob-probes>0 probes</dd>
+              <dt>changesets</dt>
+              <dd data-blob-changesets>1</dd>
             </div>
             <div>
-              <dt>session writes</dt>
-              <dd data-blob-bytes>0 B</dd>
+              <dt>derived objects</dt>
+              <dd data-blob-derived>0</dd>
+            </div>
+            <div>
+              <dt>metadata writes</dt>
+              <dd data-blob-metadata-writes>0</dd>
             </div>
           </dl>
 
-          <div class="blob-lab__controls" role="group" aria-label="Database controls" hidden>
-            <button type="button" data-blob-write aria-label="Append the next deterministic write">write</button>
-            <button type="button" data-blob-read aria-label="Trace the next deterministic read">read</button>
-            <button type="button" data-blob-compact aria-label="Compact all active blobs">compact</button>
-            <button type="button" data-blob-reset aria-label="Reset the database lab">reset</button>
+          <div class="blob-lab__controls" role="group" aria-label="JJ command simulations" hidden>
+            <button type="button" data-blob-new><code>jj new</code></button>
+            <button type="button" data-blob-describe><code>jj describe</code></button>
+            <button type="button" data-blob-bookmark-set><code>jj bookmark set main -r @</code></button>
+            <button type="button" data-blob-file-show><code>jj file show main:src/app.js</code></button>
+            <button type="button" data-blob-reset><code>reset</code></button>
           </div>
 
           <p class="blob-lab__status muted" data-blob-status aria-live="polite" hidden>
-            Ready. Each action uses a deterministic sequence.
+            Simplified educational model. Commands are shown after synchronization; JJ does not
+            speak directly to Mononoke.
           </p>
         </div>
       </section>
