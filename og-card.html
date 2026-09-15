@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1200, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Ben Emdon social card</title>
+
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/400.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/700.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=block&text=%20%E2%96%80%E2%96%84%E2%96%88%E2%96%91"
+      rel="stylesheet"
+    />
+
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+        background: #0c0e0d;
+        color: #e8ebe8;
+        font-family: "Iosevka", ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      .card {
+        position: relative;
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        align-items: center;
+        gap: 64px;
+        width: 1080px;
+        height: 510px;
+        padding: 56px;
+        border: 2px solid #262c28;
+      }
+
+      .card::before,
+      .card::after {
+        position: absolute;
+        color: #4d9375;
+        font-size: 22px;
+        line-height: 1;
+      }
+
+      .card::before {
+        content: "$";
+        inset: 22px auto auto 26px;
+      }
+
+      .card::after {
+        content: "_";
+        inset: auto 26px 22px auto;
+      }
+
+      .portrait {
+        width: 360px;
+        height: 360px;
+        background: #ffffff;
+        border: 2px solid #3a423d;
+      }
+
+      .portrait img {
+        display: none;
+      }
+
+      .portrait canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        color: #e8ebe8;
+        image-rendering: pixelated;
+      }
+
+      .copy {
+        min-width: 0;
+      }
+
+      .wordmark {
+        margin: 0;
+        color: #101311;
+        font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+        font-size: 7px;
+        line-height: 1;
+        white-space: pre;
+      }
+
+      .divider {
+        width: 100%;
+        margin: 34px 0 28px;
+        overflow: hidden;
+        color: #262c28;
+        font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+        font-size: 12px;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .focus {
+        margin: 0;
+        color: #c2c9c4;
+        font-size: 24px;
+        line-height: 1.45;
+      }
+
+      .url {
+        margin: 24px 0 0;
+        color: #4d9375;
+        font-size: 20px;
+        line-height: 1;
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="card">
+      <div class="portrait" aria-hidden="true">
+        <img src="assets/img/ben.jpg" alt="" crossorigin="anonymous" />
+        <canvas></canvas>
+      </div>
+
+      <div class="copy">
+        <h1 hidden>Ben Emdon</h1>
+        <pre class="wordmark" aria-hidden="true">██████  ███████ ███    ██     ███████ ███    ███ ██████   ██████  ███    ██
+██   ██ ██      ████   ██     ██      ████  ████ ██   ██ ██    ██ ████   ██
+██████  █████   ██ ██  ██     █████   ██ ████ ██ ██   ██ ██    ██ ██ ██  ██
+██   ██ ██      ██  ██ ██     ██      ██  ██  ██ ██   ██ ██    ██ ██  ██ ██
+██████  ███████ ██   ████     ███████ ██      ██ ██████   ██████  ██   ████</pre>
+        <p class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</p>
+        <p class="focus">Source control, code review,<br />and developer productivity.</p>
+        <p class="url">benemdon.github.io</p>
+      </div>
+    </main>
+
+    <script type="module">
+      import { render } from "./assets/js/dither.js";
+
+      const image = document.querySelector("img");
+      const canvas = document.querySelector("canvas");
+
+      async function paint() {
+        await image.decode();
+        render(canvas, image, {
+          size: 360,
+          ink: "#101311",
+          paper: "#ffffff",
+          contrast: 0.95,
+          brightness: 0.12,
+        });
+        document.documentElement.dataset.ready = "true";
+      }
+
+      paint();
+    </script>
+  </body>
+</html>
