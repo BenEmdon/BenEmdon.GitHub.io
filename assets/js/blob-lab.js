@@ -3,7 +3,7 @@ const INITIAL_OBJECTS = [
     id: "bonsai.b1",
     kind: "changeset",
     parent: null,
-    detail: "initial changeset, src/app.js -> content.c1",
+    detail: "initial changeset, src/app.js: content.c1",
   },
   { id: "content.c1", kind: "content", detail: "src/app.js bytes" },
 ];
@@ -108,7 +108,7 @@ export function createBlobLabModel() {
       objects.push({
         id: derivedId,
         kind: "derived",
-        detail: `manifest for ${bookmark}, src/app.js -> content.c1`,
+        detail: `manifest for ${bookmark}, src/app.js: content.c1`,
       });
     }
 
