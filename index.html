@@ -77,6 +77,7 @@
     <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="assets/css/layout.css?v=20260910" />
     <link rel="stylesheet" href="assets/css/components.css?v=20260910" />
+    <link rel="stylesheet" href="assets/css/blob-lab.css?v=20260915" />
 
     <!-- Visit counting: GoatCounter. No cookies, no fingerprinting, no
          persistent identifier, nothing personal stored, so there is nothing
@@ -199,6 +200,55 @@
           <li>What blob-storage-backed databases make possible.</li>
           <li>Where AI code review earns enough trust to approve a change.</li>
         </ul>
+      </section>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <section class="section">
+        <h2 class="section__title" id="lab"><span class="prompt" aria-hidden="true">$</span> lab<a class="anchor" href="#lab" aria-label="Link to this section">#</a></h2>
+        <p>
+          A tiny database made from immutable blobs. Append changes cheaply, trace a read, then
+          compact the objects to trade more writing for fewer reads.
+        </p>
+
+        <div class="blob-lab" data-blob-lab>
+          <div class="blob-lab__screen">
+            <p class="blob-lab__manifest" data-blob-manifest>
+              manifest-v2 -&gt; delta-02, base-01
+            </p>
+            <ul class="blob-lab__objects" data-blob-objects aria-label="Active immutable blobs">
+              <li>delta-02 { beta: 5 }</li>
+              <li>base-01 { alpha: 1, beta: 2, gamma: 3 }</li>
+            </ul>
+            <p class="blob-lab__trace" data-blob-trace>read trace: not run</p>
+          </div>
+
+          <dl class="blob-lab__metrics">
+            <div>
+              <dt>active blobs</dt>
+              <dd data-blob-count>2</dd>
+            </div>
+            <div>
+              <dt>last read</dt>
+              <dd data-blob-probes>0 probes</dd>
+            </div>
+            <div>
+              <dt>session writes</dt>
+              <dd data-blob-bytes>0 B</dd>
+            </div>
+          </dl>
+
+          <div class="blob-lab__controls" role="group" aria-label="Database controls" hidden>
+            <button type="button" data-blob-write aria-label="Append the next deterministic write">write</button>
+            <button type="button" data-blob-read aria-label="Trace the next deterministic read">read</button>
+            <button type="button" data-blob-compact aria-label="Compact all active blobs">compact</button>
+            <button type="button" data-blob-reset aria-label="Reset the database lab">reset</button>
+          </div>
+
+          <p class="blob-lab__status muted" data-blob-status aria-live="polite" hidden>
+            Ready. Each action uses a deterministic sequence.
+          </p>
+        </div>
       </section>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
@@ -339,8 +389,9 @@
         <li><kbd>1</kbd><span class="keys__label">whoami</span></li>
         <li><kbd>2</kbd><span class="keys__label">about</span></li>
         <li><kbd>3</kbd><span class="keys__label">thinking</span></li>
-        <li><kbd>4</kbd><span class="keys__label">work</span></li>
-        <li><kbd>5</kbd><span class="keys__label">elsewhere</span></li>
+        <li><kbd>4</kbd><span class="keys__label">lab</span></li>
+        <li><kbd>5</kbd><span class="keys__label">work</span></li>
+        <li><kbd>6</kbd><span class="keys__label">elsewhere</span></li>
         <li><kbd>t</kbd><span class="keys__label">theme</span></li>
         <li><kbd>?</kbd><span class="keys__label">this</span></li>
       </ul>

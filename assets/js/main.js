@@ -1,5 +1,6 @@
 import { attach } from "./dither.js";
 import { animateWordmark } from "./wordmark.js";
+import { mountBlobLabs } from "./blob-lab.js";
 
 const THEME_KEY = "theme";
 // The cycle the toggle walks. "system" is where everyone starts, and it is
@@ -22,6 +23,8 @@ const nextMode = (mode) => MODES[(MODES.indexOf(mode) + 1) % MODES.length];
 
 function setUp() {
   const repaints = [];
+
+  mountBlobLabs();
 
   // Read by the portrait dissolve and by keyed jumps, so it sits above both
   // rather than inside whichever one happened to need it first.
