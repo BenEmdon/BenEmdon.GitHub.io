@@ -123,6 +123,43 @@
   color: var(--muted-color);
 }
 
+/* A compact acknowledgement when a section's # link is copied. It sits at
+   the opposite corner from the key legend so the two pieces of terminal UI
+   never cover each other. */
+.toast {
+  position: fixed;
+  z-index: 10;
+  inset-block-end: var(--step);
+  inset-inline-start: var(--step);
+  padding: var(--step-half) var(--step);
+  background: var(--page-color);
+  color: var(--inverted-color);
+  font-size: var(--text-small);
+  line-height: var(--step);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(var(--step-half));
+  transition:
+    opacity calc(var(--motion-step) * 2) linear,
+    transform calc(var(--motion-step) * 2) linear;
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast__bracket {
+  color: var(--accent-color);
+}
+
+@media (max-width: 34rem) {
+  .toast {
+    inset-inline: var(--page-gutter);
+    text-align: center;
+  }
+}
+
 /* Nothing here can be pressed on a touch device. */
 @media (hover: none) {
   .keys {
