@@ -1,225 +1,272 @@
-const INITIAL_OBJECTS = [
-  {
-    id: "bonsai.b1",
-    kind: "changeset",
-    parent: null,
-    detail: "initial changeset, src/app.js: content.c1",
+const CHANGES = {
+  b1: { changeId: "zzzzzz", gitId: "6f29a1c", title: "Initial import" },
+  b2: { changeId: "nkmkly", gitId: "31b87ad", title: "Add object cache" },
+  b3: { changeId: "rkvvnz", gitId: "d408be2", title: "Improve cache reuse" },
+};
+
+const INITIAL_POINTERS = { main: "b3", feature: "b2" };
+
+const MODES = {
+  mononoke: {
+    pointerName: "bookmark",
+    pointerWriteName: "bookmark writes",
+    objectCountName: "immutable blobs",
+    objectStoreTitle: "immutable blobstore",
+    metadataTitle: "mutable metadata",
+    indexLabel: "commit graph",
+    indexValue: "3 nodes",
+    objects: [
+      ["bonsai.b3", "parent b2, tree content.c3"],
+      ["bonsai.b2", "parent b1, tree content.c2"],
+      ["bonsai.b1", "root, tree content.c1"],
+      ["content.c1…c3", "file bytes"],
+    ],
+    initialTrace: [
+      "blobstore: 3 Bonsai changesets already stored",
+      "metadata: main -> b3, feature -> b2",
+    ],
+    command(name, target) {
+      return `jj bookmark set ${name} -r ${CHANGES[target].changeId}`;
+    },
+    changedTrace(name, previous, target) {
+      return [
+        this.command(name, target),
+        "blobstore: no write (Bonsai objects are immutable)",
+        `metadata: ${name} ${previous} -> ${target}`,
+      ];
+    },
   },
-  { id: "content.c1", kind: "content", detail: "src/app.js bytes" },
-];
-
-const MESSAGES = ["speed up parser", "add retry budget", "tighten cache key"];
-
-const copyObjects = (objects) => objects.map((object) => ({ ...object }));
+  git: {
+    pointerName: "branch",
+    pointerWriteName: "ref writes",
+    objectCountName: "immutable objects",
+    objectStoreTitle: "object database (.git/objects)",
+    metadataTitle: "mutable refs + reflog",
+    indexLabel: "reflog entries",
+    indexValue: "0 new",
+    objects: [
+      ["commit d408be2", "parent 31b87ad, tree a9d2f61"],
+      ["commit 31b87ad", "parent 6f29a1c, tree b7309af"],
+      ["commit 6f29a1c", "root, tree c520dde"],
+      ["tree + blob objects", "snapshots and file bytes"],
+    ],
+    initialTrace: [
+      "objects: commits, trees, and blobs already stored",
+      "refs: main -> d408be2, feature -> 31b87ad",
+    ],
+    command(name, target) {
+      return `git branch -f ${name} ${CHANGES[target].gitId}`;
+    },
+    changedTrace(name, previous, target) {
+      return [
+        this.command(name, target),
+        "objects: no write (objects are immutable)",
+        `refs/heads/${name}: ${CHANGES[previous].gitId} -> ${CHANGES[target].gitId}`,
+        `reflog: append ${name} branch reset`,
+      ];
+    },
+  },
+};
 
 export function createBlobLabModel() {
-  let objects;
-  let at;
-  let bookmark;
-  let graphNodes;
-  let sequence;
-  let messageIndex;
-  let metadataWrites;
-  let lastCommand;
-  let trace;
+  let pointers;
+  let pointerWrites;
 
   function reset() {
-    objects = copyObjects(INITIAL_OBJECTS);
-    at = "b1";
-    bookmark = "b1";
-    graphNodes = 1;
-    sequence = 1;
-    messageIndex = 0;
-    metadataWrites = 0;
-    lastCommand = "jj log -r '::main'";
-    trace = ["metadata: main -> b1", "blobstore: get bonsai.b1"];
+    pointers = { ...INITIAL_POINTERS };
+    pointerWrites = 0;
   }
 
   function state() {
-    return {
-      objects: copyObjects(objects),
-      at,
-      bookmark,
-      graphNodes,
-      metadataWrites,
-      lastCommand,
-      trace: [...trace],
-    };
+    return { pointers: { ...pointers }, pointerWrites };
   }
 
-  function putChangeset({ parent, message, rewrittenFrom }) {
-    sequence += 1;
-    const id = `b${sequence}`;
-    const parentLabel = parent ?? "root";
-    const detail = rewrittenFrom
-      ? `rewrite of ${rewrittenFrom}, parent ${parentLabel}, message: ${message}`
-      : `parent ${parentLabel}, empty file-change list`;
-
-    objects.unshift({ id: `bonsai.${id}`, kind: "changeset", parent, detail });
-    at = id;
-    graphNodes += 1;
-    metadataWrites += 1;
-    return id;
-  }
-
-  function newChange() {
-    const parent = at;
-    const id = putChangeset({ parent });
-    lastCommand = "jj new";
-    trace = [
-      `blobstore: put bonsai.${id} (immutable)`,
-      `metadata: index ${id} -> parent ${parent}`,
-      `client: @ -> ${id}`,
-    ];
-    return { id, state: state() };
-  }
-
-  function describe() {
-    const rewrittenFrom = at;
-    const current = objects.find(({ id }) => id === `bonsai.${rewrittenFrom}`);
-    const parent = current?.parent ?? null;
-    const message = MESSAGES[messageIndex % MESSAGES.length];
-    messageIndex += 1;
-    const id = putChangeset({ parent, message, rewrittenFrom });
-    lastCommand = `jj describe -m "${message}"`;
-    trace = [
-      `blobstore: put bonsai.${id} (new content hash)`,
-      `blobstore: retain bonsai.${rewrittenFrom}`,
-      `metadata: index ${id} -> parent ${parent ?? "root"}`,
-      `client: @ ${rewrittenFrom} -> ${id}`,
-    ];
-    return { id, message, rewrittenFrom, state: state() };
-  }
-
-  function setBookmark() {
-    const previous = bookmark;
-    bookmark = at;
-    metadataWrites += 1;
-    lastCommand = "jj bookmark set main -r @";
-    trace = ["blobstore: no write", `metadata: main ${previous} -> ${bookmark}`];
-    return { previous, bookmark, state: state() };
-  }
-
-  function showFile() {
-    const derivedId = `fsnode.${bookmark}`;
-    const alreadyDerived = objects.some(({ id }) => id === derivedId);
-
-    if (!alreadyDerived) {
-      objects.push({
-        id: derivedId,
-        kind: "derived",
-        detail: `manifest for ${bookmark}, src/app.js: content.c1`,
-      });
+  function movePointer(name, target) {
+    if (!(name in pointers) || !(target in CHANGES)) return null;
+    const previous = pointers[name];
+    if (previous !== target) {
+      pointers[name] = target;
+      pointerWrites += 1;
     }
-
-    lastCommand = "jj file show main:src/app.js";
-    trace = [
-      `metadata: main -> ${bookmark}`,
-      `blobstore: get bonsai.${bookmark}`,
-      alreadyDerived
-        ? `blobstore: get ${derivedId}`
-        : `derive: fsnode manifest -> put ${derivedId}`,
-      "blobstore: get content.c1",
-    ];
-    return { derived: !alreadyDerived, state: state() };
+    return { name, previous, target, changed: previous !== target, state: state() };
   }
 
   reset();
-  return {
-    state,
-    newChange,
-    describe,
-    setBookmark,
-    showFile,
-    reset: () => (reset(), state()),
-  };
+  return { state, movePointer, reset: () => (reset(), state()) };
 }
 
 export function mountBlobLabs(root = document) {
   for (const lab of root.querySelectorAll("[data-blob-lab]")) {
-    const model = createBlobLabModel();
-    const command = lab.querySelector("[data-blob-command]");
-    const objectList = lab.querySelector("[data-blob-objects]");
-    const at = lab.querySelector("[data-blob-at]");
-    const bookmark = lab.querySelector("[data-blob-bookmark]");
-    const graph = lab.querySelector("[data-blob-graph]");
-    const trace = lab.querySelector("[data-blob-trace]");
-    const count = lab.querySelector("[data-blob-count]");
-    const changesets = lab.querySelector("[data-blob-changesets]");
-    const derived = lab.querySelector("[data-blob-derived]");
-    const metadataWrites = lab.querySelector("[data-blob-metadata-writes]");
-    const status = lab.querySelector("[data-blob-status]");
-    const controls = lab.querySelector(".blob-lab__controls");
+    const models = {
+      mononoke: createBlobLabModel(),
+      git: createBlobLabModel(),
+    };
+    let modeName = "mononoke";
+    let selectedPointer = null;
+    let draggedPointer = null;
 
-    function render(state = model.state()) {
-      command.textContent = state.lastCommand;
-      objectList.replaceChildren(
-        ...state.objects.map(({ id, kind, detail }) => {
-          const item = document.createElement("li");
-          const name = document.createElement("span");
-          name.textContent = id;
-          item.append(name, ` ${detail}`);
-          item.dataset.kind = kind;
-          return item;
-        })
-      );
-      at.textContent = state.at;
-      bookmark.textContent = state.bookmark;
-      graph.textContent = `${state.graphNodes} ${state.graphNodes === 1 ? "node" : "nodes"}`;
+    const graph = lab.querySelector("[data-lab-graph]");
+    const instruction = lab.querySelector("[data-lab-instruction]");
+    const objectStoreTitle = lab.querySelector("[data-object-store-title]");
+    const objectStore = lab.querySelector("[data-object-store]");
+    const metadataTitle = lab.querySelector("[data-metadata-title]");
+    const indexLabel = lab.querySelector("[data-index-label]");
+    const indexValue = lab.querySelector("[data-index-value]");
+    const objectCountLabel = lab.querySelector("[data-object-count-label]");
+    const pointerWritesLabel = lab.querySelector("[data-pointer-writes-label]");
+    const trace = lab.querySelector("[data-blob-trace]");
+    const writes = lab.querySelector("[data-bookmark-writes]");
+    const status = lab.querySelector("[data-blob-status]");
+    const reset = lab.querySelector("[data-lab-reset]");
+
+    const mode = () => MODES[modeName];
+    const model = () => models[modeName];
+
+    function setTrace(entries) {
       trace.replaceChildren(
-        ...state.trace.map((entry) => {
+        ...entries.map((entry) => {
           const item = document.createElement("li");
           item.textContent = entry;
           return item;
         })
       );
-      count.textContent = String(state.objects.length);
-      changesets.textContent = String(
-        state.objects.filter(({ kind }) => kind === "changeset").length
-      );
-      derived.textContent = String(
-        state.objects.filter(({ kind }) => kind === "derived").length
-      );
-      metadataWrites.textContent = String(state.metadataWrites);
     }
 
-    lab.querySelector("[data-blob-new]").addEventListener("click", () => {
-      const result = model.newChange();
-      render(result.state);
-      status.textContent = `Stored bonsai.${result.id}; mutable client @ now points to it.`;
+    function render(state = model().state(), changedPointer = null) {
+      const currentMode = mode();
+      for (const [name, target] of Object.entries(state.pointers)) {
+        const chip = lab.querySelector(`[data-bookmark="${name}"]`);
+        const slot = lab.querySelector(`[data-bookmark-slot="${target}"]`);
+        slot.append(chip);
+        chip.setAttribute("aria-pressed", String(selectedPointer === name));
+      }
+
+      for (const value of lab.querySelectorAll("[data-bookmark-value]")) {
+        const name = value.dataset.bookmarkValue;
+        const target = state.pointers[name];
+        value.textContent = modeName === "git" ? CHANGES[target].gitId : target;
+      }
+
+      for (const label of lab.querySelectorAll("[data-pointer-label]")) {
+        label.textContent = `${currentMode.pointerName} ${label.dataset.pointerLabel}`;
+      }
+      for (const row of lab.querySelectorAll("[data-metadata-row]")) {
+        row.classList.toggle("is-updated", row.dataset.metadataRow === changedPointer);
+      }
+      for (const tab of lab.querySelectorAll("[data-storage-mode]")) {
+        tab.setAttribute("aria-selected", String(tab.dataset.storageMode === modeName));
+      }
+
+      objectStoreTitle.textContent = currentMode.objectStoreTitle;
+      metadataTitle.textContent = currentMode.metadataTitle;
+      objectCountLabel.textContent = currentMode.objectCountName;
+      pointerWritesLabel.textContent = currentMode.pointerWriteName;
+      indexLabel.textContent = currentMode.indexLabel;
+      indexValue.textContent = modeName === "git" && state.pointerWrites
+        ? `${state.pointerWrites} new`
+        : currentMode.indexValue;
+      objectStore.replaceChildren(
+        ...currentMode.objects.map(([id, detail]) => {
+          const item = document.createElement("li");
+          const name = document.createElement("span");
+          name.textContent = id;
+          item.append(name, ` ${detail}`);
+          return item;
+        })
+      );
+      writes.textContent = String(state.pointerWrites);
+      graph.classList.toggle("is-selecting", Boolean(selectedPointer));
+      instruction.textContent = selectedPointer
+        ? `Now choose a change for ${selectedPointer}.`
+        : `Drag a ${currentMode.pointerName} onto another change. On touch or keyboard, select it, then select a change.`;
+    }
+
+    function selectPointer(name) {
+      selectedPointer = selectedPointer === name ? null : name;
+      render();
+      status.textContent = selectedPointer
+        ? `${selectedPointer} selected. Choose any change to move it.`
+        : "Selection cleared.";
+    }
+
+    function move(name, target) {
+      const result = model().movePointer(name, target);
+      if (!result) return;
+      selectedPointer = null;
+      render(result.state, result.changed ? name : null);
+
+      if (result.changed) {
+        setTrace(mode().changedTrace(name, result.previous, target));
+        status.textContent =
+          `Moved ${name} to ${modeName === "git" ? CHANGES[target].gitId : CHANGES[target].changeId}. ` +
+          `Only mutable ${mode().pointerName} data changed.`;
+      } else {
+        setTrace([
+          mode().command(name, target),
+          `${mode().pointerName}: no-op; already points here`,
+        ]);
+        status.textContent = `${name} already points to this change.`;
+      }
+    }
+
+    for (const tab of lab.querySelectorAll("[data-storage-mode]")) {
+      tab.addEventListener("click", () => {
+        modeName = tab.dataset.storageMode;
+        selectedPointer = null;
+        render();
+        setTrace(mode().initialTrace);
+        status.textContent = `Showing the ${tab.textContent.trim()} storage model.`;
+      });
+    }
+
+    for (const chip of lab.querySelectorAll("[data-bookmark]")) {
+      chip.addEventListener("click", () => selectPointer(chip.dataset.bookmark));
+      chip.addEventListener("dragstart", (event) => {
+        draggedPointer = chip.dataset.bookmark;
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", draggedPointer);
+        chip.classList.add("is-dragging");
+      });
+      chip.addEventListener("dragend", () => {
+        draggedPointer = null;
+        chip.classList.remove("is-dragging");
+        for (const change of graph.querySelectorAll(".is-drop-target")) {
+          change.classList.remove("is-drop-target");
+        }
+      });
+    }
+
+    for (const target of lab.querySelectorAll("[data-change-target]")) {
+      const change = target.closest("[data-change]");
+      target.addEventListener("click", () => {
+        if (selectedPointer) move(selectedPointer, target.dataset.changeTarget);
+      });
+      change.addEventListener("dragover", (event) => {
+        if (!draggedPointer) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        change.classList.add("is-drop-target");
+      });
+      change.addEventListener("dragleave", (event) => {
+        if (!change.contains(event.relatedTarget)) change.classList.remove("is-drop-target");
+      });
+      change.addEventListener("drop", (event) => {
+        event.preventDefault();
+        change.classList.remove("is-drop-target");
+        const name = event.dataTransfer.getData("text/plain") || draggedPointer;
+        move(name, change.dataset.change);
+      });
+    }
+
+    reset.addEventListener("click", () => {
+      selectedPointer = null;
+      render(model().reset());
+      setTrace(mode().initialTrace);
+      status.textContent = `Reset the ${mode().pointerName}s in this tab.`;
     });
 
-    lab.querySelector("[data-blob-describe]").addEventListener("click", () => {
-      const result = model.describe();
-      render(result.state);
-      status.textContent =
-        `Rewrote ${result.rewrittenFrom} as ${result.id}. The old immutable object remains.`;
-    });
-
-    lab.querySelector("[data-blob-bookmark-set]").addEventListener("click", () => {
-      const result = model.setBookmark();
-      render(result.state);
-      status.textContent =
-        result.previous === result.bookmark
-          ? `main already points to ${result.bookmark}; only mutable metadata was checked.`
-          : `Moved main from ${result.previous} to ${result.bookmark} without writing a blob.`;
-    });
-
-    lab.querySelector("[data-blob-file-show]").addEventListener("click", () => {
-      const result = model.showFile();
-      render(result.state);
-      status.textContent = result.derived
-        ? "Derived an fsnode manifest, then resolved src/app.js to content.c1."
-        : "Reused the derived fsnode manifest and read content.c1.";
-    });
-
-    lab.querySelector("[data-blob-reset]").addEventListener("click", () => {
-      render(model.reset());
-      status.textContent = "Reset the educational repository model.";
-    });
-
-    render();
-    controls.hidden = false;
+    reset.hidden = false;
     status.hidden = false;
+    render();
   }
 }
