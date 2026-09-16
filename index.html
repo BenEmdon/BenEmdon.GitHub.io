@@ -207,46 +207,102 @@
       <section class="section">
         <h2 class="section__title" id="lab"><span class="prompt" aria-hidden="true">$</span> lab<a class="anchor" href="#lab" aria-label="Link to this section">#</a></h2>
         <p>
-          A tiny database made from immutable blobs. Append changes cheaply, trace a read, then
-          compact the objects to trade more writing for fewer reads.
+          Move a branch through a tiny repository, then compare how Git and a JJ client backed by
+          <a href="https://github.com/facebook/sapling/tree/main/eden/mononoke">Mononoke-style storage</a>
+          represent the same operation.
         </p>
 
         <div class="blob-lab" data-blob-lab>
-          <div class="blob-lab__screen">
-            <p class="blob-lab__manifest" data-blob-manifest>
-              manifest-v2 -&gt; delta-02, base-01
+          <div class="blob-lab__header">
+            <p><span class="prompt" aria-hidden="true">$</span> branch storage playground</p>
+            <button type="button" data-lab-reset hidden>reset</button>
+          </div>
+
+          <div class="blob-lab__tabs" role="tablist" aria-label="Storage implementation">
+            <button type="button" role="tab" aria-selected="true" data-storage-mode="mononoke">JJ + Mononoke</button>
+            <button type="button" role="tab" aria-selected="false" data-storage-mode="git">Git</button>
+          </div>
+
+          <div class="blob-lab__repo">
+            <p class="blob-lab__instruction" data-lab-instruction>
+              Drag a bookmark onto another change. On touch or keyboard, select a bookmark, then a change.
             </p>
-            <ul class="blob-lab__objects" data-blob-objects aria-label="Active immutable blobs">
-              <li>delta-02 { beta: 5 }</li>
-              <li>base-01 { alpha: 1, beta: 2, gamma: 3 }</li>
-            </ul>
-            <p class="blob-lab__trace" data-blob-trace>read trace: not run</p>
+            <div class="blob-lab__graph" data-lab-graph aria-label="Repository changes">
+              <article class="blob-lab__change" data-change="b3">
+                <div class="blob-lab__bookmarks" data-bookmark-slot="b3">
+                  <button class="blob-lab__bookmark" type="button" draggable="true" data-bookmark="main">main</button>
+                </div>
+                <button class="blob-lab__commit" type="button" data-change-target="b3">
+                  <span class="blob-lab__node" aria-hidden="true"></span>
+                  <span><strong>rkvvnz</strong> Improve cache reuse</span>
+                  <small>bonsai.b3</small>
+                </button>
+              </article>
+              <article class="blob-lab__change" data-change="b2">
+                <div class="blob-lab__bookmarks" data-bookmark-slot="b2">
+                  <button class="blob-lab__bookmark" type="button" draggable="true" data-bookmark="feature">feature</button>
+                </div>
+                <button class="blob-lab__commit" type="button" data-change-target="b2">
+                  <span class="blob-lab__node" aria-hidden="true"></span>
+                  <span><strong>nkmkly</strong> Add object cache</span>
+                  <small>bonsai.b2</small>
+                </button>
+              </article>
+              <article class="blob-lab__change" data-change="b1">
+                <div class="blob-lab__bookmarks" data-bookmark-slot="b1"></div>
+                <button class="blob-lab__commit" type="button" data-change-target="b1">
+                  <span class="blob-lab__node" aria-hidden="true"></span>
+                  <span><strong>zzzzzz</strong> Initial import</span>
+                  <small>bonsai.b1</small>
+                </button>
+              </article>
+            </div>
+          </div>
+
+          <div class="blob-lab__screen">
+            <div class="blob-lab__stores">
+              <section aria-labelledby="blobstore-title">
+                <h3 id="blobstore-title" data-object-store-title>immutable blobstore</h3>
+                <ul class="blob-lab__objects" data-object-store>
+                  <li><span>bonsai.b3</span> parent b2, tree content.c3</li>
+                  <li><span>bonsai.b2</span> parent b1, tree content.c2</li>
+                  <li><span>bonsai.b1</span> root, tree content.c1</li>
+                  <li><span>content.c1…c3</span> file bytes</li>
+                </ul>
+              </section>
+
+              <section aria-labelledby="metadata-title">
+                <h3 id="metadata-title" data-metadata-title>mutable metadata</h3>
+                <dl class="blob-lab__metadata">
+                  <div data-metadata-row="main"><dt data-pointer-label="main">bookmark main</dt><dd data-bookmark-value="main">b3</dd></div>
+                  <div data-metadata-row="feature"><dt data-pointer-label="feature">bookmark feature</dt><dd data-bookmark-value="feature">b2</dd></div>
+                  <div><dt data-index-label>commit graph</dt><dd data-index-value>3 nodes</dd></div>
+                </dl>
+              </section>
+            </div>
+            <ol class="blob-lab__trace" data-blob-trace aria-label="Storage operation trace">
+              <li>blobstore: 3 Bonsai changesets already stored</li>
+              <li>metadata: main -&gt; b3, feature -&gt; b2</li>
+            </ol>
           </div>
 
           <dl class="blob-lab__metrics">
             <div>
-              <dt>active blobs</dt>
-              <dd data-blob-count>2</dd>
+              <dt data-object-count-label>immutable blobs</dt>
+              <dd>6</dd>
             </div>
             <div>
-              <dt>last read</dt>
-              <dd data-blob-probes>0 probes</dd>
+              <dt>object writes</dt>
+              <dd data-blob-writes>0</dd>
             </div>
             <div>
-              <dt>session writes</dt>
-              <dd data-blob-bytes>0 B</dd>
+              <dt data-pointer-writes-label>bookmark writes</dt>
+              <dd data-bookmark-writes>0</dd>
             </div>
           </dl>
 
-          <div class="blob-lab__controls" role="group" aria-label="Database controls" hidden>
-            <button type="button" data-blob-write aria-label="Append the next deterministic write">write</button>
-            <button type="button" data-blob-read aria-label="Trace the next deterministic read">read</button>
-            <button type="button" data-blob-compact aria-label="Compact all active blobs">compact</button>
-            <button type="button" data-blob-reset aria-label="Reset the database lab">reset</button>
-          </div>
-
           <p class="blob-lab__status muted" data-blob-status aria-live="polite" hidden>
-            Ready. Each action uses a deterministic sequence.
+            Select or drag a bookmark to begin.
           </p>
         </div>
       </section>

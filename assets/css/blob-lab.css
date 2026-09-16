@@ -1,5 +1,4 @@
-/* A small interactive model, presented as terminal output rather than a
-   dashboard so it stays inside the site's existing visual language. */
+/* A draggable repository graph with its storage representation underneath. */
 .blob-lab {
   margin-block-start: var(--step);
   background: var(--page-subtle);
@@ -7,43 +6,241 @@
   outline-offset: -1px;
 }
 
+.blob-lab__header,
+.blob-lab__repo,
 .blob-lab__screen,
 .blob-lab__metrics,
-.blob-lab__controls,
 .blob-lab__status {
   padding-inline: var(--step);
 }
 
-.blob-lab__screen {
+.blob-lab__header {
+  min-height: var(--step-2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--step);
+  box-shadow: inset 0 -1px var(--page-rule);
+}
+
+.blob-lab__header p { margin: 0; }
+
+.blob-lab__header button {
+  padding: 0;
+  color: var(--muted-color);
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.blob-lab__header button:hover,
+.blob-lab__header button:focus-visible { color: var(--accent-color); }
+
+.blob-lab__tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-block-end: 1px solid var(--page-rule);
+}
+
+.blob-lab__tabs button {
+  min-height: var(--step-2);
+  padding-inline: var(--step);
+  color: var(--muted-color);
+  border: 0;
+  border-inline-end: 1px solid var(--page-rule);
+  background: var(--page-subtle);
+  font: inherit;
+  text-align: start;
+}
+
+.blob-lab__tabs button:last-child { border-inline-end: 0; }
+
+.blob-lab__tabs button[aria-selected="true"] {
+  color: var(--page-color);
+  background: var(--page-background);
+  box-shadow: inset 0 -2px var(--accent-color);
+}
+
+.blob-lab__tabs button:hover,
+.blob-lab__tabs button:focus-visible { color: var(--accent-color); }
+
+.blob-lab__tabs button:focus-visible {
+  position: relative;
+  z-index: 3;
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
+}
+
+.blob-lab__repo {
   padding-block: var(--step);
   background: var(--page-background);
   box-shadow: inset 0 -1px var(--page-rule);
-  font-size: var(--text-small);
 }
 
-.blob-lab__manifest {
+.blob-lab__instruction {
+  margin: 0 0 var(--step);
+  color: var(--muted-color);
+  font-size: var(--text-caption);
+}
+
+.blob-lab__graph { display: grid; gap: var(--step-half); }
+
+.blob-lab__change {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 0.8fr) minmax(0, 2.2fr);
+  gap: var(--step-half);
+  min-height: var(--step-2);
+  border: 1px solid transparent;
+  transition: border-color var(--motion-step), background var(--motion-step);
+}
+
+.blob-lab__change:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset-block-start: calc(50% + 0.5rem);
+  inset-inline-start: calc(5.5rem + var(--step-half) + 0.45rem);
+  width: 1px;
+  height: calc(var(--step-2) + var(--step-half));
+  background: var(--page-rule);
+}
+
+.blob-lab__change.is-drop-target {
+  border-color: var(--accent-color);
+  background: var(--page-subtle);
+}
+
+.blob-lab__bookmarks {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.blob-lab__bookmark {
+  position: relative;
+  z-index: 2;
+  padding: 0.2rem 0.45rem;
+  color: var(--inverted-color);
+  border: 1px solid var(--accent-color);
+  background: var(--accent-color);
+  font: inherit;
+  font-size: var(--text-caption);
+  cursor: grab;
+}
+
+.blob-lab__bookmark::after {
+  content: "";
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: -0.45rem;
+  width: 0.45rem;
+  height: 1px;
+  background: var(--accent-color);
+}
+
+.blob-lab__bookmark:hover,
+.blob-lab__bookmark:focus-visible,
+.blob-lab__bookmark[aria-pressed="true"] {
   color: var(--accent-color);
-  overflow-wrap: anywhere;
+  background: var(--page-background);
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
 }
 
-.blob-lab__objects {
-  margin-block-start: var(--step-half);
+.blob-lab__bookmark.is-dragging { opacity: 0.45; cursor: grabbing; }
+
+.blob-lab__commit {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  min-height: var(--step-2);
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--step-half);
+  padding: var(--step-half);
+  color: var(--page-color);
+  border: 1px solid var(--page-rule);
+  background: var(--page-background);
+  font: inherit;
+  text-align: start;
 }
+
+.blob-lab__commit strong { color: var(--accent-color); font-weight: 400; }
+.blob-lab__commit small { color: var(--muted-color); font: inherit; font-size: var(--text-caption); }
+
+.blob-lab__node {
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 2px solid var(--accent-color);
+  border-radius: 50%;
+  background: var(--page-background);
+}
+
+.blob-lab__graph.is-selecting .blob-lab__commit { cursor: pointer; }
+
+.blob-lab__graph.is-selecting .blob-lab__commit:hover,
+.blob-lab__graph.is-selecting .blob-lab__commit:focus-visible {
+  border-color: var(--accent-color);
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.blob-lab__screen { padding-block: var(--step); font-size: var(--text-small); }
+
+.blob-lab__stores {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(11rem, 2fr);
+  gap: var(--step);
+}
+
+.blob-lab__stores h3 {
+  margin: 0 0 var(--step-half);
+  color: var(--accent-color);
+  font-size: inherit;
+  font-weight: 400;
+}
+
+.blob-lab__objects,
+.blob-lab__trace { margin: 0; color: var(--muted-color); }
 
 .blob-lab__objects li,
-.blob-lab__trace {
-  color: var(--muted-color);
-  overflow-wrap: anywhere;
+.blob-lab__trace li { overflow-wrap: anywhere; }
+
+.blob-lab__objects li::before,
+.blob-lab__trace li::before { color: var(--accent-color); }
+.blob-lab__objects li::before { content: "> "; }
+.blob-lab__objects span { color: var(--page-color); }
+
+.blob-lab__metadata div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--step-half);
+  transition: color var(--motion-step), background var(--motion-step);
 }
 
-.blob-lab__objects li::before {
-  content: "> ";
+.blob-lab__metadata div.is-updated {
   color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
 }
 
+.blob-lab__metadata dt { color: var(--muted-color); }
+.blob-lab__metadata dd { color: var(--page-color); text-align: end; }
+
 .blob-lab__trace {
-  margin-block-start: var(--step-half);
+  margin-block-start: var(--step);
+  padding-block-start: var(--step-half);
+  border-block-start: 1px solid var(--page-rule);
+  list-style: none;
 }
+
+.blob-lab__trace li::before { content: "| "; }
+.blob-lab__trace li:last-child::before { content: "└ "; }
 
 .blob-lab__metrics {
   display: grid;
@@ -54,79 +251,41 @@
   font-size: var(--text-caption);
 }
 
-.blob-lab__metrics div {
-  min-width: 0;
-}
-
-.blob-lab__metrics dt {
-  color: var(--muted-color);
-}
-
-.blob-lab__metrics dd {
-  color: var(--page-color);
-}
-
-.blob-lab__controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--step-half);
-  padding-block: var(--step-half);
-}
-
-.blob-lab__controls[hidden],
-.blob-lab__status[hidden] {
-  display: none;
-}
-
-.blob-lab__controls button {
-  min-height: var(--step-2);
-  padding-inline: var(--step-half);
-  color: var(--accent-color);
-  border: 1px solid var(--page-rule);
-  background: var(--page-background);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.blob-lab__controls button:hover,
-.blob-lab__controls button:focus-visible {
-  color: var(--inverted-color);
-  background: var(--accent-color);
-  border-color: var(--accent-color);
-  text-decoration: none;
-}
-
-.blob-lab__controls button:focus-visible {
-  outline: 2px solid var(--accent-color);
-  outline-offset: 2px;
-}
+.blob-lab__metrics dt { color: var(--muted-color); }
+.blob-lab__metrics dd { color: var(--page-color); }
 
 .blob-lab__status {
   min-height: var(--step-2);
   padding-block: var(--step-half);
-  box-shadow: inset 0 1px var(--page-rule);
   font-size: var(--text-caption);
 }
 
+.blob-lab__status[hidden],
+.blob-lab__header button[hidden] { display: none; }
+
 @media (max-width: 34rem) {
+  .blob-lab__header,
+  .blob-lab__repo,
   .blob-lab__screen,
   .blob-lab__metrics,
-  .blob-lab__controls,
-  .blob-lab__status {
-    padding-inline: var(--step-half);
-  }
+  .blob-lab__status { padding-inline: var(--step-half); }
 
-  .blob-lab__metrics {
-    grid-template-columns: 1fr;
+  .blob-lab__tabs button { padding-inline: var(--step-half); }
+  .blob-lab__change { grid-template-columns: 4.5rem minmax(0, 1fr); }
+  .blob-lab__change:not(:last-child)::after {
+    inset-inline-start: calc(4.5rem + var(--step-half) + 0.45rem);
   }
-
+  .blob-lab__commit { grid-template-columns: 1rem minmax(0, 1fr); }
+  .blob-lab__commit small { display: none; }
+  .blob-lab__stores,
+  .blob-lab__metrics { grid-template-columns: 1fr; }
+  .blob-lab__stores section + section {
+    padding-block-start: var(--step-half);
+    border-block-start: 1px solid var(--page-rule);
+  }
   .blob-lab__metrics div {
     display: flex;
     justify-content: space-between;
     gap: var(--step-half);
-  }
-
-  .blob-lab__controls button {
-    flex: 1 1 calc(50% - var(--step-half));
   }
 }
