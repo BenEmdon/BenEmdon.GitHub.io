@@ -198,6 +198,87 @@ function setUp() {
     history.replaceState(null, "", `#${section.querySelector("[id]").id}`);
   }
 
+  /* ---------- section links ---------- */
+
+  const toast = document.querySelector("[data-toast]");
+  let toastTimer;
+
+  function showToast(message) {
+    if (!toast) return;
+
+    toast.replaceChildren(
+      Object.assign(document.createElement("span"), {
+        className: "toast__bracket",
+        textContent: "[",
+      }),
+      ` ${message} `,
+      Object.assign(document.createElement("span"), {
+        className: "toast__bracket",
+        textContent: "]",
+      })
+    );
+
+    toast.classList.remove("is-visible");
+    void toast.offsetWidth;
+    toast.classList.add("is-visible");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 2000);
+  }
+
+  async function copyText(value) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch {
+      // Clipboard access can be blocked outside a secure context. The hidden
+      // selection keeps the interaction useful in local previews and older
+      // browsers without changing focus or leaving an input behind.
+      const field = document.createElement("textarea");
+      const focused = document.activeElement;
+      field.value = value;
+      field.setAttribute("readonly", "");
+      field.style.position = "fixed";
+      field.style.opacity = "0";
+      document.body.append(field);
+      field.select();
+
+      let copied = false;
+      try {
+        copied = document.execCommand("copy");
+      } catch {}
+
+      field.remove();
+      if (focused instanceof HTMLElement) focused.focus({ preventScroll: true });
+      return copied;
+    }
+  }
+
+  for (const link of document.querySelectorAll(".anchor")) {
+    link.addEventListener("click", async (event) => {
+      // Preserve the browser's own new-tab/window behaviour for modified
+      // clicks. A normal click stays inside the same jump path as the number
+      // keys, so section framing and reduced-motion handling cannot drift.
+      if (
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      const section = link.closest(".section");
+      if (!section) return;
+
+      jump(section);
+      const hash = link.hash;
+      const copied = await copyText(new URL(hash, location.href).href);
+      showToast(copied ? `copied ${hash}` : `link ready ${hash}`);
+    });
+  }
+
   document.addEventListener("keydown", (event) => {
     // ? is Shift+/, so shiftKey has to stay allowed.
     if (event.metaKey || event.ctrlKey || event.altKey) return;
