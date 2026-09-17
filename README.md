@@ -11,10 +11,8 @@ assets/css/tokens.css design tokens (colour, type, spacing)
 assets/css/base.css   reset and element defaults
 assets/css/layout.css page structure
 assets/css/components.css  portrait, Ottawa map, and small UI components
-assets/css/blob-lab.css    interactive blob database lab
 assets/js/wordmark.js pointer-driven letter wave and fading accent trail
 assets/js/dither.js   ordered dithering, shared by portrait and wordmark
-assets/js/blob-lab.js deterministic immutable-blob database model and UI
 assets/js/main.js     wiring and the theme toggle
 ```
 
