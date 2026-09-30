@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>{% block title %}{{ config.title }}{% endblock title %}</title>
+    <meta
+      name="description"
+      content="{% block description %}{{ config.description }}{% endblock description %}"
+    />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="{{ config.title }}" />
+    <meta
+      property="og:description"
+      content="Making software development faster and safer at Stripe. Previously GitHub."
+    />
+    <meta property="og:url" content="{{ current_url | default(value=config.base_url) | safe }}" />
+    <meta property="og:image" content="https://benemdon.github.io/assets/img/og-card.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Ben Emdon beside a dithered portrait, with source control, code review, and developer productivity listed below"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://benemdon.github.io/assets/img/og-card.jpg" />
+    <meta
+      name="twitter:image:alt"
+      content="Ben Emdon beside a dithered portrait, with source control, code review, and developer productivity listed below"
+    />
+
+    <link rel="canonical" href="{{ current_url | default(value=config.base_url) | safe }}" />
+    <link rel="icon" href="{{ get_url(path='favicon.svg') }}" type="image/svg+xml" />
+
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fdf6e3" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#14251f" />
+
+    <!-- Applied before first paint so a saved theme never flashes the other one. -->
+    <script>
+      try {
+        const saved = localStorage.getItem("theme");
+        if (saved === "light" || saved === "dark") {
+          document.documentElement.dataset.theme = saved;
+        }
+      } catch {}
+    </script>
+
+    <!-- Body/UI text: Iosevka, the same base typeface opentui.com's own
+         "OpenTUI Mono" is a custom build of (confirmed via their public
+         build plan: packages/web/src/font/private-build-plans.toml in their
+         GitHub repo). That exact build isn't published, so this uses stock
+         Iosevka rather than hotlinking their brand asset: same family, same
+         terminal character, openly licensed (SIL OFL) via Fontsource. -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/400.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/700.css" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <!-- The wordmark (and only the wordmark; it keeps its own identity,
+         white-on-black, separate from the body type) is built from block
+         glyphs (█▀▄) that aren't in Iosevka's or Google's default latin
+         subsets. A system-font fallback would substitute per-platform, and
+         since fallback fonts don't share JetBrains Mono's advance width, the
+         art's columns would drift apart. This pulls exactly those glyphs
+         from JetBrains Mono itself; display=block holds the art off-screen
+         rather than flashing a misaligned fallback first. -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=block&text=%20%E2%96%80%E2%96%84%E2%96%88%E2%96%91"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="{{ get_url(path='assets/css/tokens.css') }}" />
+    <link rel="stylesheet" href="{{ get_url(path='assets/css/base.css') }}" />
+    <link rel="stylesheet" href="{{ get_url(path='assets/css/layout.css') }}" />
+    <link rel="stylesheet" href="{{ get_url(path='assets/css/components.css') }}" />
+
+    <!-- Visit counting: GoatCounter. No cookies, no fingerprinting, no
+         persistent identifier, nothing personal stored, so there is nothing
+         to consent to and no banner to show.
+
+         The site code in data-goatcounter is public on purpose. It is a
+         write-only endpoint that hits are posted to, not a key, and it grants
+         no read access to the dashboard. Anything that counts visits from the
+         browser has to name its destination in the page source; there is no
+         version of this that stays private.
+
+         What that does leave open is someone pointing a mirror of this page at
+         the same endpoint, so the path callback below drops any hit that did
+         not come from the real host. It has to live in `path` and not in
+         `filter`: count.js assigns over `goatcounter.filter` when it loads, but
+         reads `goatcounter.path`, and a null path aborts the hit. If this site
+         ever moves to a custom domain, add that hostname here or counting stops.
+
+         count.js already skips localhost, file://, iframes and prerenders. It
+         does not check Do Not Track, so that check is here too. -->
+    <script>
+      window.goatcounter = {
+        path(p) {
+          if (location.hostname !== "benemdon.github.io") return null;
+          if (navigator.doNotTrack === "1" || navigator.globalPrivacyControl) return null;
+          return p;
+        },
+      };
+    </script>
+    <script
+      data-goatcounter="https://benemdon.goatcounter.com/count"
+      async
+      src="https://gc.zgo.at/count.js"
+    ></script>
+  </head>
+
+  <body>
+    <main class="page">
+      {% block content %}{% endblock content %}
+
+      <!-- The clock ships hidden and is unwrapped by main.js, so a visitor
+           without JS sees "Ottawa, ON" rather than a dead --:--. -->
+      <footer class="footer">
+        <p>
+          Ottawa, ON<span class="clock" data-clock hidden
+            ><time class="clock__time" data-clock-time
+              ><span data-clock-hours>--</span
+              ><span class="clock__tick" aria-hidden="true">:</span
+              ><span data-clock-minutes>--</span></time
+            ></span
+          >
+        </p>
+        <div class="footer__controls">
+          <button
+            class="footer__button"
+            type="button"
+            data-keys-toggle
+            aria-expanded="false"
+            aria-controls="keys"
+          >
+            <kbd>?</kbd> keys
+          </button>
+          <button class="footer__button" type="button" data-theme-toggle>
+            system
+          </button>
+        </div>
+      </footer>
+    </main>
+
+    <!-- Ships hidden and stays hidden without JS, since every key it lists is
+         wired up there. Each page template fills the list for its own sections. -->
+    <div class="keys" id="keys" data-keys hidden>
+      <ul class="keys__list">
+        {% block keys %}{% endblock keys %}
+      </ul>
+    </div>
+
+    <!-- The boot screen. Ships hidden and empty: without JS it never appears,
+         and a crawler is handed the real page rather than a splash. main.js
+         fills it and takes it away again. aria-hidden because it is theatre;
+         a screen reader should be reading the page underneath it, which is
+         already there. -->
+    <div class="boot" data-boot aria-hidden="true" hidden>
+      <div class="boot__inner">
+        <div data-boot-logo></div>
+        <ul class="boot__log" data-boot-log></ul>
+      </div>
+    </div>
+
+    <script type="module" src="{{ get_url(path='assets/js/main.js') }}"></script>
+  </body>
+</html>
