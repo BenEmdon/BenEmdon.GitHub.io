@@ -1,57 +1,57 @@
-# benemdon.github.io
+# Experiment: personal site as a Hugo blog
 
-My personal site. A static page served straight from this repo by GitHub Pages,
-with no build step, dependencies, or framework.
+This branch rebuilds [benemdon.github.io](https://benemdon.github.io) in
+[Hugo](https://gohugo.io) and adds a real blog, to see what a blog-shaped
+version of the current design feels like. It is one of three stack
+experiments (Hugo, Zola, Eleventy). Do not merge without deciding first.
 
 ## Layout
 
-```
-index.html            all of the copy
-assets/css/tokens.css design tokens (colour, type, spacing)
-assets/css/base.css   reset and element defaults
-assets/css/layout.css page structure
-assets/css/components.css  portrait, Ottawa map, and small UI components
-assets/js/wordmark.js pointer-driven letter wave and fading accent trail
-assets/js/dither.js   ordered dithering, shared by portrait and wordmark
-assets/js/main.js     wiring and the theme toggle
-```
+- `hugo.toml`: site config: baseURL, title, RSS outputs for home and
+  sections, taxonomies disabled.
+- `layouts/_default/baseof.html`: the shared shell: full `<head>` (fonts,
+  GoatCounter, OG tags, canonical, RSS link), keys panel, boot overlay,
+  `main.js`. Asset URLs go through Hugo's `relURL`.
+- `layouts/index.html`: the homepage. All sections ported verbatim
+  (whoami, about, thinking, writing, work, elsewhere), plus a `writing`
+  section showing the latest 3 posts with an "all posts / rss" line.
+- `layouts/_default/list.html`: the `/blog/` index, in the site's
+  terminal style (`$ ls blog`).
+- `layouts/_default/single.html`: per-post pages, with a date and
+  reading-time line.
+- `layouts/partials/`: `header.html` (wordmark masthead), `footer.html`
+  (Ottawa clock, keys/theme toggles), `divider.html`.
+- `static/`: the original CSS and JS copied through unchanged, plus one
+  new stylesheet, `assets/css/blog.css`, for post typography in the same
+  idiom. Also `favicon.svg`, `robots.txt`, `og-card.html`, `.nojekyll`.
+- `content/blog/`: `_index.md` plus two sample posts, both clearly marked
+  as samples, in a neutral tech-blogger voice, with no claims about Ben.
+- `.github/workflows/hugo.yaml`: Hugo's official Pages workflow (Hugo
+  0.167.0). The repo's Pages source must be switched to "GitHub Actions"
+  for it to run; this branch does not change that setting.
 
-## The two rules worth knowing
+## Ported vs changed
 
-**Vertical rhythm.** `--step` is `1.5rem` (24px) and `line-height` is set to that
-same absolute value, so every line of text, at any size, lands on a 24px grid.
-Vertical spacing is only ever whole steps. Adding a half-step anywhere breaks the
-grid for everything below it.
+- Ported: all homepage copy and sections, the full `<head>`, the boot
+  overlay, the keys panel, the footer, the wordmark.
+- Changed: asset URLs now go through `relURL` so they resolve from any page
+  depth; the homepage gains a `writing` section with the latest 3 posts and
+  keeps the same six keyboard shortcuts; post pages get a date/reading-time
+  line and a back-to-blog link.
 
-**Colour.** Each semantic token is declared once as `light-dark(light, dark)`.
-Themes swap via `color-scheme`, which the OS sets and `[data-theme]` overrides,
-so there is no second copy of the palette to keep in sync.
+## Known shortcuts (experiment only)
 
-## Analytics
+- The two JPEGs (`assets/img/ben.jpg`, `assets/img/og-card.jpg`) are
+  hotlinked from the live site rather than committed: binary files cannot be
+  pushed through this experiment's tooling. A real port commits them under
+  `static/assets/img/`.
+- `.well-known/brave-rewards-verification.txt` was not ported: its token is
+  redacted from API reads, so the file cannot be reproduced exactly.
 
-Visits are counted by [GoatCounter](https://www.goatcounter.com), free for
-personal sites. The dashboard is at <https://benemdon.goatcounter.com>. It sets
-no cookies, stores no personal data and needs no consent banner, and the whole
-integration is the two script tags at the bottom of `index.html`'s `<head>`,
-with still no build step.
-
-The site code in `data-goatcounter` is public, and has to be: anything counting
-visits from the browser names its destination in the page source. It is a
-write-only endpoint, not a key; it cannot read the dashboard, so putting it in
-a GitHub secret would hide it from the repo and not from anyone viewing source.
-The one thing it does allow is a mirrored copy of the page reporting into the
-same dashboard, which the hostname check in the `path` callback blocks. **Moving
-to a custom domain means adding that hostname there, or counting stops.**
-
-Append `#toggle-goatcounter` to the URL once to stop counting your own visits on
-that browser.
-
-## Running it
-
-Any static server will do:
+## Preview locally
 
 ```sh
-python3 -m http.server 4321
+hugo server
 ```
 
-Pushing to `master` publishes the site.
+then open http://localhost:1313.
