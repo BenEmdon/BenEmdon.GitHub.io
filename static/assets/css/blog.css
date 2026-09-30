@@ -1,0 +1,64 @@
+/*
+  Post typography for the blog experiment. Long-form reading in the site's
+  own idiom: the same vertical rhythm, the same muted voice, nothing new
+  invented. Everything keys off the tokens in tokens.css.
+*/
+
+.prose {
+  font-size: var(--text-body);
+}
+
+.prose p {
+  margin: 0 0 var(--step);
+}
+
+.prose p:last-child {
+  margin-bottom: 0;
+}
+
+.prose blockquote {
+  margin: 0 0 var(--step);
+  padding-left: 2ch;
+  border-left: 2px solid var(--page-rule);
+  color: var(--muted-color);
+}
+
+.prose blockquote p {
+  margin-bottom: 0;
+}
+
+.prose ul,
+.prose ol {
+  margin: 0 0 var(--step);
+  padding-left: 3ch;
+}
+
+.prose li {
+  margin-bottom: calc(var(--step) / 2);
+}
+
+.prose li:last-child {
+  margin-bottom: 0;
+}
+
+.prose a {
+  color: var(--link-color);
+}
+
+.prose code {
+  font-size: var(--text-small);
+  background: var(--page-subtle);
+  padding: 0 0.5ch;
+}
+
+.prose pre {
+  margin: 0 0 var(--step);
+  padding: var(--step);
+  background: var(--page-subtle);
+  overflow-x: auto;
+}
+
+.prose pre code {
+  background: none;
+  padding: 0;
+}
