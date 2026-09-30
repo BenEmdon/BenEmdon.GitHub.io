@@ -1,0 +1,235 @@
+/*
+  The portrait ships dithered and resolves to the real photograph on hover;
+  the dither is a cover, not the picture. Touch devices get the same reveal by
+  tapping.
+
+  The reveal itself lives in main.js, not here: it clears cells out of the
+  dither in a scrambled order so the picture comes apart in blocks. There is no
+  opacity involved, which is why this file no longer has a transition on it.
+*/
+.dither {
+  position: relative;
+  flex: none;
+  width: 9rem; /* 6 × --step, so the portrait sits on the text grid */
+  aspect-ratio: 1;
+  overflow: hidden;
+  /* Also the dither's paper colour: JS reads it back resolved, which sidesteps
+     parsing light-dark() out of a custom property. */
+  background: var(--dither-paper);
+  border: 1px solid var(--page-rule);
+  display: block;
+  padding: 0;
+}
+
+.dither__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.dither__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  color: var(--dither-ink); /* read back resolved by dither.js */
+}
+
+.dither:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+@media (max-width: 34rem) {
+  .dither {
+    width: 6rem; /* 4 × --step */
+  }
+}
+
+/*
+  The clock's colon and any boot-time pending output blink as a hard terminal
+  step, not a fade. The colon only dims because at 0 the footer spends half of
+  every second reading "09 19", which looks like a typo rather than a clock.
+*/
+@keyframes blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: var(--blink-off, 0);
+  }
+}
+
+/* Local time where he is, not where the reader is; the line already says
+   Ottawa, so the clock is the rest of that sentence. */
+.clock {
+  margin-inline-start: 2ch;
+}
+
+.clock__tick {
+  --blink-off: 0.45;
+  animation: blink 1s step-end infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clock__tick {
+    animation: none;
+  }
+}
+
+/*
+  The key legend, opened with ? and from the footer. Parked in the corner
+  rather than centred over the page: it is a reference card, not a dialog, and
+  nothing behind it needs to be dismissed to keep reading.
+*/
+.keys {
+  position: fixed;
+  z-index: 10;
+  inset-block-end: var(--step);
+  inset-inline-end: var(--step);
+  padding: var(--step-half) var(--step);
+  background: var(--page-background);
+  border: 1px solid var(--accent-color);
+  font-size: var(--text-small);
+  line-height: var(--step);
+}
+
+.keys[hidden] {
+  display: none;
+}
+
+.keys__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.keys__list li {
+  display: flex;
+  gap: var(--step);
+}
+
+.keys kbd {
+  flex: none;
+  width: 2ch;
+  color: var(--accent-color);
+  font: inherit;
+}
+
+.keys__label {
+  color: var(--muted-color);
+}
+
+/* Nothing here can be pressed on a touch device. */
+@media (hover: none) {
+  .keys {
+    display: none;
+  }
+}
+
+/*
+  The boot screen, borrowed wholesale from git-merge.com's own page load: a
+  short fake startup log that resolves line by line and then gets out of the
+  way.
+
+  It covers the page rather than replacing it, so the real content is in the
+  DOM and laid out the whole time. The padding below deliberately repeats
+  body's, and .boot__inner repeats .page's width and centring, so the wordmark
+  sits on exactly the pixel it will occupy once this is gone, lifting the
+  overlay is a cut, not a jump.
+*/
+.boot {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  padding: var(--step-2) var(--page-gutter);
+  background: var(--page-background);
+  overflow: hidden;
+}
+
+.boot[hidden] {
+  display: none;
+}
+
+.boot__inner {
+  width: min(100%, var(--content-width));
+  margin-inline: auto;
+}
+
+.boot__log {
+  margin-block-start: var(--step);
+  color: var(--muted-color);
+  font-size: var(--text-small);
+  /* Absolute, like everywhere else, so the log sits on the same 24px grid the
+     page behind it does. */
+  line-height: var(--step);
+}
+
+/* Fixed columns rather than padded strings. Iosevka draws ✓ at two columns
+   while its monospace advance is one, so a run of lines marked with a mix of
+   ✓ and a one-column spinner would not line up if the mark were just text in
+   the flow. Given the mark its own box, the glyph inside can be any width. */
+.boot__line {
+  display: flex;
+}
+
+.boot__mark {
+  flex: none;
+  width: 3ch;
+  color: var(--accent-color);
+}
+
+.boot__task {
+  flex: none;
+}
+
+/* The leader is one long run of dots that simply overflows. Sized by flex and
+   clipped, it fills whatever gap is left on any width, and collapses to
+   nothing on a narrow screen instead of wrapping the line. */
+.boot__dots {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--page-rule);
+}
+
+.boot__value {
+  flex: none;
+  width: 24ch;
+  color: var(--page-color);
+}
+
+/* Still waiting: an underscore doing what a cursor does. */
+.boot__value.is-pending {
+  animation: blink 1s step-end infinite;
+}
+
+@media (max-width: 34rem) {
+  .boot {
+    padding-block: var(--step) var(--step-2);
+  }
+
+  /* Nothing like enough width for a 24-column value column beside a task and
+     a leader; let the value take what it needs and the dots take the rest. */
+  .boot__value {
+    width: auto;
+  }
+}
+
+/* Narrow screens have nothing like room for a 24-column value beside a task
+   and a leader, so a boot line is allowed to wrap. */
+@media (max-width: 34rem) {
+  .boot__line {
+    flex-wrap: wrap;
+  }
+
+  .boot__value {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+}

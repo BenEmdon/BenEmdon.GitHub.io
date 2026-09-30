@@ -1,0 +1,402 @@
+.page {
+  width: min(100%, var(--content-width));
+  margin-inline: auto;
+}
+
+/* Every block below is spaced in whole --step units, so the page keeps one
+   vertical grid from the wordmark to the footer. */
+.page > * + * {
+  margin-block-start: var(--step);
+}
+
+/* ---------- masthead ---------- */
+
+/* Solid block-letter art, 75 columns x 5 rows, set in the accent colour: a
+   logo rather than a paragraph. Renders from the dedicated JetBrains Mono
+   glyph subset loaded in <head> (see the comment there), not a local system
+   font, so the exact glyph and advance width are guaranteed rather than
+   whatever happens to be installed. block-size is a whole --step multiple so
+   the baseline grid survives. */
+/* Neutral page-color, not the accent green; the accent colour does its work
+   everywhere else on the page; the header doesn't need it too. No background:
+   it sits directly on the page like the rest of the type, just bigger. */
+.wordmark {
+  display: block;
+  block-size: calc(var(--step) * 2);
+  padding-block-start: 3px;
+  color: var(--page-color);
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: min(9px, 1.9vw);
+  line-height: 1;
+  white-space: pre;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+
+/* The wordmark paints in from the top on load, one band per step, like a
+   terminal drawing a frame. Class-gated rather than automatic: the block
+   glyphs load with display=block, so the art is invisible for the first
+   moment and an animation started at page load would finish before there was
+   anything to see. main.js waits for the font, then adds .is-booting, which
+   also means the wordmark is simply visible if the script never runs.
+
+   jump-start so the first row is already there on frame one; the default
+   (jump-end) opens on a blank frame and wastes a fifth of the run. */
+@keyframes wordmark-boot {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.wordmark.is-booting {
+  animation: wordmark-boot calc(var(--motion-step) * 6) steps(5, jump-start) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wordmark.is-booting {
+    animation: none;
+  }
+}
+
+/* Each block can scatter without changing the name's layout. */
+.wordmark__cell {
+  display: inline-block;
+  width: 1ch;
+  white-space: pre;
+}
+
+.wordmark__cell.is-energized {
+  color: var(--accent-color);
+}
+
+.tagline {
+  color: var(--muted-color);
+}
+
+/* ---------- section ---------- */
+
+/* The section you are reading gets an accent frame. Two sources feed it: a
+   pointer resting on the section, and, as described in main.js, the section crossing the
+   middle of the viewport as you scroll.
+
+   outline, not border: an outline is drawn outside the box and takes no
+   layout space, so switching it on cannot shift a single line off the --step
+   grid. --step-half of offset puts it midway between the section and the ░
+   rule above it, so the frame never collides with the divider. */
+.section {
+  outline: 1px solid transparent;
+  outline-offset: var(--step-half);
+  transition: outline-color calc(var(--motion-step) * 2) linear;
+  /* A keyed jump lands the heading here rather than flush against the top
+     edge, leaving room for the frame's own offset. */
+  scroll-margin-block-start: var(--step-2);
+}
+
+.section.is-active {
+  outline-color: var(--accent-color);
+}
+
+@media (hover: hover) {
+  .section:hover {
+    outline-color: var(--accent-color);
+  }
+
+  /* Both sources can be live at once: the pointer on one section while
+     another sits at the centre line, and two frames read as a bug. The
+     pointer is the more deliberate signal, so while it is over any section
+     the scroll-tracked frame stands down. */
+  .page:has(.section:hover) .section.is-active:not(:hover) {
+    outline-color: transparent;
+  }
+}
+
+.section__title {
+  color: var(--page-color);
+  margin-block-end: var(--step);
+}
+
+.section__title .prompt {
+  color: var(--accent-color);
+  user-select: none;
+}
+
+/* Hover-revealed heading anchor, opentui.com's own pattern (their
+   .prose .anchor rule): hidden until the heading is hovered or the link
+   itself is focused, so it doesn't clutter the reading view. Touch devices
+   have no hover to reveal it, so it stays visible there. */
+.anchor {
+  margin-inline-start: 0.75ch;
+  color: var(--accent-color);
+  text-decoration: none;
+  opacity: 0;
+}
+
+.section__title:hover .anchor,
+.anchor:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .anchor {
+    opacity: 1;
+  }
+}
+
+.section > p + p {
+  margin-block-start: var(--step);
+}
+
+/* ---------- divider ---------- */
+
+.divider {
+  color: var(--page-rule);
+  /* Body text is Iosevka now; ░ isn't in its charset, so this stays pinned to
+     the dedicated block-glyph subset loaded for the wordmark. */
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  white-space: pre;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ---------- identity ---------- */
+
+.id {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--step);
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.facts__row {
+  display: flex;
+  gap: var(--step-half);
+}
+
+.facts__key {
+  color: var(--muted-color);
+  flex: none;
+  width: 5.5rem;
+}
+
+.facts__value {
+  min-width: 0;
+}
+
+/* ---------- work ---------- */
+
+.entry {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  column-gap: var(--step-half);
+  align-items: start;
+}
+
+.entry + .entry {
+  margin-block-start: var(--step);
+}
+
+/* The visible range reads newest first. The single screen-reader phrase in
+   the markup keeps its spoken order chronological. */
+.entry__when {
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  color: var(--muted-color);
+}
+
+.entry__title,
+.entry__detail {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.entry__detail {
+  color: var(--muted-color);
+  font-size: var(--text-small);
+  line-height: var(--step);
+}
+
+/* Output-style markers make dense experience notes easier to scan without
+   introducing a second visual language beside the terminal's prompts. */
+.entry__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry__list li {
+  position: relative;
+  padding-inline-start: 2ch;
+}
+
+.entry__list li::before {
+  content: ">";
+  position: absolute;
+  inset-inline-start: 0;
+  color: var(--accent-color);
+}
+
+/* ---------- links ---------- */
+
+.links {
+  display: flex;
+  flex-direction: column;
+}
+
+.links a {
+  display: flex;
+  gap: var(--step-half);
+  width: fit-content;
+  max-width: 100%;
+  text-decoration: none;
+}
+
+.links a:hover .links__key,
+.links a:focus-visible .links__key,
+.links a:hover .links__value,
+.links a:focus-visible .links__value {
+  color: inherit;
+}
+
+/* Wide enough for "instagram" (9 columns) at every breakpoint. */
+.links__key {
+  color: var(--accent-color);
+  flex: none;
+  width: 6.5rem;
+}
+
+.links__value {
+  color: var(--muted-color);
+}
+
+/* ---------- footer ---------- */
+
+/* Everything sits left and the right end stays empty, because the key legend
+   is parked in that corner: pushed apart, the theme toggle ended up underneath
+   the panel whenever you opened it at the foot of the page. */
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--step);
+  color: var(--muted-color);
+  font-size: var(--text-small);
+  line-height: var(--step);
+}
+
+.footer__controls {
+  display: flex;
+  gap: var(--step);
+}
+
+.footer__button {
+  color: var(--muted-color);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.footer__button:hover,
+.footer__button:focus-visible {
+  background: var(--accent-color);
+  color: var(--inverted-color);
+  text-decoration: none;
+}
+
+.footer__button kbd {
+  font: inherit;
+}
+
+/* A keyboard hint is noise on a device with no keyboard. */
+@media (hover: none) {
+  [data-keys-toggle] {
+    display: none;
+  }
+}
+
+/* Roomier wordmark once there is width for it. 77 columns at 12px caps out
+   around 554px, comfortably inside the 576px (36rem) content-width. */
+@media (min-width: 34rem) {
+  .wordmark {
+    font-size: 12px;
+    block-size: calc(var(--step) * 3);
+  }
+}
+
+/* ---------- mobile ---------- */
+
+@media (max-width: 34rem) {
+  :root {
+    --page-gutter: 1rem;
+  }
+
+  body {
+    padding-block: var(--step);
+  }
+
+  /* Side by side, the portrait leaves too little room for a value like
+     "Software Engineering Manager", so it moves above the facts. */
+  .id {
+    flex-direction: column;
+    /* Stacked, this gap is vertical, so it has to be a whole step. */
+    gap: var(--step);
+  }
+
+  .facts__key {
+    width: 5rem;
+  }
+
+  .entry {
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+  }
+
+  .entry__detail {
+    grid-column: 1 / -1;
+    margin-block-start: var(--step);
+  }
+}
+
+/* Whole 48px rows keep touch targets comfortable and preserve the 24px grid. */
+@media (max-width: 34rem), (pointer: coarse) {
+  .links a {
+    min-height: calc(var(--step) * 2);
+    align-items: center;
+    width: 100%;
+  }
+
+  .links__value {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .footer__button {
+    min-width: calc(var(--step) * 2);
+    min-height: calc(var(--step) * 2);
+  }
+
+  .section__title {
+    position: relative;
+    padding-inline-end: calc(var(--step) * 2);
+  }
+
+  .anchor {
+    position: absolute;
+    inset-inline-end: 0;
+    inset-block-start: calc(-1 * var(--step-half));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(var(--step) * 2);
+    height: calc(var(--step) * 2);
+    margin: 0;
+    opacity: 1;
+  }
+}

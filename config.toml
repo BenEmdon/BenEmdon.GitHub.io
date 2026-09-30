@@ -1,0 +1,11 @@
+base_url = "https://benemdon.github.io"
+title = "Ben Emdon"
+description = "Ben Emdon. Making software development faster and safer at Stripe. Previously GitHub."
+
+# RSS/Atom feed for the blog.
+generate_feeds = true
+feed_filenames = ["atom.xml"]
+
+compile_sass = false
+build_search_index = false
+
