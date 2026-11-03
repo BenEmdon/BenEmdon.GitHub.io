@@ -1,0 +1,13 @@
+baseURL = "https://benemdon.github.io"
+title = "Ben Emdon"
+
+# No tag or category pages on an experiment branch.
+disableKinds = ["taxonomy", "term"]
+
+[params]
+  description = "Ben Emdon. Making software development faster and safer at Stripe. Previously GitHub."
+
+# RSS for the homepage and for sections (so /blog/index.xml exists).
+[outputs]
+  home = ["HTML", "RSS"]
+  section = ["HTML", "RSS"]

@@ -1,0 +1,25 @@
+{{ define "title" }}{{ .Title }} | {{ .Site.Title }}{{ end }}
+
+{{ define "main" }}
+{{ partial "header.html" . }}
+
+      <section class="section">
+        <h2 class="section__title" id="post"><span class="prompt" aria-hidden="true">$</span> {{ .Title }}<a class="anchor" href="#post" aria-label="Link to this section">#</a></h2>
+        <p class="muted">{{ .Date.Format "2006-01-02" }} · {{ .ReadingTime }} min read</p>
+        <div class="prose">
+          {{ .Content }}
+        </div>
+      </section>
+
+      {{ partial "divider.html" . }}
+
+      <p class="muted"><a href="{{ "blog/" | relURL }}">← all posts</a></p>
+
+      {{ partial "divider.html" . }}
+{{ end }}
+
+{{ define "keys" }}
+        <li><kbd>1</kbd><span class="keys__label">post</span></li>
+        <li><kbd>t</kbd><span class="keys__label">theme</span></li>
+        <li><kbd>?</kbd><span class="keys__label">this</span></li>
+{{ end }}

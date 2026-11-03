@@ -1,0 +1,27 @@
+      <!-- The clock ships hidden and is unwrapped by main.js, so a visitor
+           without JS sees "Ottawa, ON" rather than a dead --:--. -->
+      <footer class="footer">
+        <p>
+          Ottawa, ON<span class="clock" data-clock hidden
+            ><time class="clock__time" data-clock-time
+              ><span data-clock-hours>--</span
+              ><span class="clock__tick" aria-hidden="true">:</span
+              ><span data-clock-minutes>--</span></time
+            ></span
+          >
+        </p>
+        <div class="footer__controls">
+          <button
+            class="footer__button"
+            type="button"
+            data-keys-toggle
+            aria-expanded="false"
+            aria-controls="keys"
+          >
+            <kbd>?</kbd> keys
+          </button>
+          <button class="footer__button" type="button" data-theme-toggle>
+            system
+          </button>
+        </div>
+      </footer>
