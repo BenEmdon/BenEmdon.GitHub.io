@@ -12,6 +12,7 @@ assets/css/base.css   reset and element defaults
 assets/css/layout.css page structure
 assets/css/components.css  portrait, Ottawa map, and small UI components
 assets/js/wordmark.js pointer-driven letter wave and fading accent trail
+assets/js/pixel-flutter.js ambient margin pixels and motion preference
 assets/js/dither.js   ordered dithering, shared by portrait and wordmark
 assets/js/main.js     wiring and the theme toggle
 ```
@@ -55,3 +56,15 @@ python3 -m http.server 4321
 ```
 
 Pushing to `master` publishes the site.
+
+## Pixel flutter
+
+Inspired by the fluttering pixels on [Omarchy](https://omarchy.org), a small
+canvas draws sparse green squares in the margins around the reading column.
+They drift in soft waves and scatter gently near the pointer. The field follows
+the active theme and stays outside the text, including on narrow screens.
+
+The footer's **motion on/off** button pauses this field and remembers the choice.
+Reduced-motion preferences disable it, including when changed during a visit.
+It stops drawing in hidden tabs, caps the canvas resolution and particle count,
+and renders at most 24 frames per second. No library or build step is needed.

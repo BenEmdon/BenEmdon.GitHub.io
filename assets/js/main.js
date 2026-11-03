@@ -1,5 +1,6 @@
 import { attach } from "./dither.js";
 import { animateWordmark } from "./wordmark.js";
+import { attachPixelFlutter } from "./pixel-flutter.js";
 
 const THEME_KEY = "theme";
 // The cycle the toggle walks. "system" is where everyone starts, and it is
@@ -26,6 +27,8 @@ function setUp() {
   // Read by the portrait dissolve and by keyed jumps, so it sits above both
   // rather than inside whichever one happened to need it first.
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const flutter = attachPixelFlutter(reduced);
+  repaints.push(flutter.repaint);
 
   /* ---------- portrait ---------- */
 

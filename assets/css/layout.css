@@ -1,6 +1,30 @@
 .page {
+  position: relative;
+  z-index: 1;
   width: min(100%, var(--content-width));
   margin-inline: auto;
+}
+
+/* Quiet pixel weather around the reading column. A fixed canvas cannot move
+   content or catch clicks; the no-JS page needs no decorative markup. */
+.pixel-flutter {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.pixel-flutter[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pixel-flutter {
+    display: none;
+  }
 }
 
 /* Every block below is spaced in whole --step units, so the page keeps one
