@@ -1,0 +1,25 @@
+---
+layout: layouts/base.njk
+title: blog
+description: Notes and essays, in reverse chronological order.
+permalink: /blog/
+keys:
+  - key: "1"
+    label: posts
+  - key: t
+    label: theme
+  - key: "?"
+    label: this
+---
+<section class="section" id="posts">
+  <h2 class="section__title" id="all-posts"><span class="prompt" aria-hidden="true">$</span> ls -t ~/blog<a class="anchor" href="#all-posts" aria-label="Link to this section">#</a></h2>
+  <ul class="posts">
+    {% for post in collections.blog | reverse %}
+    <li class="posts__row">
+      <span class="posts__date muted">{{ post.date | htmlDateString }}</span>
+      <a class="posts__link" href="{{ post.url }}">{{ post.data.title }}</a>
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="muted">Also available as <a href="/feed.xml">an Atom feed</a>.</p>
+</section>
