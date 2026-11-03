@@ -253,9 +253,9 @@ function setUp() {
   // screen before it resolves, rather than the whole thing reading as one
   // flash. Anything much past this stops being a flourish and starts being a
   // wait, which is what the skip is for.
-  const LINE_EVERY = 200;
-  const LINE_SETTLES = 240;
-  const LAST_BEAT = 1300;
+  const LINE_EVERY = 140;
+  const LINE_SETTLES = 200;
+  const LAST_BEAT = 500;
 
   const boot = document.querySelector("[data-boot]");
 
