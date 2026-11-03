@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Blog | {{ config.title }}{% endblock title %}
+{% block description %}{{ section.description }}{% endblock description %}
+
+{% block content %}
+{% include "partials/masthead.html" %}
+
+      <section class="section">
+        <h2 class="section__title" id="blog"><span class="prompt" aria-hidden="true">$</span> blog<a class="anchor" href="#blog" aria-label="Link to this section">#</a></h2>
+
+        {% for page in section.pages %}
+        <div class="entry">
+          <p class="entry__when">
+            <span class="sr-only">{{ page.date | date(format="%Y-%m-%d") }}</span>
+            <span aria-hidden="true">{{ page.date | date(format="%b %Y") }}</span>
+          </p>
+          <p class="entry__title"><a href="{{ page.permalink | safe }}">{{ page.title }}</a></p>
+          <ul class="entry__detail entry__list">
+            <li>{{ page.description }}</li>
+          </ul>
+        </div>
+        {% endfor %}
+      </section>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <p class="muted"><a href="{{ config.base_url | safe }}">← home</a></p>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+{% endblock content %}
+
+{% block keys %}
+        <li><kbd>1</kbd><span class="keys__label">blog</span></li>
+        <li><kbd>t</kbd><span class="keys__label">theme</span></li>
+        <li><kbd>?</kbd><span class="keys__label">this</span></li>
+{% endblock keys %}
