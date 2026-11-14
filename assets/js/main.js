@@ -141,23 +141,7 @@ function setUp() {
       if (!decayTimer) decayTimer = setInterval(tick, 75);
     }
 
-    hiring.addEventListener("pointermove", (event) => {
-      if (reduced.matches || event.pointerType === "touch") return;
-
-      const rect = hiring.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      const now = performance.now();
-
-      let speed = 0;
-      if (lastX !== null) {
-        const dt = Math.max(now - lastT, 1);
-        speed = Math.hypot(x - lastX, y - lastY) / dt;
-      }
-      lastX = x;
-      lastY = y;
-      lastT = now;
-
+    function burst(x, y, speed, rect) {
       const radius = speed > 1.2 ? 3 : speed > 0.45 ? 2 : 1;
       const col = Math.floor(x / CELL);
       const row = Math.floor(y / CELL);
@@ -174,6 +158,32 @@ function setUp() {
           light(c, r, Math.max(1, (radius + 2 - dist) * (speed > 0.45 ? 2 : 1)));
         }
       }
+    }
+
+    hiring.addEventListener("pointermove", (event) => {
+      if (reduced.matches || event.pointerType === "touch") return;
+
+      const rect = hiring.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const now = performance.now();
+
+      let speed = 0;
+      if (lastX !== null) {
+        const dt = Math.max(now - lastT, 1);
+        speed = Math.hypot(x - lastX, y - lastY) / dt;
+        // Fill the path between events, so a fast pass leaves a trail
+        // along its direction instead of separate bursts with gaps.
+        const gap = Math.hypot(x - lastX, y - lastY);
+        const fills = Math.min(Math.floor(gap / CELL), 24);
+        for (let i = 1; i < fills; i++) {
+          burst(lastX + ((x - lastX) * i) / fills, lastY + ((y - lastY) * i) / fills, speed, rect);
+        }
+      }
+      burst(x, y, speed, rect);
+      lastX = x;
+      lastY = y;
+      lastT = now;
     });
 
     hiring.addEventListener("pointerleave", () => {
