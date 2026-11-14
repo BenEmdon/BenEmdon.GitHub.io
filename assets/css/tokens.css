@@ -9,8 +9,10 @@
   there is no second copy of the palette to drift out of sync.
 
   Palette: high-contrast near-white / near-black, both carrying a trace of
-  green, with a single muted green accent (in the Vitesse / Everforest family
-  rather than a neon terminal green).
+  blue, with a single muted blue accent. The accent used to be a muted
+  green (Vitesse / Everforest family); Ben switched the site's vibe to
+  blue on 2026-11-14. Only the primitives below changed, the semantics
+  and every component followed on their own.
 
   The vertical rhythm is one number: --step (1.5rem = 24px). body line-height is
   set to --step as an absolute, so every line of text sits on that grid no
@@ -19,29 +21,29 @@
 :root {
   color-scheme: light dark;
 
-  /* --- primitives: neutrals, faintly green so the accent feels native --- */
+  /* --- primitives: neutrals, faintly blue so the accent feels native --- */
   --ink-50: #ffffff;
-  --ink-100: #f4f6f4;
-  --ink-200: #e2e6e2;
-  --ink-300: #c2c9c4;
-  --ink-400: #8c968f;
-  --ink-500: #5b655e;
-  --ink-600: #3a423d;
-  --ink-700: #262c28;
-  --ink-800: #161a18;
-  --ink-900: #0c0e0d;
+  --ink-100: #f3f5fa;
+  --ink-200: #dfe6f0;
+  --ink-300: #b9c6da;
+  --ink-400: #8296b1;
+  --ink-500: #52637c;
+  --ink-600: #33415a;
+  --ink-700: #212b3d;
+  --ink-800: #121826;
+  --ink-900: #090d16;
 
   /* --- primitives: the accent --- */
-  --green-light: #1e754f;
-  --green-dark: #4d9375;
+  --blue-light: #1e5aa8;
+  --blue-dark: #6ea8e1;
 
   /* --- semantics --- */
   --page-background: light-dark(var(--ink-50), var(--ink-900));
   --page-subtle: light-dark(var(--ink-100), var(--ink-800));
   --page-rule: light-dark(var(--ink-200), var(--ink-700));
-  --page-color: light-dark(#101311, #e8ebe8);
+  --page-color: light-dark(#0f141d, #e8ecf4);
   --muted-color: light-dark(var(--ink-500), var(--ink-400));
-  --accent-color: light-dark(var(--green-light), var(--green-dark));
+  --accent-color: light-dark(var(--blue-light), var(--blue-dark));
   --link-color: var(--accent-color);
   --inverted-color: light-dark(var(--ink-50), var(--ink-900));
 
@@ -50,8 +52,8 @@
      background) to the light tone regardless of site theme. Swapping these
      per theme would invert the photo like a negative in dark mode rather
      than just recolouring it. Point --dither-ink at --accent-color for a
-     greener cast. */
-  --dither-ink: #101311;
+     bluer cast. */
+  --dither-ink: #0d1522;
   --dither-paper: var(--ink-50);
 
   /* --- type: three sizes, nothing else --- */
