@@ -6,12 +6,12 @@
     the initial legible at native favicon size.
   -->
   <style>
-    .ink { fill: #1e754f; }
-    .dither { fill: #4d9375; }
+    .ink { fill: #1e5aa8; }
+    .dither { fill: #6ea8e1; }
 
     @media (prefers-color-scheme: dark) {
-      .ink { fill: #4d9375; }
-      .dither { fill: #1e754f; }
+      .ink { fill: #6ea8e1; }
+      .dither { fill: #1e5aa8; }
     }
   </style>
 
