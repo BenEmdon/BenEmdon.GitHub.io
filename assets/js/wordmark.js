@@ -1,18 +1,25 @@
-// Hover lights block cells in place, display-style: a cell turns accent as
-// the pointer reaches its column, then the next cell over does the same.
-// Cells never move, there is no lift and no drift. The same lighting also
-// runs as a sweep: a virtual pointer crosses the wordmark once after the
-// boot screen clears, and again every so often while the page sits idle
-// and visible, so the header has a pixel animation of its own even with
-// nobody hovering it.
-// The original text remains the no-JS fallback; the heading has its own label.
+// A terminal can only change whole character cells, on a clock tick. The
+// wordmark follows that limit literally. Its art is a fixed grid of
+// character columns; exactly one column is lit at a time, and the lit
+// column changes only once per 75ms tick. There is no distance falloff,
+// no energy, no fade, and no sub-cell position: a column is accent or it
+// is not, then the next column takes its place.
+//
+// Hover quantizes the pointer to the nearest character column. The idle
+// animation is a refresh scan: one column at a time, left to right, at
+// the same fixed tick. The original text remains the no-JS fallback; the
+// heading has its own label.
 export async function animateWordmark(wordmark, reduced) {
   if (!wordmark || !matchMedia("(hover: hover)").matches) return;
   await document.fonts.ready;
   if (!wordmark.isConnected) return;
+
+  const TICK = 75;
   const rows = wordmark.textContent.split("\n");
-  const cells = [];
+  const columnCount = Math.max(...rows.map((row) => [...row].length));
+  const columns = Array.from({ length: columnCount }, () => []);
   const fragment = document.createDocumentFragment();
+
   rows.forEach((row, y) => {
     [...row].forEach((glyph, x) => {
       if (glyph === " ") {
@@ -23,115 +30,69 @@ export async function animateWordmark(wordmark, reduced) {
       el.className = "wordmark__cell";
       el.textContent = glyph;
       fragment.append(el);
-      cells.push({ el, glyph, x, y, energy: 0 });
+      columns[x].push(el);
     });
     if (y < rows.length - 1) fragment.append("\n");
   });
   wordmark.replaceChildren(fragment);
-  let frame = 0;
-  let previous = 0;
-  let pointer = null;
+
   let cellWidth = 0;
-  const active = new Set();
+  let litColumn = -1;
+  let lastInteract = 0;
+  let scanTimer = 0;
+  let scanColumn = -1;
 
   // Font metrics are measured once after loading, then only on resize.
   function measure() {
-    cellWidth = cells[0].el.getBoundingClientRect().width;
+    const first = columns.flat().find(Boolean);
+    if (first) cellWidth = first.getBoundingClientRect().width;
   }
   measure();
   new ResizeObserver(measure).observe(wordmark);
 
-  function settle(cell) {
-    cell.energy = 0;
-    cell.el.classList.remove("is-energized");
-    active.delete(cell);
-  }
-
-  function reset() {
-    cancelAnimationFrame(frame);
-    frame = 0;
-    pointer = null;
-    for (const cell of active) settle(cell);
-  }
-
-  function draw(now) {
-    const decay = Math.pow(0.88, Math.min(now - previous, 50) / 16.67);
-    previous = now;
-    // Coalesce high-frequency pointer events into one update per paint.
-    // Read layout before any writes.
-    if (pointer) {
-      const origin = wordmark.getBoundingClientRect();
-      const px = pointer.x - origin.left;
-      pointer = null;
-      for (const cell of cells) {
-        const distance = Math.abs((cell.x + 0.5) * cellWidth - px);
-        const energy = Math.max(0, 1 - distance / 65);
-        if (energy <= 0.025) continue;
-        cell.energy = Math.max(cell.energy, energy);
-        if (!active.has(cell)) {
-          active.add(cell);
-          cell.el.classList.add("is-energized");
-        }
-      }
+  function setColumn(next) {
+    if (next === litColumn) return;
+    if (litColumn >= 0) {
+      for (const el of columns[litColumn]) el.classList.remove("is-lit");
     }
-    // Only visit energized glyphs. A cell is lit or it is not: when its
-    // energy falls under the threshold it simply turns off in place, the
-    // way a pixel on a display does.
-    for (const cell of active) {
-      const e = cell.energy *= decay;
-      if (e < 0.025) {
-        settle(cell);
-        continue;
-      }
-    }
-    frame = active.size ? requestAnimationFrame(draw) : 0;
-  }
-
-  function nudge(clientX) {
-    pointer = { x: clientX, y: 0 };
-    if (!frame) {
-      previous = performance.now();
-      frame = requestAnimationFrame(draw);
+    litColumn = next;
+    if (litColumn >= 0) {
+      for (const el of columns[litColumn]) el.classList.add("is-lit");
     }
   }
 
-  let lastInteract = 0;
-  let sweepFrame = 0;
-
-  function stopSweep() {
-    cancelAnimationFrame(sweepFrame);
-    sweepFrame = 0;
+  function stopScan() {
+    clearInterval(scanTimer);
+    scanTimer = 0;
+    scanColumn = -1;
   }
 
-  // One virtual pass across the wordmark, fed through the same nudge the
-  // pointer uses, so the sweep and the hover are the same effect.
   function sweep() {
-    if (reduced.matches || document.hidden) return;
-    const origin = wordmark.getBoundingClientRect();
-    const from = origin.left - 65;
-    const to = origin.right + 65;
-    const start = performance.now();
-    const DURATION = 2100;
-    stopSweep();
-    const step = (now) => {
-      const t = Math.min((now - start) / DURATION, 1);
-      nudge(from + (to - from) * t);
-      sweepFrame = t < 1 && !document.hidden && !reduced.matches
-        ? requestAnimationFrame(step)
-        : 0;
-    };
-    sweepFrame = requestAnimationFrame(step);
+    if (reduced.matches || document.hidden || scanTimer) return;
+    scanColumn = -1;
+    scanTimer = setInterval(() => {
+      scanColumn += 1;
+      if (scanColumn >= columnCount) {
+        stopScan();
+        setColumn(-1);
+        return;
+      }
+      setColumn(scanColumn);
+    }, TICK);
   }
 
   wordmark.addEventListener("pointermove", (event) => {
     if (reduced.matches || event.pointerType === "touch") return;
     lastInteract = performance.now();
-    stopSweep();
-    nudge(event.clientX);
+    stopScan();
+    const origin = wordmark.getBoundingClientRect();
+    const column = Math.floor((event.clientX - origin.left) / cellWidth);
+    setColumn(Math.max(0, Math.min(columnCount - 1, column)));
   }, { passive: true });
-  wordmark.addEventListener("pointerleave", () => { pointer = null; });
 
-  // First sweep once the boot screen (about 1.3s) has cleared, then again
+  wordmark.addEventListener("pointerleave", () => setColumn(-1));
+
+  // First scan once the boot screen (about 1.3s) has cleared, then again
   // every 20s while the page is visible and nobody has hovered recently.
   const firstSweep = setTimeout(sweep, 1600);
   const idleSweep = setInterval(() => {
@@ -139,15 +100,15 @@ export async function animateWordmark(wordmark, reduced) {
   }, 20000);
 
   reduced.addEventListener("change", () => {
-    reset();
-    stopSweep();
+    stopScan();
+    setColumn(-1);
     clearTimeout(firstSweep);
     clearInterval(idleSweep);
   });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
-      reset();
-      stopSweep();
+      stopScan();
+      setColumn(-1);
     }
   });
 }
