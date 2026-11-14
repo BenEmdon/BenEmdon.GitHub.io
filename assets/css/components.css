@@ -48,7 +48,9 @@
   text-underline-offset: 3px;
 }
 
-/* One sparkle cell: an 8px square on the block's fixed grid. main.js
+/* One sparkle cell: an 8px square on the block's fixed 16px grid. The
+   grid pitch is twice the cell size, so neighbouring lit cells stay
+   separate sparkles instead of merging into a solid band. main.js
    positions these and toggles .is-lit; nothing here transitions or
    transforms, so a cell only ever snaps on or off in place. */
 .hiring__pixel {
