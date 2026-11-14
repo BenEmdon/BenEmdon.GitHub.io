@@ -96,15 +96,16 @@ function setUp() {
   /* ---------- hiring sparkle ---------- */
 
   // Display-style pixels, driven by the pointer rather than a loop. Cells
-  // sit on a fixed 8px grid inside the block and only ever snap lit or
-  // unlit in place. Pointer speed widens the lit area and stretches how
+  // sit on a fixed 16px grid inside the block (each an 8px square, so lit
+  // cells stay separate sparkles instead of merging into a smear) and only
+  // ever snap lit or unlit in place. Pointer speed widens the lit area and stretches how
   // many decay steps a cell survives, so a fast pass leaves a longer trail
   // of lit neighbours than a slow one. Decay ticks every 75ms, the site's
   // own --motion-step, so cells step off rather than fade.
   const hiring = document.querySelector("[data-hiring]");
 
   if (hiring && window.matchMedia("(hover: hover)").matches) {
-    const CELL = 8;
+    const CELL = 16;
     const lit = new Map();
     let decayTimer = 0;
     let lastX = null;
