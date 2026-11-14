@@ -93,6 +93,94 @@ function setUp() {
       .catch(() => {});
   }
 
+  /* ---------- hiring sparkle ---------- */
+
+  // Display-style pixels, driven by the pointer rather than a loop. Cells
+  // sit on a fixed 8px grid inside the block and only ever snap lit or
+  // unlit in place. Pointer speed widens the lit area and stretches how
+  // many decay steps a cell survives, so a fast pass leaves a longer trail
+  // of lit neighbours than a slow one. Decay ticks every 75ms, the site's
+  // own --motion-step, so cells step off rather than fade.
+  const hiring = document.querySelector("[data-hiring]");
+
+  if (hiring && window.matchMedia("(hover: hover)").matches) {
+    const CELL = 8;
+    const lit = new Map();
+    let decayTimer = 0;
+    let lastX = null;
+    let lastY = null;
+    let lastT = 0;
+
+    function tick() {
+      for (const [key, cell] of lit) {
+        cell.steps -= 1;
+        if (cell.steps <= 0) {
+          cell.el.remove();
+          lit.delete(key);
+        }
+      }
+      if (lit.size === 0) {
+        clearInterval(decayTimer);
+        decayTimer = 0;
+      }
+    }
+
+    function light(col, row, steps) {
+      const key = `${col},${row}`;
+      const existing = lit.get(key);
+      if (existing) {
+        existing.steps = Math.max(existing.steps, steps);
+        return;
+      }
+      const el = document.createElement("span");
+      el.className = "hiring__pixel is-lit";
+      el.style.insetInlineStart = `${col * CELL}px`;
+      el.style.insetBlockStart = `${row * CELL}px`;
+      hiring.append(el);
+      lit.set(key, { el, steps });
+      if (!decayTimer) decayTimer = setInterval(tick, 75);
+    }
+
+    hiring.addEventListener("pointermove", (event) => {
+      if (reduced.matches || event.pointerType === "touch") return;
+
+      const rect = hiring.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const now = performance.now();
+
+      let speed = 0;
+      if (lastX !== null) {
+        const dt = Math.max(now - lastT, 1);
+        speed = Math.hypot(x - lastX, y - lastY) / dt;
+      }
+      lastX = x;
+      lastY = y;
+      lastT = now;
+
+      const radius = speed > 1.2 ? 3 : speed > 0.45 ? 2 : 1;
+      const col = Math.floor(x / CELL);
+      const row = Math.floor(y / CELL);
+
+      for (let dc = -radius; dc <= radius; dc++) {
+        for (let dr = -radius; dr <= radius; dr++) {
+          const dist = Math.abs(dc) + Math.abs(dr);
+          if (dist > radius + 1) continue;
+          // Sparse at the edges, so it sparkles instead of flooding.
+          if (dist > 1 && Math.random() < 0.45) continue;
+          const c = col + dc;
+          const r = row + dr;
+          if (c < 0 || r < 0 || c * CELL >= rect.width || r * CELL >= rect.height) continue;
+          light(c, r, Math.max(1, (radius + 2 - dist) * (speed > 0.45 ? 2 : 1)));
+        }
+      }
+    });
+
+    hiring.addEventListener("pointerleave", () => {
+      lastX = null;
+    });
+  }
+
   /* ---------- theme ---------- */
 
   const toggle = document.querySelector("[data-theme-toggle]");
