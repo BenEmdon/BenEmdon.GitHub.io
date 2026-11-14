@@ -1,4 +1,26 @@
 /*
+  Hiring callout near the top of the page. It is an aside, not a .section,
+  so it does not shift the numbered key jumps for the existing sections.
+  The accent border and subtle background set it apart without leaving the
+  site's terminal language. Padding is a whole --step so its text stays on
+  the same vertical grid.
+*/
+.hiring {
+  border: 1px solid var(--accent-color);
+  background: var(--page-subtle);
+  padding: var(--step);
+}
+
+.hiring > * + * {
+  margin-block-start: var(--step-half);
+}
+
+.hiring__label {
+  color: var(--accent-color);
+  font-weight: 700;
+}
+
+/*
   The portrait ships dithered and resolves to the real photograph on hover;
   the dither is a cover, not the picture. Touch devices get the same reveal by
   tapping.
