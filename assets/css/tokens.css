@@ -44,6 +44,7 @@
   --page-color: light-dark(#0f141d, #e8ecf4);
   --muted-color: light-dark(var(--ink-500), var(--ink-400));
   --accent-color: light-dark(var(--blue-light), var(--blue-dark));
+  --accent-pulse-color: light-dark(#6ea8e1, #a9cdf2);
   --link-color: var(--accent-color);
   --inverted-color: light-dark(var(--ink-50), var(--ink-900));
 

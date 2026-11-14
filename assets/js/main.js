@@ -96,16 +96,17 @@ function setUp() {
   /* ---------- hiring sparkle ---------- */
 
   // Display-style pixels, driven by the pointer rather than a loop. Cells
-  // sit on a fixed 16px grid inside the block (each an 8px square, so lit
-  // cells stay separate sparkles instead of merging into a smear) and only
-  // ever snap lit or unlit in place. Pointer speed widens the lit area and stretches how
-  // many decay steps a cell survives, so a fast pass leaves a longer trail
-  // of lit neighbours than a slow one. Decay ticks every 75ms, the site's
-  // own --motion-step, so cells step off rather than fade.
+  // sit on a fixed 8px grid inside the block, behind the text. Each is a
+  // 4px square, so lit cells stay separate sparkles instead of merging
+  // into a smear, and they only ever snap lit or unlit in place. Pointer
+  // speed widens the lit area and stretches how many decay steps a cell
+  // survives, so a fast pass leaves a longer trail of lit neighbours than
+  // a slow one. Decay ticks every 75ms, the site's own --motion-step, so
+  // cells step off rather than fade.
   const hiring = document.querySelector("[data-hiring]");
 
   if (hiring && window.matchMedia("(hover: hover)").matches) {
-    const CELL = 16;
+    const CELL = 8;
     const lit = new Map();
     let decayTimer = 0;
     let lastX = null;
@@ -143,7 +144,10 @@ function setUp() {
     }
 
     function burst(x, y, speed, rect) {
-      const radius = speed > 1.2 ? 3 : speed > 0.45 ? 2 : 1;
+      // Radius is counted in 8px cells. Only one checkerboard parity
+      // lights, so neighbouring squares never merge into a blob behind
+      // the copy; a burst reads as a fine dotted texture, not a smear.
+      const radius = speed > 1.2 ? 4 : speed > 0.45 ? 3 : 2;
       const col = Math.floor(x / CELL);
       const row = Math.floor(y / CELL);
 
@@ -151,12 +155,14 @@ function setUp() {
         for (let dr = -radius; dr <= radius; dr++) {
           const dist = Math.abs(dc) + Math.abs(dr);
           if (dist > radius + 1) continue;
-          // Sparse at the edges, so it sparkles instead of flooding.
-          if (dist > 1 && Math.random() < 0.45) continue;
           const c = col + dc;
           const r = row + dr;
+          if ((c + r) % 2 !== 0) continue;
+          // Sparse at the edges, so it sparkles instead of flooding.
+          if (dist > 2 && Math.random() < 0.35) continue;
           if (c < 0 || r < 0 || c * CELL >= rect.width || r * CELL >= rect.height) continue;
-          light(c, r, Math.max(1, (radius + 2 - dist) * (speed > 0.45 ? 2 : 1)));
+          const steps = Math.ceil((radius + 2 - dist) / 2) * (speed > 0.45 ? 2 : 1);
+          light(c, r, Math.max(1, Math.min(4, steps)));
         }
       }
     }
