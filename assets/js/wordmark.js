@@ -1,4 +1,6 @@
-// A coherent wave lifts intact block letters, then settles into a fading accent trail.
+// Hover lights block cells in place, display-style: a cell turns accent as
+// the pointer reaches its column, then the next cell over does the same.
+// Cells never move, there is no lift and no drift.
 // The original text remains the no-JS fallback; the heading has its own label.
 export async function animateWordmark(wordmark, reduced) {
   if (!wordmark || !matchMedia("(hover: hover)").matches) return;
@@ -17,7 +19,7 @@ export async function animateWordmark(wordmark, reduced) {
       el.className = "wordmark__cell";
       el.textContent = glyph;
       fragment.append(el);
-      cells.push({ el, glyph, x, y, energy: 0, transform: "" });
+      cells.push({ el, glyph, x, y, energy: 0 });
     });
     if (y < rows.length - 1) fragment.append("\n");
   });
@@ -37,8 +39,6 @@ export async function animateWordmark(wordmark, reduced) {
 
   function settle(cell) {
     cell.energy = 0;
-    cell.transform = "";
-    cell.el.style.transform = "";
     cell.el.classList.remove("is-energized");
     active.delete(cell);
   }
@@ -54,7 +54,7 @@ export async function animateWordmark(wordmark, reduced) {
     const decay = Math.pow(0.88, Math.min(now - previous, 50) / 16.67);
     previous = now;
     // Coalesce high-frequency pointer events into one update per paint.
-    // Read layout before any writes; never measure a transformed cell here.
+    // Read layout before any writes.
     if (pointer) {
       const origin = wordmark.getBoundingClientRect();
       const px = pointer.x - origin.left;
@@ -70,18 +70,14 @@ export async function animateWordmark(wordmark, reduced) {
         }
       }
     }
-    // Only visit energized glyphs, and only write values that changed.
+    // Only visit energized glyphs. A cell is lit or it is not: when its
+    // energy falls under the threshold it simply turns off in place, the
+    // way a pixel on a display does.
     for (const cell of active) {
       const e = cell.energy *= decay;
       if (e < 0.025) {
         settle(cell);
         continue;
-      }
-      // All rows in a column move together: the name stays legible.
-      const transform = `translateY(${-Math.round(e * 3)}px)`;
-      if (transform !== cell.transform) {
-        cell.el.style.transform = transform;
-        cell.transform = transform;
       }
     }
     frame = active.size ? requestAnimationFrame(draw) : 0;
