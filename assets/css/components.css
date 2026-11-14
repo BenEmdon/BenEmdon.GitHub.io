@@ -42,10 +42,68 @@
   font-weight: 700;
 }
 
-.hiring__cta {
-  color: var(--accent-color);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+/* Border pulse on hover or focus: two fixed pixel rails run down the
+   inside of the left and right borders. The pattern is a repeating 8px
+   lit segment in a 24px pitch, and the animation steps the background
+   position down one segment at a time, so the light appears to step from
+   pixel to pixel downwards. Nothing slides: background-position jumps in
+   steps(3) between the same fixed grid positions. */
+.hiring::before,
+.hiring::after {
+  content: "";
+  position: absolute;
+  inset-block-start: 0;
+  inset-block-end: 0;
+  inline-size: 8px;
+  background-image: linear-gradient(
+    to bottom,
+    var(--accent-color) 0 8px,
+    transparent 8px 24px
+  );
+  background-size: 8px 24px;
+  background-repeat: repeat-y;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hiring::before {
+  inset-inline-start: 4px;
+}
+
+.hiring::after {
+  inset-inline-end: 4px;
+}
+
+@keyframes hiring-border-pulse {
+  from {
+    background-position-y: 0;
+  }
+  to {
+    background-position-y: 24px;
+  }
+}
+
+.hiring:hover::before,
+.hiring:focus-visible::before,
+.hiring:hover::after,
+.hiring:focus-visible::after {
+  opacity: 1;
+  animation: hiring-border-pulse 0.9s steps(3, end) infinite;
+}
+
+.hiring:hover::after,
+.hiring:focus-visible::after {
+  animation-delay: -0.45s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hiring:hover::before,
+  .hiring:focus-visible::before,
+  .hiring:hover::after,
+  .hiring:focus-visible::after {
+    animation: none;
+    opacity: 0.35;
+  }
 }
 
 /* One sparkle cell: an 8px square on the block's fixed 16px grid. The

@@ -1,6 +1,10 @@
 // Hover lights block cells in place, display-style: a cell turns accent as
 // the pointer reaches its column, then the next cell over does the same.
-// Cells never move, there is no lift and no drift.
+// Cells never move, there is no lift and no drift. The same lighting also
+// runs as a sweep: a virtual pointer crosses the wordmark once after the
+// boot screen clears, and again every so often while the page sits idle
+// and visible, so the header has a pixel animation of its own even with
+// nobody hovering it.
 // The original text remains the no-JS fallback; the heading has its own label.
 export async function animateWordmark(wordmark, reduced) {
   if (!wordmark || !matchMedia("(hover: hover)").matches) return;
@@ -83,17 +87,67 @@ export async function animateWordmark(wordmark, reduced) {
     frame = active.size ? requestAnimationFrame(draw) : 0;
   }
 
-  wordmark.addEventListener("pointermove", (event) => {
-    if (reduced.matches || event.pointerType === "touch") return;
-    pointer = { x: event.clientX, y: event.clientY };
+  function nudge(clientX) {
+    pointer = { x: clientX, y: 0 };
     if (!frame) {
       previous = performance.now();
       frame = requestAnimationFrame(draw);
     }
+  }
+
+  let lastInteract = 0;
+  let sweepFrame = 0;
+
+  function stopSweep() {
+    cancelAnimationFrame(sweepFrame);
+    sweepFrame = 0;
+  }
+
+  // One virtual pass across the wordmark, fed through the same nudge the
+  // pointer uses, so the sweep and the hover are the same effect.
+  function sweep() {
+    if (reduced.matches || document.hidden) return;
+    const origin = wordmark.getBoundingClientRect();
+    const from = origin.left - 65;
+    const to = origin.right + 65;
+    const start = performance.now();
+    const DURATION = 2100;
+    stopSweep();
+    const step = (now) => {
+      const t = Math.min((now - start) / DURATION, 1);
+      nudge(from + (to - from) * t);
+      sweepFrame = t < 1 && !document.hidden && !reduced.matches
+        ? requestAnimationFrame(step)
+        : 0;
+    };
+    sweepFrame = requestAnimationFrame(step);
+  }
+
+  wordmark.addEventListener("pointermove", (event) => {
+    if (reduced.matches || event.pointerType === "touch") return;
+    lastInteract = performance.now();
+    stopSweep();
+    nudge(event.clientX);
   }, { passive: true });
   wordmark.addEventListener("pointerleave", () => { pointer = null; });
-  reduced.addEventListener("change", reset);
+
+  // First sweep once the boot screen (about 1.3s) has cleared, then again
+  // every 20s while the page is visible and nobody has hovered recently.
+  const firstSweep = setTimeout(sweep, 1600);
+  const idleSweep = setInterval(() => {
+    if (performance.now() - lastInteract > 12000) sweep();
+  }, 20000);
+
+  reduced.addEventListener("change", () => {
+    reset();
+    stopSweep();
+    clearTimeout(firstSweep);
+    clearInterval(idleSweep);
+  });
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) reset();
+    if (document.hidden) {
+      reset();
+      stopSweep();
+    }
   });
 }
