@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page.title }} | {{ config.title }}{% endblock title %}
+{% block description %}{{ page.description }}{% endblock description %}
+
+{% block content %}
+{% include "partials/masthead.html" %}
+
+      <section class="section">
+        <h2 class="section__title" id="post"><span class="prompt" aria-hidden="true">$</span> {{ page.title }}<a class="anchor" href="#post" aria-label="Link to this section">#</a></h2>
+        <p class="muted">{{ page.date | date(format="%Y-%m-%d") }}</p>
+        {{ page.content | safe }}
+      </section>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <p class="muted"><a href="{{ get_url(path='@/blog/_index.md') }}">← all posts</a></p>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+{% endblock content %}
+
+{% block keys %}
+        <li><kbd>1</kbd><span class="keys__label">post</span></li>
+        <li><kbd>t</kbd><span class="keys__label">theme</span></li>
+        <li><kbd>?</kbd><span class="keys__label">this</span></li>
+{% endblock keys %}
