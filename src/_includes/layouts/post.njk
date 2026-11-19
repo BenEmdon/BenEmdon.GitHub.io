@@ -1,0 +1,25 @@
+---
+layout: layouts/base.njk
+keys:
+  - key: "1"
+    label: post
+  - key: t
+    label: theme
+  - key: "?"
+    label: this
+---
+<article class="section" id="post">
+  <p class="muted"><a href="/blog/">&larr; blog</a></p>
+
+  <h2 class="section__title"><span class="prompt" aria-hidden="true">$</span> cat ./{{ page.fileSlug }}.md</h2>
+
+  <p class="muted">{{ page.date | htmlDateString }}</p>
+
+  {% if sample %}
+  <p class="sample-note">[ sample post: placeholder copy for the blog experiment, not something I have published ]</p>
+  {% endif %}
+
+  <div class="prose">
+    {{ content | safe }}
+  </div>
+</article>
