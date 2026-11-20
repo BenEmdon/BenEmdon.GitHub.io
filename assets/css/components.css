@@ -150,32 +150,18 @@
 }
 
 /*
-  Experiment: the pixel meadow above the footer. A picture, not UI, so
-  like the portrait it keeps one fixed palette in both themes; the frame
-  is the page rule, the same border the portrait uses. The canvas is
-  144 x 60 cells scaled to the column width, so at full width each cell
-  is 4px and the block stands 240px tall, a whole number of --step rows.
+  Experiment: the pixel meadow above the footer. A picture, not UI. It
+  carries two palettes, day and night, over one geometry: meadow.js
+  re-lights the same scene to follow the resolved theme, the way the
+  portrait re-dithers when the theme moves under it. The frame is the
+  page rule, the same border the portrait uses. The canvas is 144 x 60
+  cells scaled to the column width, so at full width each cell is 4px
+  and the block stands 240px tall, a whole number of --step rows.
   image-rendering: pixelated keeps the scaling on whole cells; meadow.js
   does all the stepping, so there is no transition or animation here.
 */
 .meadow {
   border: 1px solid var(--page-rule);
-}
-
-/*
-  Ben's call, 2026-11-20: the meadow is a daytime picture and belongs to
-  the light theme only. In dark theme, pinned or via the OS in system
-  mode, the block is not shown at all. The resolved-theme logic mirrors
-  tokens.css: [data-theme] pins a theme, and without it the OS decides.
-*/
-:root[data-theme="dark"] .meadow {
-  display: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .meadow {
-    display: none;
-  }
 }
 
 .meadow__canvas {

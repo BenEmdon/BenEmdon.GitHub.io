@@ -2,11 +2,14 @@
   Experiment: a quiet pixel meadow above the footer.
 
   A Studio Ghibli sort of scene, drawn in code rather than loaded as an
-  image: big sky, pale hills, a grass field, one tree. It follows the
-  portrait's lead in two ways. It is a fixed palette in both themes,
-  because a scene's sky is its sky; swapping colours per theme would
-  re-light the picture instead of recolouring it. And it arrives the way
-  the portrait does, in scrambled blocks that clear in steps.
+  image: big sky, pale hills, a grass field, one tree. It arrives the
+  way the portrait does, in scrambled blocks that clear in steps, and
+  like the portrait it re-renders when the theme moves under it: the
+  scene is built once as geometry, then lit twice, a day palette and a
+  night palette over the same cells. Ben asked for the dark version
+  rather than no meadow at all in dark theme, so at night the same
+  field sits under a moon, the flowers sleep, and the light that
+  crosses is moonlight, cooler and quieter on the same ladder.
 
   The pixel rule holds throughout: nothing moves, drifts, or fades. The
   reveal opens whole blocks on a 75ms tick. The light that crosses the
@@ -46,6 +49,36 @@ const PALETTE = [
   "#6e4a2c", // 13 trunk
   "#4c331e", // 14 trunk shade
   "#f2cf6b", // 15 flower
+];
+
+// The night palette: indices 0-15 re-light the day colour in the same
+// slot, so the geometry, the ladders, and the reveal all carry over
+// untouched and only the light changes. Night ramps compress and cool:
+// shadows fall toward blue and purple, the meadow goes deep blue-green,
+// and the canopy's lit rim (slots 7-9, the same cells the day rim uses)
+// stays the brightest thing in the field after the sky. Three extra
+// slots exist only at night: the moon's lit rim, the moon's face, and
+// starlight. Nineteen colours in all.
+const NIGHT_PALETTE = [
+  "#060d21", // 0  sky zenith, deep blue
+  "#0c1a38", // 1  sky mid
+  "#14284e", // 2  sky low
+  "#1e3862", // 3  sky horizon, the last glow
+  "#2c4066", // 4  cloud, a faint shape against the sky
+  "#1a2c4c", // 5  cloud shade
+  "#16302e", // 6  hill far, silhouetted on the horizon glow
+  "#3d6b4f", // 7  meadow highlight, moonlit
+  "#2c5741", // 8  meadow 1
+  "#214636", // 9  meadow 2
+  "#173527", // 10 meadow 3
+  "#10241c", // 11 meadow 4, the cool shadow
+  "#0a1a20", // 12 canopy deep, near silhouette
+  "#241d2e", // 13 trunk, cooled toward plum
+  "#171221", // 14 trunk shade
+  "#cbb877", // 15 flower, one or two still awake, paled
+  "#e6eefb", // 16 moon rim
+  "#7f97bd", // 17 moon face
+  "#cfe0f7", // 18 star
 ];
 
 // Shade ladders, brightest first. The light sweep steps a ground pixel
@@ -353,7 +386,10 @@ for (let n = 0; n < 30; n += 1) {
 
 // Flowers: a handful of three-cell clusters low in the field, in the one
 // warm accent and in cloud white. Above the grass, so the sweep passes
-// under them and they stay lit.
+// under them and they stay lit. Their positions are recorded (no light
+// of their own, just bookkeeping) so the night scene can put most of
+// them to sleep.
+const flowerClusters = [];
 for (let n = 0; n < 10; n += 1) {
   const x = 4 + Math.floor(rng() * (W - 10));
   const y = 47 + Math.floor(rng() * 7);
@@ -362,6 +398,7 @@ for (let n = 0; n < 10; n += 1) {
   set(x, y, colour);
   set(x + 1, y, colour);
   set(x, y + 1, colour);
+  flowerClusters.push([x, y]);
 }
 
 /* ----- fence ----- */
@@ -481,13 +518,111 @@ for (const [hx, hy] of [
   canopyStamp(hx, hy, 1.6, 0.8, 7);
 }
 
+/* ----- the night scene ----- */
+
+// The same geometry, re-lit. nightBase starts as a copy of the day
+// cells; most of the night is then just the night palette reading the
+// same indices. Only three things are drawn differently: the flowers
+// sleep, a moon hangs in the calm top-right of the sky, and a sparse
+// set of star clusters lights in the sky the clouds leave empty.
+const nightBase = Uint8Array.from(base);
+
+// All but the first two flower clusters fold back into the field's
+// deepest shade. The two that stay keep their slots, paled by the
+// night palette like everything else.
+flowerClusters.forEach(([fx, fy], i) => {
+  if (i < 2) return;
+  for (const [dx, dy] of [
+    [0, 0],
+    [1, 0],
+    [0, 1],
+  ]) {
+    if (inside(fx + dx, fy + dy)) nightBase[at(fx + dx, fy + dy)] = 11;
+  }
+});
+
+// The two birds go home at night: their cells take back the sky colour
+// they were drawn over, so the sky is empty of them after dark.
+for (const [bx, by] of [
+  [98, 20],
+  [107, 23],
+]) {
+  for (const [dx, dy] of [
+    [0, 1],
+    [1, 0],
+    [2, 1],
+  ]) {
+    if (inside(bx + dx, by + dy)) nightBase[at(bx + dx, by + dy)] = skyColour(bx + dx, by + dy);
+  }
+}
+
+// The moon: a small disc in the face colour, with the cells on its top
+// and left edge, where the light would catch a rim, in the lit colour.
+// One light story, told the same way the canopy tells it.
+const moonCells = new Set();
+stamp(132, 5, 2.9, 2.9, (x, y) => {
+  if (!inside(x, y)) return;
+  nightBase[at(x, y)] = 17;
+  moonCells.add(at(x, y));
+});
+for (const i of moonCells) {
+  const x = i % W;
+  const y = Math.floor(i / W);
+  const openAbove = !moonCells.has(at(x, y - 1));
+  const openLeft = !moonCells.has(at(x - 1, y));
+  if (openAbove || openLeft) nightBase[i] = 16;
+}
+
+// Stars, sparse and clustered, placed only where every cell of the
+// cluster lands on open sky: a cluster that would touch a cloud, the
+// canopy, or the moon is skipped whole rather than clipped. Their own
+// seed, so the day scene's rolls are untouched.
+const nrng = mulberry32(20261120);
+const STAR_SHAPES = {
+  triple: [
+    [0, 0],
+    [1, 0],
+    [0, 1],
+  ],
+  dot: [[0, 0]],
+};
+for (const [sx, sy, shape] of [
+  [8, 2, "triple"],
+  [52, 2, "triple"],
+  [80, 2, "dot"],
+  [96, 1, "triple"],
+  [118, 2, "dot"],
+  [66, 3, "dot"],
+  [122, 8, "dot"],
+  [138, 12, "triple"],
+  [130, 18, "dot"],
+  [141, 21, "dot"],
+]) {
+  const cx = sx + Math.floor(nrng() * 3) - 1;
+  const cy = sy + Math.floor(nrng() * 3) - 1;
+  const cells = STAR_SHAPES[shape].map(([dx, dy]) => [cx + dx, cy + dy]);
+  const open = cells.every(
+    ([x, y]) => inside(x, y) && nightBase[at(x, y)] <= 3
+  );
+  if (!open) continue;
+  for (const [x, y] of cells) nightBase[at(x, y)] = 18;
+}
+
 /* ---------- painting ---------- */
 
-const RGB = PALETTE.map((hex) => [
+const toRgb = (hex) => [
   parseInt(hex.slice(1, 3), 16),
   parseInt(hex.slice(3, 5), 16),
   parseInt(hex.slice(5, 7), 16),
-]);
+];
+const DAY_RGB = PALETTE.map(toRgb);
+const NIGHT_RGB = NIGHT_PALETTE.map(toRgb);
+
+// What paint() reads: the day cells under the day palette, or the night
+// cells under the night palette. The wiring swaps the pair together
+// whenever the resolved theme changes.
+let scene = base;
+let RGB = DAY_RGB;
 
 // Reveal blocks of 6 x 6 cells, scrambled once with the same seed, so
 // the scene arrives in the same order on every load. An unopened block
@@ -518,7 +653,7 @@ function paint(ctx, frame, revealed, front) {
       if (blockRank[block] >= revealed) {
         colour = coverColour(x, y);
       } else {
-        colour = base[i];
+        colour = scene[i];
         // The light: ground within the band behind the front steps one
         // rung brighter. Everything else keeps its colour exactly.
         if (rung[i] >= 0 && front !== null) {
@@ -558,7 +693,39 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
   let onScreen = false;
   let started = false;
 
-  paint(ctx, frame, revealed, front);
+  // The scene follows the resolved theme the way the portrait does:
+  // main.js re-dithers the portrait through its repaints list whenever
+  // the theme could have moved, and this is the same contract kept
+  // locally, since that list lives inside main.js. The resolved theme
+  // is the pinned [data-theme] when one is set, and the OS preference
+  // in system mode, where the attribute is removed. A swap re-renders
+  // the current state (same reveal, same light front) in the other
+  // palette; nothing restarts.
+  const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
+  const resolvedTheme = () =>
+    document.documentElement.dataset.theme ||
+    (systemDark.matches ? "dark" : "light");
+  let theme = null;
+
+  function applyTheme() {
+    const next = resolvedTheme();
+    if (next === theme) return;
+    theme = next;
+    scene = theme === "dark" ? nightBase : base;
+    RGB = theme === "dark" ? NIGHT_RGB : DAY_RGB;
+    paint(ctx, frame, revealed, front);
+  }
+
+  new MutationObserver(applyTheme).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme"],
+  });
+  // Only in system mode does the OS still get a vote, but listening
+  // either way is harmless: applyTheme no-ops when nothing resolved
+  // differently.
+  systemDark.addEventListener("change", applyTheme);
+
+  applyTheme();
 
   // The light's timetable: sleep, cross, sleep. Timeouts rather than an
   // interval, so at rest the scene costs nothing at all, and a wake that
