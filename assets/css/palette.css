@@ -144,6 +144,28 @@
 .palette__item.is-selected .palette__item-hint,
 .palette__item.is-selected .palette__item-key { color: var(--inverted-color); }
 
+/* Drawn keycaps (keycaps.js): the same hand-off as the keys legend. When
+   a key hint carries a canvas cap, the cap is the visual and the text
+   stays in the DOM for screen readers only (font-size: 0, as the legend
+   does it). Without the caps the hints stay plain text, unchanged. */
+.palette__item-key.is-capped,
+.palette__inputrow kbd.is-capped {
+  font-size: 0;
+  line-height: 0;
+}
+.palette__inputrow kbd.is-capped {
+  border: 0;
+  padding: 0;
+}
+.palette__item-key canvas,
+.palette__inputrow kbd canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+/* A cap is 22px in a 24px row: centre capped rows instead of baselining
+   them, the same fix the legend applies under .has-caps. */
+.palette.has-caps .palette__item { align-items: center; }
+
 .palette__empty {
   padding: 0 var(--step);
   color: var(--muted-color);
