@@ -255,7 +255,7 @@ function setUp() {
 
   // The scene starts on whichever state the page loaded in, drawn in one
   // cut; only changes after this earn the stepped swap.
-  const sceneCanvas = toggle.querySelector("[data-theme-scene]");
+  const sceneCanvas = document.querySelector("[data-theme-scene]");
   const themeScene = sceneCanvas
     ? createThemeScene(sceneCanvas, { dark: resolvedDark() })
     : null;
