@@ -125,6 +125,19 @@
   user-select: none;
 }
 
+/* Experiment (section icons): a 10x10 hand-drawn pixel icon per section,
+   drawn on a canvas by section-icons.js and shown at exactly 2x. It sits
+   on the title line between the prompt and the word, sized under one
+   --step so the line box never grows. */
+.sec-icon {
+  display: inline-block;
+  inline-size: 20px;
+  block-size: 20px;
+  vertical-align: -4px;
+  margin-inline-end: 0.5ch;
+  image-rendering: pixelated;
+}
+
 /* Hover-revealed heading anchor, opentui.com's own pattern (their
    .prose .anchor rule): hidden until the heading is hovered or the link
    itself is focused, so it doesn't clutter the reading view. Touch devices

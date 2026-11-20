@@ -45,6 +45,10 @@
   --muted-color: light-dark(var(--ink-500), var(--ink-400));
   --accent-color: light-dark(var(--blue-light), var(--blue-dark));
   --accent-pulse-color: light-dark(#6ea8e1, #a9cdf2);
+  /* Experiment (section icons): the deep end of the icon ramp. Cooler and
+     darker than the accent, so the three icon shades shift hue as they
+     darken instead of only dropping brightness. */
+  --icon-deep: light-dark(#163d75, #2e5c8f);
   --link-color: var(--accent-color);
   --inverted-color: light-dark(var(--ink-50), var(--ink-900));
 
