@@ -320,6 +320,19 @@
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
+      <!-- Experiment: a quiet pixel meadow, drawn in code by meadow.js.
+           Not a section, so the numbered key jumps do not move. It sits
+           above the footer as a closing vista; without JS the canvas
+           simply stays blank and the page loses nothing. -->
+      <figure
+        class="meadow"
+        data-meadow
+        role="img"
+        aria-label="A pixel-art meadow: one tree on a grass field under a big sky, with distant hills, clouds, and a fence."
+      >
+        <canvas class="meadow__canvas" data-meadow-canvas width="144" height="60" aria-hidden="true"></canvas>
+      </figure>
+
       <!-- The clock ships hidden and is unwrapped by main.js, so a visitor
            without JS sees "Ottawa, ON" rather than a dead --:--. -->
       <footer class="footer">
@@ -435,5 +448,6 @@
 
     <script type="module" src="assets/js/main.js"></script>
     <script type="module" src="assets/js/palette.js"></script>
+    <script type="module" src="assets/js/meadow.js"></script>
   </body>
 </html>

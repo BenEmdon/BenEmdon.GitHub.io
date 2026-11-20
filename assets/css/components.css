@@ -150,6 +150,25 @@
 }
 
 /*
+  Experiment: the pixel meadow above the footer. A picture, not UI, so
+  like the portrait it keeps one fixed palette in both themes; the frame
+  is the page rule, the same border the portrait uses. The canvas is
+  144 x 60 cells scaled to the column width, so at full width each cell
+  is 4px and the block stands 240px tall, a whole number of --step rows.
+  image-rendering: pixelated keeps the scaling on whole cells; meadow.js
+  does all the stepping, so there is no transition or animation here.
+*/
+.meadow {
+  border: 1px solid var(--page-rule);
+}
+
+.meadow__canvas {
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+/*
   The clock's colon and any boot-time pending output blink as a hard terminal
   step, not a fade. The colon only dims because at 0 the footer spends half of
   every second reading "09 19", which looks like a typo rather than a clock.
