@@ -541,6 +541,17 @@ for (const [hx, hy] of [
   canopyStamp(hx, hy, 1.6, 0.8, 7);
 }
 
+// The tree and the fence are drawn over ground, and the cells they
+// cover keep the ground's weather rung, so a passing front used to
+// repaint the trunk, branches, and rails in ladder greens for a few
+// seconds (Ben spotted it, 2026-11-20). Their colours (canopy deep,
+// trunk, trunk shade) belong to no ladder, so any cell wearing one is
+// a subject, not ground: clear its rung and the weather passes behind
+// it. Rest colours do not change; only the bookkeeping does.
+for (let i = 0; i < W * H; i += 1) {
+  if (base[i] === 12 || base[i] === 13 || base[i] === 14) rung[i] = -1;
+}
+
 /* ----- the night scene ----- */
 
 // The same geometry, re-lit. nightBase starts as a copy of the day
