@@ -182,6 +182,50 @@
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
+      <!-- Dither installation experiment: not a .section, so it does not
+           shift the numbered key jumps, the same call the hiring block
+           made. Panel 1 reuses the portrait's own [data-dither] wiring in
+           main.js; panels 2 and 3 and the skyline band above the footer
+           are drawn and revealed by gallery.js. Every reveal clears whole
+           blocks in steps: nothing moves and nothing fades. -->
+      <div class="gallery-block">
+        <h2 class="section__title" id="gallery"><span class="prompt" aria-hidden="true">$</span> gallery</h2>
+        <div class="gallery">
+          <figure class="gallery__figure">
+            <button class="dither gallery__panel" type="button" data-dither aria-label="Show the undithered photo">
+              <img
+                class="dither__photo"
+                src="assets/img/ben.jpg"
+                alt="Ben Emdon"
+                width="400"
+                height="400"
+              />
+              <canvas class="dither__canvas" data-dither-canvas aria-hidden="true"></canvas>
+            </button>
+            <figcaption class="gallery__caption">portrait, dithered</figcaption>
+          </figure>
+          <figure class="gallery__figure">
+            <button class="gallery__panel" type="button" data-gallery-panel="skyline" aria-label="Reveal the drawn Ottawa skyline under its dither">
+              <canvas class="gallery__scene" data-gallery-scene width="96" height="96" aria-hidden="true"></canvas>
+              <canvas class="gallery__cover" data-gallery-cover width="96" height="96" aria-hidden="true"></canvas>
+            </button>
+            <figcaption class="gallery__caption">parliament, drawn in code</figcaption>
+          </figure>
+          <figure class="gallery__figure">
+            <button class="gallery__panel" type="button" data-gallery-panel="pattern" aria-label="Reveal the geometric pattern under its dither">
+              <canvas class="gallery__scene" data-gallery-scene width="96" height="96" aria-hidden="true"></canvas>
+              <canvas class="gallery__cover" data-gallery-cover width="96" height="96" aria-hidden="true"></canvas>
+            </button>
+            <figcaption class="gallery__caption">pattern, drawn in code</figcaption>
+          </figure>
+        </div>
+        <p class="muted gallery__note">
+          Three panels, one rule: the dither clears in blocks, in steps. Hover or tap to reveal.
+        </p>
+      </div>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
       <section class="section">
         <h2 class="section__title" id="about"><span class="prompt" aria-hidden="true">$</span> about<a class="anchor" href="#about" aria-label="Link to this section">#</a></h2>
         <p>
@@ -317,6 +361,10 @@
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
+      <!-- Dithered Ottawa skyline band, drawn in code by gallery.js and
+           revealed in scrambled blocks when it scrolls into view. -->
+      <canvas class="skyline" data-skyline-band width="360" height="30" aria-hidden="true"></canvas>
+
       <!-- The clock ships hidden and is unwrapped by main.js, so a visitor
            without JS sees "Ottawa, ON" rather than a dead --:--. -->
       <footer class="footer">
@@ -373,5 +421,6 @@
     </div>
 
     <script type="module" src="assets/js/main.js"></script>
+    <script type="module" src="assets/js/gallery.js"></script>
   </body>
 </html>

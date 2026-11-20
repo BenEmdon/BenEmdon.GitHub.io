@@ -150,6 +150,93 @@
 }
 
 /*
+  Dither installation (experiment): the portrait moment, extended to three
+  panels plus a skyline band above the footer. Panels 2 and 3 are drawn in
+  code by gallery.js and ship covered by a Bayer dither of themselves; the
+  cover clears in whole 8px blocks, in the same eight steps as the portrait
+  dissolve. No transitions anywhere in this block: a block is covered or it
+  is clear, and that is the whole animation.
+*/
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--step-half);
+}
+
+.gallery__figure {
+  margin: 0;
+}
+
+/* Panel 1 carries the .dither class as well, so main.js wires it exactly
+   like the original portrait; this only undoes .dither's fixed width. */
+.gallery__panel {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--dither-paper);
+  border: 1px solid var(--page-rule);
+  display: block;
+  padding: 0;
+  cursor: pointer;
+  /* Read back resolved by gallery.js as the dither ink. */
+  color: var(--dither-ink);
+}
+
+.gallery__panel:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.gallery__scene {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  /* Read back resolved by gallery.js as the scene accent. */
+  color: var(--accent-color);
+}
+
+.gallery__cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+}
+
+.gallery__caption {
+  font-size: var(--text-small);
+  color: var(--muted-color);
+  line-height: var(--step);
+}
+
+.gallery__note {
+  margin-block-start: var(--step-half);
+  font-size: var(--text-small);
+}
+
+@media (max-width: 34rem) {
+  .gallery {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The skyline band: 360 x 30 grid units stretched across the column, so
+   each unit lands as a rectangle of page pixels and stays crisp. Its
+   border colour doubles as gallery.js's accent source (see gallery.js). */
+.skyline {
+  width: 100%;
+  aspect-ratio: 12;
+  display: block;
+  image-rendering: pixelated;
+  color: var(--dither-ink);
+  background: var(--dither-paper);
+  border: 1px solid var(--accent-color);
+}
+
+/*
   The clock's colon and any boot-time pending output blink as a hard terminal
   step, not a fade. The colon only dims because at 0 the footer spends half of
   every second reading "09 19", which looks like a typo rather than a clock.
