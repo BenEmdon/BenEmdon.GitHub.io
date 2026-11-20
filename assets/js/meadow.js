@@ -16,10 +16,14 @@
   the field afterwards is only ground pixels stepping one shade in
   place: a gust is a band of cells one rung brighter while the band
   covers them, then one rung back as it leaves, and a cloud shadow is
-  a soft patch one rung darker on its own slower crossing. Between
-  gusts the field rests, fully still, for a long and varying while;
-  the bands are orders, not things travelling. Reduced motion gets
-  the finished scene in one cut and no weather at all.
+  a soft patch one rung darker on its own slower crossing. Both roll
+  down the field, from the horizon toward the viewer: the gust's front
+  reaches the far rows first and the near rows last, widening and
+  gathering a little speed as it comes, the way wind arriving across
+  a real field reads. Between gusts the field rests, fully still, for
+  a long and varying while; the bands are orders, not things
+  travelling. Reduced motion gets the finished scene in one cut and
+  no weather at all.
 
   The scene is built once, deterministically: one seeded random source
   places the grass and flowers and scrambles the reveal, so every load
@@ -646,14 +650,19 @@ function coverColour(x, y) {
   return BAYER_4[y % 4][x % 4] < 4 ? 2 : 3;
 }
 
-// Weather geometry. A gust is a band in a slanted coordinate, so its
-// front leans as it crosses and the top of the field catches it first:
-// u = x + GUST_SLANT * (y - 40). A cloud shadow is a soft ellipse of
-// shade whose rim breaks up on a fixed Bayer threshold, so the edge
-// reads as soft shade rather than a hard outline, and the broken
-// texture is each cell's own, identical on every pass.
-const GUST_SLANT = 0.45;
-const gustCoord = (x, y) => x + GUST_SLANT * (y - 40);
+// Weather geometry. A gust is a band whose front is a row of the
+// field: it starts above the horizon side of the ground and advances
+// toward the viewer, so the far rows light first and the near rows
+// last. The front is not a ruler: a wobble, a sum of sines over the
+// columns, holds it a row or two early here and late there, so it
+// rolls rather than descends, and each gust rolls the wobble at its
+// own phase, so no two fronts trace the same line.
+// A cloud shadow is a soft ellipse of shade whose rim breaks up on a
+// fixed Bayer threshold, so the edge reads as soft shade rather than
+// a hard outline, and the broken texture is each cell's own,
+// identical on every pass.
+const gustWobble = (x) => 1.5 * Math.sin(x / 16 + 0.7) + 0.8 * Math.sin(x / 6.3 + 2.0);
+const GUST_FRINGE = 1.4; // rows of broken edge at the band's front and tail
 
 function shadowCovers(shadow, x, y) {
   const dx = (x - shadow.cx) / shadow.rx;
@@ -689,12 +698,17 @@ function paint(ctx, frame, revealed, fx) {
           // rim uses, so the band arrives as a ragged front of light
           // rather than a ruled stripe.
           if (fx.gust !== null && ladderOf[i] === 0) {
-            const d = fx.gust.u - gustCoord(x, y);
-            if (d >= 0 && d <= fx.gust.width) {
-              const edge = Math.min(d, fx.gust.width - d);
+            // How far the front has rolled past this cell's row, in
+            // the column's own wobbled frame. Inside the band the
+            // cell steps one rung brighter; the band's front and tail
+            // break up on the same fixed Bayer threshold the shadow's
+            // rim uses, so it arrives ragged, not ruled.
+            const d = fx.gust.row + gustWobble(x + fx.gust.phase) - y;
+            if (d >= 0 && d <= fx.gust.depth) {
+              const edge = Math.min(d, fx.gust.depth - d);
               if (
-                edge >= 2.5 ||
-                (BAYER_4[y % 4][x % 4] + 0.5) / 16 < edge / 2.5
+                edge >= GUST_FRINGE ||
+                (BAYER_4[y % 4][x % 4] + 0.5) / 16 < edge / GUST_FRINGE
               ) {
                 r -= 1;
               }
@@ -724,9 +738,17 @@ const REVEAL_STEPS = 14;
 const STEP_MS = 75; // the site's --motion-step
 const WEATHER_TICK_MS = 120;
 const REST_MS = 6500; // the pause before the first gust
-const GUST_STEP = 3; // band advance per tick, in slanted cells
-const GUST_U_MAX = 154; // the largest gust coordinate any ground cell has
-const SHADOW_STEP = 1; // the shadow crosses slower than the gusts
+const GUST_START_ROW = 28; // above the field's horizon edge (rows 36-44)
+// The shadow's size grows as it comes forward, perspective doing the
+// same work the gust's widening band does: far away it is a small,
+// tight patch; near the viewer it sprawls.
+const SHADOW_START_ROW = 24;
+const SHADOW_STEP = 0.3; // rows per tick: the shadow rolls slower than the gusts
+
+function shadowSize(cy) {
+  const t = Math.min(1, Math.max(0, (cy - SHADOW_START_ROW) / (H - SHADOW_START_ROW)));
+  return { rx: 30 + 24 * t, ry: 4 + 5 * t };
+}
 
 for (const figure of document.querySelectorAll("[data-meadow]")) {
   const canvas = figure.querySelector("[data-meadow-canvas]");
@@ -736,8 +758,8 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   let revealed = reduced.matches ? BW * BH : 0;
-  // The weather in flight: a gust band by its slanted position and
-  // width, a cloud shadow by its centre. Either may be null, and most
+  // The weather in flight: a gust band by its front row and depth, a
+  // cloud shadow by its centre and size. Either may be null, and most
   // of the time both are: stillness is the field's default state.
   const fx = { gust: null, shadow: null };
   let onScreen = false;
@@ -808,16 +830,27 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
   function tick() {
     if (!onScreen || document.hidden) return; // the weather waits
     if (fx.gust !== null) {
-      fx.gust.u += GUST_STEP;
-      if (fx.gust.u - fx.gust.width > GUST_U_MAX) {
+      // The front gathers a little speed and the band widens as both
+      // come toward the viewer: nearer weather reads faster and
+      // broader, the cheapest perspective there is.
+      const t = Math.min(
+        1,
+        Math.max(0, (fx.gust.row - GUST_START_ROW) / (H - GUST_START_ROW))
+      );
+      fx.gust.row += 0.42 + 0.3 * t;
+      fx.gust.depth = (3 + 3.8 * t) * fx.gust.depthScale;
+      if (fx.gust.row - fx.gust.depth > H + 2) {
         fx.gust = null;
         // A quarter of gusts are followed closely by another.
         scheduleNextGust(trng() < 0.25);
       }
     }
     if (fx.shadow !== null) {
-      fx.shadow.cx += SHADOW_STEP;
-      if (fx.shadow.cx - fx.shadow.rx > W) {
+      fx.shadow.cy += SHADOW_STEP;
+      const size = shadowSize(fx.shadow.cy);
+      fx.shadow.rx = size.rx;
+      fx.shadow.ry = size.ry;
+      if (fx.shadow.cy - fx.shadow.ry > H) {
         fx.shadow = null;
         scheduleNextShadow();
       }
@@ -831,8 +864,17 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
 
   function startGust() {
     if (fx.gust !== null) return;
-    const width = 9 + Math.floor(trng() * 5);
-    fx.gust = { u: -width - 6, width };
+    // The band starts narrow at the horizon; tick() widens it as the
+    // front rolls down the field. Each gust rolls the wobble at its
+    // own phase and carries its own depth scale, both from the
+    // timetable's rolls, so no two gusts trace the same front.
+    const depthScale = 0.85 + trng() * 0.35;
+    fx.gust = {
+      row: GUST_START_ROW,
+      depth: 3 * depthScale,
+      phase: trng() * 60,
+      depthScale,
+    };
     startTicker();
   }
 
@@ -843,8 +885,15 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
 
   function startShadow() {
     if (fx.shadow !== null) return;
-    const rx = 38 + Math.floor(trng() * 10);
-    fx.shadow = { cx: -rx - 6, rx, cy: 49, ry: 6.5 };
+    // The patch enters over the horizon at a seeded column and rolls
+    // down the field, growing as it comes. Its clock is its own.
+    const size = shadowSize(SHADOW_START_ROW);
+    fx.shadow = {
+      cx: 30 + Math.floor(trng() * 85),
+      cy: SHADOW_START_ROW,
+      rx: size.rx,
+      ry: size.ry,
+    };
     startTicker();
   }
 
