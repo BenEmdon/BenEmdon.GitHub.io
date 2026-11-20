@@ -217,6 +217,49 @@
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
+      <!-- The lab is not a .section, on purpose: main.js counts .section
+           elements for the 1 to 5 key jumps, and an experiment should not
+           renumber the keys a visitor already knows. It gets the section
+           title styling without the section behaviour. -->
+      <div class="lab" data-lab>
+        <h2 class="section__title"><span class="prompt" aria-hidden="true">$</span> lab</h2>
+        <p class="lab__intro">
+          A commit graph, drawn the way this site draws everything: one fixed
+          grid, pixels that light in place, nothing that moves.
+        </p>
+
+        <div class="lab__graph" data-lab-graph role="img" aria-label="An animated pixel commit graph: a main line of commits, a feature branch that merges back, and an agent branch that merges back."></div>
+
+        <noscript>
+          <pre class="lab__fallback" aria-hidden="true">agent                      o----o
+                            \    \
+main    o----o--------o------M----o----M
+             \              /
+feature       o-----o------o</pre>
+        </noscript>
+
+        <p class="lab__status" data-lab-status aria-live="polite">ready: press play</p>
+
+        <div class="lab__controls">
+          <button class="lab__button" type="button" data-lab-play>play</button>
+          <button class="lab__button" type="button" data-lab-step>step</button>
+          <button class="lab__button" type="button" data-lab-restart>restart</button>
+        </div>
+
+        <p class="lab__legend muted">top lane: agent &middot; middle: main &middot; bottom: feature</p>
+
+        <p class="muted">
+          This is the shape of the work I do. A branch is cheap, a merge is a
+          decision, and the history has to stay readable afterwards. At Code
+          Forge we keep that true at Stripe&rsquo;s scale, for engineers and
+          for the AI agents now writing code alongside them. What source
+          control looks like beyond Git starts here: the same graph, asked
+          harder questions.
+        </p>
+      </div>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
       <section class="section">
         <h2 class="section__title" id="work"><span class="prompt" aria-hidden="true">$</span> work<a class="anchor" href="#work" aria-label="Link to this section">#</a></h2>
 
@@ -373,5 +416,6 @@
     </div>
 
     <script type="module" src="assets/js/main.js"></script>
+    <script type="module" src="assets/js/lab.js"></script>
   </body>
 </html>

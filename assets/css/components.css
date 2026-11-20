@@ -334,3 +334,97 @@
     overflow-wrap: anywhere;
   }
 }
+
+/*
+  $ lab: the commit graph experiment. A fixed 36 by 7 grid inside the
+  reading column. Cells are placed by grid line and only ever change
+  colour in place: there is no transition, transform, or opacity here,
+  so a cell snapping on reads as a display lighting, not as movement.
+  Edge cells sit small in their square and node cells sit large, which
+  is the whole visual vocabulary: line, then commit.
+*/
+.lab__intro {
+  margin-block-end: var(--step);
+}
+
+.lab__graph {
+  display: grid;
+  grid-template-columns: repeat(36, 1fr);
+  grid-template-rows: repeat(7, 1fr);
+  aspect-ratio: 36 / 7;
+  border: 1px solid var(--page-rule);
+  background: var(--page-subtle);
+  padding: var(--step-half);
+  gap: 0;
+}
+
+.lab__cell {
+  display: block;
+  /* Unlit: a faint mark, so the grid itself is visible before anything
+     lights and a visitor can see the cells are fixed, not summoned. */
+  background: var(--page-rule);
+  opacity: 0.35;
+}
+
+/* An edge is a small square centred in its cell, a node is a large
+   one. The insets are done with margin so the lit size is a property
+   of the cell, never something that grows or animates. */
+.lab__cell--edge {
+  margin: 38%;
+}
+
+.lab__cell--node {
+  margin: 14%;
+}
+
+.lab__cell.is-lit {
+  opacity: 1;
+}
+
+.lab__cell--edge.is-lit {
+  background: var(--ink-400);
+}
+
+.lab__cell--node.is-lit {
+  background: var(--accent-color);
+}
+
+.lab__fallback {
+  font-size: var(--text-small);
+  line-height: var(--step);
+  overflow-x: auto;
+}
+
+.lab__status {
+  margin-block-start: var(--step-half);
+  color: var(--accent-color);
+  font-size: var(--text-small);
+  min-height: var(--step);
+}
+
+.lab__controls {
+  display: flex;
+  gap: var(--step);
+  margin-block-start: var(--step-half);
+}
+
+.lab__button {
+  font: inherit;
+  font-size: var(--text-small);
+  color: var(--accent-color);
+  border: 1px solid var(--accent-color);
+  background: none;
+  padding: 0 var(--step-half);
+  cursor: pointer;
+}
+
+.lab__button:hover,
+.lab__button:focus-visible {
+  background: var(--accent-color);
+  color: var(--inverted-color);
+}
+
+.lab__legend {
+  margin-block-start: var(--step-half);
+  font-size: var(--text-small);
+}
