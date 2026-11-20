@@ -320,6 +320,24 @@
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
+      <!-- Experiment: the Rideau Canal in winter, a held moment at dusk.
+           A wide band rather than a section, so it carries no $ title and
+           does not shift the numbered key jumps. It sits above the footer
+           as the page's last picture before the sign-off. Fixed palette,
+           like the portrait's duotone; without JS the canvas stays blank
+           inside its frame and the caption still reads. -->
+      <figure class="canal">
+        <canvas
+          class="canal__canvas"
+          data-canal-canvas
+          width="144"
+          height="48"
+          role="img"
+          aria-label="Pixel art of skaters on the frozen Rideau Canal at dusk, lamps lit, snow in the air"
+        ></canvas>
+        <figcaption class="canal__caption">rideau canal, first ice</figcaption>
+      </figure>
+
       <!-- The clock ships hidden and is unwrapped by main.js, so a visitor
            without JS sees "Ottawa, ON" rather than a dead --:--. -->
       <footer class="footer">
@@ -435,5 +453,6 @@
 
     <script type="module" src="assets/js/main.js"></script>
     <script type="module" src="assets/js/palette.js"></script>
+    <script type="module" src="assets/js/winter.js"></script>
   </body>
 </html>

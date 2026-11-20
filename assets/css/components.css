@@ -150,6 +150,36 @@
 }
 
 /*
+  Experiment: the canal band. A framed picture, not a section, so it has
+  no $ title and sits between the last divider and the footer. The canvas
+  is a 144 by 48 grid scaled up whole: image-rendering keeps the cells
+  square and separate. The scene inside is a fixed palette (winter.js),
+  so the frame borrows the page's rule colour and the caption borrows
+  its muted text colour, and those are the only theme-aware parts.
+*/
+.canal {
+  margin-block-end: var(--step);
+  border: 1px solid var(--page-rule);
+  background: var(--dither-paper);
+}
+
+.canal__canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.canal__caption {
+  padding: var(--step-half);
+  border-block-start: 1px solid var(--page-rule);
+  background: var(--page-background);
+  color: var(--muted-color);
+  font-size: var(--text-small);
+  line-height: var(--step);
+}
+
+/*
   The clock's colon and any boot-time pending output blink as a hard terminal
   step, not a fade. The colon only dims because at 0 the footer spends half of
   every second reading "09 19", which looks like a typo rather than a clock.
