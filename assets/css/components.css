@@ -162,6 +162,22 @@
   border: 1px solid var(--page-rule);
 }
 
+/*
+  Ben's call, 2026-11-20: the meadow is a daytime picture and belongs to
+  the light theme only. In dark theme, pinned or via the OS in system
+  mode, the block is not shown at all. The resolved-theme logic mirrors
+  tokens.css: [data-theme] pins a theme, and without it the OS decides.
+*/
+:root[data-theme="dark"] .meadow {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .meadow {
+    display: none;
+  }
+}
+
 .meadow__canvas {
   width: 100%;
   height: auto;
