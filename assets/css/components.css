@@ -334,3 +334,82 @@
     overflow-wrap: anywhere;
   }
 }
+
+/*
+  Pixel Margin Field (experiment): a fixed-grid field of pixels in the
+  margins outside the reading column, framing the page on wide screens
+  like a quiet gallery installation. It is decoration only: fixed,
+  pointer-events none, aria-hidden in the markup, and it never sits over
+  the column itself.
+
+  The gate is the point. The side fields appear only at 60rem and up,
+  where the margin beside the 36rem column is at least about 160px; on a
+  merely-large laptop a thinner field would read as clutter pressed
+  against the text. The top strip is the narrow-screen answer instead,
+  and the two ranges are mutually exclusive by construction: the strip's
+  max-width sits below the side fields' min-width, with a quiet band in
+  between where neither shows. (An earlier prototype let the strip show
+  on desktop as well; that overlap is what the split breakpoint fixes.)
+
+  Cells follow the site's pixel rule: an 8px square centred on a fixed
+  16px pitch, checkerboard parity only, snapping on or off via .is-lit.
+  Nothing here transitions or transforms, so a cell can only ever be lit
+  in place or not. The stepping itself lives in margin-field.js.
+*/
+.margin-field {
+  position: fixed;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.margin-field--left,
+.margin-field--right {
+  display: none;
+  inset-block: 0;
+  inline-size: calc((100vw - var(--content-width)) / 2);
+}
+
+.margin-field--left {
+  inset-inline-start: 0;
+}
+
+.margin-field--right {
+  inset-inline-end: 0;
+}
+
+.margin-field--top {
+  display: none;
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: 16px; /* one pitch tall: a single row of cells */
+}
+
+@media (min-width: 60rem) {
+  .margin-field--left,
+  .margin-field--right {
+    display: block;
+  }
+}
+
+@media (max-width: 47rem) {
+  .margin-field--top {
+    display: block;
+  }
+}
+
+.margin-field__cell {
+  position: absolute;
+  inline-size: 8px;
+  block-size: 8px;
+  background: var(--accent-color);
+  opacity: 0;
+}
+
+.margin-field__cell.is-lit {
+  opacity: 1;
+}
+
+/* Reduced motion gets the static render margin-field.js leaves behind,
+   with no loop behind it; there is no animation here to switch off,
+   because the cells never transition in the first place. */

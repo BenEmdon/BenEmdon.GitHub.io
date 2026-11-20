@@ -76,7 +76,7 @@
     <link rel="stylesheet" href="assets/css/tokens.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="assets/css/layout.css?v=20261114" />
-    <link rel="stylesheet" href="assets/css/components.css?v=20261114f" />
+    <link rel="stylesheet" href="assets/css/components.css?v=20261119" />
 
     <!-- Visit counting: GoatCounter. No cookies, no fingerprinting, no
          persistent identifier, nothing personal stored, so there is nothing
@@ -114,6 +114,16 @@
   </head>
 
   <body>
+    <!-- Pixel Margin Field (experiment): fixed-grid pixel cells in the
+         margins outside the reading column. Decoration only, so
+         aria-hidden and pointer-events none in CSS. Which fields exist
+         is a CSS gate (see components.css): side fields on genuinely
+         wide viewports, a one-row top strip on narrow ones, never both.
+         margin-field.js builds the cells and steps them. -->
+    <div class="margin-field margin-field--left" data-margin-field="side" aria-hidden="true"></div>
+    <div class="margin-field margin-field--right" data-margin-field="side" aria-hidden="true"></div>
+    <div class="margin-field margin-field--top" data-margin-field="top" aria-hidden="true"></div>
+
     <main class="page">
       <header>
         <h1>

@@ -1,5 +1,6 @@
 import { attach } from "./dither.js";
 import { animateWordmark } from "./wordmark.js";
+import { initMarginField } from "./margin-field.js";
 
 const THEME_KEY = "theme";
 // The cycle the toggle walks. "system" is where everyone starts, and it is
@@ -336,6 +337,13 @@ function setUp() {
   document.fonts.ready.then(() => wordmark?.classList.add("is-booting"));
 
   animateWordmark(wordmark, reduced);
+
+  /* ---------- margin field (experiment) ---------- */
+
+  // Fixed-grid pixels in the margins outside the column. It builds its
+  // own fields from the markup, gates itself on measured width, and
+  // leaves a single static render behind under reduced motion.
+  initMarginField(reduced);
 
   /* ---------- boot ---------- */
 
