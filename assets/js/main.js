@@ -1,5 +1,6 @@
 import { attach } from "./dither.js";
 import { animateWordmark } from "./wordmark.js";
+import { createThemeScene } from "./theme-scene.js";
 
 const THEME_KEY = "theme";
 // The cycle the toggle walks. "system" is where everyone starts, and it is
@@ -201,7 +202,11 @@ function setUp() {
   /* ---------- theme ---------- */
 
   const toggle = document.querySelector("[data-theme-toggle]");
+  const themeLabel = toggle.querySelector("[data-theme-label]");
   let mode = storedMode();
+
+  const resolvedDark = () =>
+    mode === "dark" || (mode === "system" && systemDark.matches);
 
   // Only light and dark pin [data-theme]. System mode removes it, which is the
   // same state the inline script in <head> leaves the page in before first
@@ -214,7 +219,10 @@ function setUp() {
     }
 
     const resolved = systemDark.matches ? "dark" : "light";
-    toggle.textContent = mode;
+    // The toggle carries the theme scene now, so the mode word lives in its
+    // own span; setting textContent on the button would wipe the canvas.
+    if (themeLabel) themeLabel.textContent = mode;
+    else toggle.textContent = mode;
     toggle.setAttribute(
       "aria-label",
       `Theme: ${mode === "system" ? `system (${resolved})` : mode}. ` +
@@ -224,6 +232,10 @@ function setUp() {
     // The dither reads its two colours back out of CSS, so it has to be
     // redrawn whenever the resolved theme could have moved under it.
     repaints.forEach((repaint) => repaint());
+
+    // The toggle's little landscape re-lights to match: day in light,
+    // night in dark, stepped cell by cell unless reduced motion is on.
+    themeScene?.setDark(resolvedDark(), reduced.matches);
   }
 
   toggle.addEventListener("click", () => {
@@ -240,6 +252,13 @@ function setUp() {
   systemDark.addEventListener("change", () => {
     if (mode === "system") applyMode();
   });
+
+  // The scene starts on whichever state the page loaded in, drawn in one
+  // cut; only changes after this earn the stepped swap.
+  const sceneCanvas = toggle.querySelector("[data-theme-scene]");
+  const themeScene = sceneCanvas
+    ? createThemeScene(sceneCanvas, { dark: resolvedDark() })
+    : null;
 
   applyMode();
 

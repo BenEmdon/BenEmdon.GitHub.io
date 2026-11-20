@@ -342,8 +342,19 @@
           >
             <kbd>?</kbd> keys
           </button>
-          <button class="footer__button" type="button" data-theme-toggle>
-            system
+          <button
+            class="footer__button footer__button--theme"
+            type="button"
+            data-theme-toggle
+          >
+            <canvas
+              class="theme-scene"
+              data-theme-scene
+              width="24"
+              height="12"
+              aria-hidden="true"
+            ></canvas>
+            <span data-theme-label>system</span>
           </button>
           <button class="footer__button" type="button" data-palette-open>
             <kbd>⌘K</kbd> palette

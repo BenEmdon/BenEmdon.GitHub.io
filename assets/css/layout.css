@@ -316,6 +316,23 @@
   font: inherit;
 }
 
+/* The theme toggle carries a 24x12 landscape at 2px cells, exactly one
+   --step tall so the footer row keeps its rhythm. The canvas is a window
+   onto the scene, so it keeps its own colours on the hover fill. */
+.footer__button--theme {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.theme-scene {
+  display: block;
+  width: 48px;
+  height: 24px;
+  image-rendering: pixelated;
+  border: 1px solid var(--page-rule);
+}
+
 /* A keyboard hint is noise on a device with no keyboard. */
 @media (hover: none) {
   [data-keys-toggle] {
