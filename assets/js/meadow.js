@@ -22,6 +22,16 @@
   places the grass and flowers and scrambles the reveal, so every load
   is the same meadow. Painting is a single canvas of 144 x 60 cells;
   frames are drawn only while revealing or while the light crosses.
+
+  Experiment (awake Guardian): a small ruined Guardian sits against
+  the base of the far ridge, drawn in a paler, bluer stone than any
+  foreground thing so it sits one plane back in the landscape. By day
+  it is a ruin, moss and a perched bird claiming it, its eye dark
+  glass. At night the eye wakes: not a beacon but a mind, lit at a dim
+  blue rest and brightening on a seeded, uneven timetable, with a rare
+  gaze step toward the moon and a rarer long blink. Blue only; in the
+  Guardian's own language red means targeting, and this one is only
+  thinking.
 */
 
 /* ---------- anchor ---------- */
@@ -29,9 +39,12 @@
 const W = 144;
 const H = 60;
 
-// Sixteen colours, each earning its place. Ramps hue-shift the way pixel
+// Twenty colours, each earning its place. Ramps hue-shift the way pixel
 // artists build them: sky cools upward and warms at the horizon, meadow
-// shadows lean blue-green while the highlights lean yellow.
+// shadows lean blue-green while the highlights lean yellow. The last
+// four are the Guardian's stone, a midground ramp: the same grey-blue
+// family as cut stone, stepped paler and bluer than a foreground ramp
+// would be, because distance washes a thing toward the sky.
 const PALETTE = [
   "#2e62a7", // 0  sky zenith
   "#5e8ec5", // 1  sky mid
@@ -49,16 +62,23 @@ const PALETTE = [
   "#6e4a2c", // 13 trunk
   "#4c331e", // 14 trunk shade
   "#f2cf6b", // 15 flower
+  "#aebfd0", // 16 Guardian stone lit, hazed by distance
+  "#8ba3ba", // 17 Guardian stone mid, its home tone
+  "#5f7a94", // 18 Guardian stone shade; also the eye's dull glass by day
+  "#3d546c", // 19 Guardian stone deep: seams, socket, the perched bird
 ];
 
-// The night palette: indices 0-15 re-light the day colour in the same
+// The night palette: indices 0-19 re-light the day colour in the same
 // slot, so the geometry, the ladders, and the reveal all carry over
 // untouched and only the light changes. Night ramps compress and cool:
 // shadows fall toward blue and purple, the meadow goes deep blue-green,
 // and the canopy's lit rim (slots 7-9, the same cells the day rim uses)
-// stays the brightest thing in the field after the sky. Three extra
-// slots exist only at night: the moon's lit rim, the moon's face, and
-// starlight. Nineteen colours in all.
+// stays the brightest thing in the field after the sky. The Guardian's
+// stone (16-19) cools further than any foreground stone would, the
+// distance telling even after dark. Eight more slots exist only at
+// night: the moon's lit rim, the moon's face, starlight, the waking
+// eye's four-rung blue ladder, and the one warm step its light lends
+// the ground at its feet. Twenty-eight colours in all.
 const NIGHT_PALETTE = [
   "#060d21", // 0  sky zenith, deep blue
   "#0c1a38", // 1  sky mid
@@ -76,9 +96,18 @@ const NIGHT_PALETTE = [
   "#241d2e", // 13 trunk, cooled toward plum
   "#171221", // 14 trunk shade
   "#cbb877", // 15 flower, one or two still awake, paled
-  "#e6eefb", // 16 moon rim
-  "#7f97bd", // 17 moon face
-  "#cfe0f7", // 18 star
+  "#46688e", // 16 Guardian stone lit, moonlit and hazed
+  "#2f4e6e", // 17 Guardian stone mid
+  "#213850", // 18 Guardian stone shade; the eye's glass, unlit
+  "#142636", // 19 Guardian stone deep, near silhouette
+  "#e6eefb", // 20 moon rim
+  "#7f97bd", // 21 moon face
+  "#cfe0f7", // 22 star
+  "#17507e", // 23 eye dim, the resting state: awake, barely
+  "#2e7cc4", // 24 eye mid
+  "#57b6f2", // 25 eye bright, attention
+  "#d8f4ff", // 26 eye hot core, one tick of a double pulse
+  "#55755e", // 27 the eye's glow pooled on the ground at its feet
 ];
 
 // Shade ladders, brightest first. The light sweep steps a ground pixel
@@ -529,6 +558,130 @@ for (let i = 0; i < W * H; i += 1) {
   if (base[i] === 12 || base[i] === 13 || base[i] === 14) rung[i] = -1;
 }
 
+/* ----- the Guardian ----- */
+
+// A small decayed Guardian seated against the base of the far ridge,
+// right of centre: dome tilted down toward one long arm resting on
+// the ground, one splayed leg segment to the side, moss on its crown
+// and shoulder, a bird perched on it. It is drawn as a bitmap: at 18
+// cells wide there is no room for a procedure to improvise. Its stone
+// is the midground ramp (slots 16-19), and the ground takes some of
+// it back afterwards, so it sits in the landscape rather than on it.
+const GUARDIAN_X = 78;
+const GUARDIAN_Y = 26;
+const GUARDIAN_MAP = [
+  "......BB..........",
+  "....BBB...........",
+  "....mmLLLLL.......",
+  "...LLMhHhMMSS.....",
+  "...LMSOrOSMSD.....",
+  "...LMSrCrSMSD.....",
+  "...LMSOrOSSSD.....",
+  "...MSMSMSMSSS.....",
+  ".....SSSSSD.......",
+  "..MgMSSSSMSD......",
+  "..MMSSMSSMSDDM....",
+  "...MSSMSDSSD..MS..",
+  "...SSSSMSDD..MMS..",
+  "MMSDSMSSSSDMMMMMS.",
+  "SSDSSSSSSSDSSSSMD.",
+  "...DDDDDDD.....D..",
+  "..................",
+  "..................",
+];
+const GUARDIAN_SLOTS = {
+  L: 16, // stone lit
+  M: 17, // stone mid
+  S: 18, // stone shade
+  D: 19, // stone deep
+  m: 6, // moss, the hill's pale green
+  g: 10, // moss deep, the meadow's own
+  B: 19, // the perched bird, a deep silhouette
+  H: 17, // the eye housing's ring
+  h: 16, // the ring's lit arc
+  O: 19, // the socket
+  C: 18, // the eye's core: dull glass by day
+  r: 19, // the core's ring: socket by day
+};
+
+// The cells the night scene and the painter need, as global indices:
+// the eye's core, the two conduit cells that answer it, the ground
+// its light pools on, and the dome edge the moonlight rims.
+const guardianEye = at(GUARDIAN_X + 7, GUARDIAN_Y + 5);
+const guardianConduits = [
+  at(GUARDIAN_X + 6, GUARDIAN_Y + 11), // the chest
+  at(GUARDIAN_X + 13, GUARDIAN_Y + 13), // partway down the resting arm
+];
+const guardianGlowGround = [
+  at(GUARDIAN_X + 5, GUARDIAN_Y + 16),
+  at(GUARDIAN_X + 6, GUARDIAN_Y + 16),
+  at(GUARDIAN_X + 7, GUARDIAN_Y + 16),
+];
+const guardianMoonRim = [
+  [11, 3, 20], // the one bright catch, where the light lands first
+  [12, 4, 21],
+  [12, 5, 21],
+  [12, 6, 21],
+].map(([lx, ly, slot]) => [at(GUARDIAN_X + lx, GUARDIAN_Y + ly), slot]);
+
+{
+  // The footprint's originals are recorded first: the ground gets
+  // some of these cells back below, and a restore has to be exact.
+  const originals = new Map();
+  const restore = (lx, ly) => {
+    const i = at(GUARDIAN_X + lx, GUARDIAN_Y + ly);
+    const o = originals.get(i);
+    if (!o) return;
+    base[i] = o[0];
+    rung[i] = o[1];
+    ladderOf[i] = o[2];
+  };
+  for (let ly = 0; ly < GUARDIAN_MAP.length; ly += 1) {
+    for (let lx = 0; lx < GUARDIAN_MAP[ly].length; lx += 1) {
+      const ch = GUARDIAN_MAP[ly][lx];
+      if (ch === ".") continue;
+      const i = at(GUARDIAN_X + lx, GUARDIAN_Y + ly);
+      if (!originals.has(i)) originals.set(i, [base[i], rung[i], ladderOf[i]]);
+      base[i] = GUARDIAN_SLOTS[ch];
+      rung[i] = -1; // a subject, not ground: the weather passes behind it
+    }
+  }
+  // The ground laps over its base: the whole bottom drawn row goes
+  // back to the field, and two cells of the row above it, so the
+  // meadow's top slope crosses in front of the seat.
+  for (let lx = 0; lx < 18; lx += 1) restore(lx, 15);
+  restore(4, 14);
+  restore(7, 14);
+  // Grass over the foot and the hand: the scene's own tuft shapes,
+  // coloured by the grass section's rule, one rung off the ground
+  // they stand on, and drawn only where the ground is meadow.
+  const tuftOver = (x, y, shape) => {
+    const here = rung[at(x, y)];
+    if (here < 0) return;
+    const r = here >= 3 ? here - 1 : here <= 1 ? here + 1 : here - 1;
+    const depth = shape.reduce((m, [, d]) => Math.max(m, d), 0);
+    for (const [dx, dy] of shape) {
+      const gx = x + dx;
+      const gy = y - depth + dy;
+      if (inside(gx, gy) && rung[at(gx, gy)] >= 0 && ladderOf[at(gx, gy)] === 0) {
+        setGround(gx, gy, 0, r);
+      }
+    }
+  };
+  tuftOver(84, 42, TUFTS[1]);
+  tuftOver(94, 41, TUFTS[0]);
+  // One flower cluster at its base, recorded with the rest so the
+  // night scene puts it to sleep like any other. Its cells are off
+  // the ladder, like the tree's: it is part of the subject.
+  set(80, 42, 15);
+  set(81, 42, 15);
+  set(80, 43, 15);
+  rung[at(80, 42)] = -1;
+  rung[at(81, 42)] = -1;
+  rung[at(80, 43)] = -1;
+  flowerClusters.push([80, 42]);
+}
+
 /* ----- the night scene ----- */
 
 // The same geometry, re-lit. nightBase starts as a copy of the day
@@ -573,7 +726,7 @@ for (const [bx, by] of [
 const moonCells = new Set();
 stamp(132, 5, 2.9, 2.9, (x, y) => {
   if (!inside(x, y)) return;
-  nightBase[at(x, y)] = 17;
+  nightBase[at(x, y)] = 21;
   moonCells.add(at(x, y));
 });
 for (const i of moonCells) {
@@ -581,7 +734,7 @@ for (const i of moonCells) {
   const y = Math.floor(i / W);
   const openAbove = !moonCells.has(at(x, y - 1));
   const openLeft = !moonCells.has(at(x - 1, y));
-  if (openAbove || openLeft) nightBase[i] = 16;
+  if (openAbove || openLeft) nightBase[i] = 20;
 }
 
 // Stars, sparse and clustered, placed only where every cell of the
@@ -616,8 +769,14 @@ for (const [sx, sy, shape] of [
     ([x, y]) => inside(x, y) && nightBase[at(x, y)] <= 3
   );
   if (!open) continue;
-  for (const [x, y] of cells) nightBase[at(x, y)] = 18;
+  for (const [x, y] of cells) nightBase[at(x, y)] = 22;
 }
+
+// The Guardian's moon rim: one cell of the moon's lit shade down the
+// dome's moon-facing edge, the canopy rim's own move at a smaller
+// scale. Written only into the night cells; by day those cells are
+// stone like the rest of the dome.
+for (const [i, slot] of guardianMoonRim) nightBase[i] = slot;
 
 /* ---------- painting ---------- */
 
@@ -654,6 +813,18 @@ function coverColour(x, y) {
   return BAYER_4[y % 4][x % 4] < 4 ? 2 : 3;
 }
 
+// The waking eye's state, kept by the wiring's timetable and read
+// here: a rung on its ladder (0 the dim rest, 3 the hot core), the
+// previous tick's rung (the conduits answer that one, a tick late and
+// a rung lower), whether the gaze has stepped one cell toward the
+// moon, and whether this tick is a blink. Reduced motion never starts
+// the timetable, so the eye parks at rung 0: lit, dim, and still.
+const EYE_RUNGS = [23, 24, 25, 26];
+let eyeRung = 0;
+let eyePrevRung = 0;
+let eyeGaze = false;
+let eyeBlink = false;
+
 function paint(ctx, frame, revealed, front) {
   const px = frame.data;
   for (let y = 0; y < H; y += 1) {
@@ -671,6 +842,30 @@ function paint(ctx, frame, revealed, front) {
           const d = front - x;
           if (d >= 0 && d <= 7) {
             colour = LADDERS[ladderOf[i]][Math.max(0, rung[i] - 1)];
+          }
+        }
+        // The eye, after dark only. The core shows its rung, the ring
+        // around it one rung lower, the conduits answer the previous
+        // rung a tick late and one rung lower again, and at the top
+        // rungs the ground at its feet takes the glow slot, all on
+        // the same tick. In a blink none of it shows: the cells fall
+        // back to the night scene's dark glass and stone.
+        if (scene === nightBase && !eyeBlink) {
+          const centre = eyeGaze ? guardianEye + 1 : guardianEye;
+          if (i === centre) {
+            colour = EYE_RUNGS[eyeRung];
+          } else if (
+            eyeRung > 0 &&
+            (i === centre - 1 ||
+              i === centre - W ||
+              i === centre + W ||
+              (i === centre + 1 && !eyeGaze))
+          ) {
+            colour = EYE_RUNGS[eyeRung - 1];
+          } else if (eyePrevRung > 1 && guardianConduits.includes(i)) {
+            colour = EYE_RUNGS[eyePrevRung - 1];
+          } else if (eyeRung > 1 && guardianGlowGround.includes(i)) {
+            colour = 27;
           }
         }
       }
@@ -691,6 +886,7 @@ const REVEAL_STEPS = 14;
 const STEP_MS = 75; // the site's --motion-step
 const SWEEP_TICK_MS = 120;
 const REST_MS = 6500;
+const EYE_TICK_MS = 400;
 
 for (const figure of document.querySelectorAll("[data-meadow]")) {
   const canvas = figure.querySelector("[data-meadow-canvas]");
@@ -767,6 +963,88 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
     }, SWEEP_TICK_MS);
   }
 
+  // The eye's timetable: a seeded state machine on its own slower
+  // tick, turning on the same schedule helper so it also waits while
+  // the figure is off-screen or the tab hidden. Nothing here is a
+  // metronome: rests, holds, blinks, and gazes all draw their lengths
+  // from the seed, so the sequence is the same on every load but
+  // never reads as a loop. It runs by day too and simply shows
+  // nothing, since paint reads the state only after dark; a theme
+  // swap mid-event lands on whatever rung the machine has reached
+  // and steps on from there.
+  const eyeRng = mulberry32(20261122);
+  const eyeTicks = (minS, maxS) =>
+    Math.max(1, Math.round(((minS + eyeRng() * (maxS - minS)) * 1000) / EYE_TICK_MS));
+  let eyePhase = "rest";
+  let eyeCountdown = eyeTicks(6, 14);
+  let blinkCountdown = eyeTicks(9, 21);
+  let gazeCountdown = eyeTicks(24, 50);
+  let gazeHold = 0;
+
+  function eyeAdvance() {
+    eyePrevRung = eyeRung;
+    // The blink: one dark tick at long, uneven intervals. Long gaps
+    // between blinks are what concentration looks like.
+    if (eyeBlink) eyeBlink = false;
+    else if ((blinkCountdown -= 1) <= 0) {
+      eyeBlink = true;
+      blinkCountdown = eyeTicks(9, 21);
+    }
+    // The gaze: the lit pattern steps one cell toward the moon,
+    // holds there a few seconds, then steps back. A step, never a
+    // slide.
+    if (gazeHold > 0) {
+      gazeHold -= 1;
+      if (gazeHold === 0) eyeGaze = false;
+    } else if ((gazeCountdown -= 1) <= 0) {
+      eyeGaze = true;
+      gazeHold = eyeTicks(2, 5);
+      gazeCountdown = eyeTicks(24, 50);
+    }
+    // Attention: a long dim rest, a two-rung climb, an uneven hold,
+    // and a step back down. About one event in four doubles back on
+    // itself: down a rung, one tick at the hot core, and down again,
+    // the considering-something beat.
+    eyeCountdown -= 1;
+    if (eyeCountdown <= 0) {
+      if (eyePhase === "rest") {
+        eyePhase = "climb";
+        eyeRung = 1;
+        eyeCountdown = 1;
+      } else if (eyePhase === "climb") {
+        eyeRung = 2;
+        if (eyeRng() < 0.25) {
+          eyePhase = "dip";
+          eyeCountdown = eyeTicks(1, 2.8);
+        } else {
+          eyePhase = "down";
+          eyeCountdown = eyeTicks(1, 4);
+        }
+      } else if (eyePhase === "dip") {
+        eyePhase = "flash";
+        eyeRung = 1;
+        eyeCountdown = 1;
+      } else if (eyePhase === "flash") {
+        eyePhase = "after";
+        eyeRung = 3;
+        eyeCountdown = 1;
+      } else if (eyePhase === "after") {
+        eyePhase = "down";
+        eyeRung = 2;
+        eyeCountdown = 1;
+      } else if (eyeRung === 2) {
+        eyeRung = 1;
+        eyeCountdown = 1;
+      } else {
+        eyePhase = "rest";
+        eyeRung = 0;
+        eyeCountdown = eyeTicks(6, 14);
+      }
+    }
+    if (theme === "dark") paint(ctx, frame, revealed, front);
+    schedule(EYE_TICK_MS, eyeAdvance);
+  }
+
   function reveal() {
     if (started) return;
     started = true;
@@ -783,6 +1061,7 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
       if (step >= REVEAL_STEPS) {
         clearInterval(timer);
         schedule(REST_MS, cross);
+        schedule(1200, eyeAdvance);
       }
     }, STEP_MS);
   }
