@@ -333,6 +333,14 @@
         <canvas class="meadow__canvas" data-meadow-canvas width="144" height="60" aria-hidden="true"></canvas>
       </figure>
 
+      <!-- Experiment: the artist's signature for the meadow, and the one
+           door to the Mochi page. A paragraph under the figure rather than
+           a figcaption inside it: the figure carries role="img", which
+           would swallow the link into the image's label. -->
+      <p class="meadow__cap">
+        The meadow is original pixel art by <a href="mochi.html">Mochi</a>.
+      </p>
+
       <!-- The clock ships hidden and is unwrapped by main.js, so a visitor
            without JS sees "Ottawa, ON" rather than a dead --:--. -->
       <footer class="footer">

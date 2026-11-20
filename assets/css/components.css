@@ -170,6 +170,15 @@
   image-rendering: pixelated;
 }
 
+/* The meadow's credit line: small and muted, in the caption voice, tucked
+   half a step under the frame it belongs to instead of the full --step the
+   page gives every other block. */
+.meadow__cap {
+  margin-block-start: var(--step-half);
+  color: var(--muted-color);
+  font-size: var(--text-caption);
+}
+
 /*
   The clock's colon and any boot-time pending output blink as a hard terminal
   step, not a fade. The colon only dims because at 0 the footer spends half of
