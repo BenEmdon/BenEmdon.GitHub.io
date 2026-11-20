@@ -12,11 +12,14 @@
   crosses is moonlight, cooler and quieter on the same ladder.
 
   The pixel rule holds throughout: nothing moves, drifts, or fades. The
-  reveal opens whole blocks on a 75ms tick. The light that crosses the
-  field afterwards is only ground pixels stepping one shade brighter in
-  place as a front passes, then one shade back; the front is an order,
-  not a thing travelling. Reduced motion gets the finished scene in one
-  cut and no light at all.
+  reveal opens whole blocks on a 75ms tick. The weather that crosses
+  the field afterwards is only ground pixels stepping one shade in
+  place: a gust is a band of cells one rung brighter while the band
+  covers them, then one rung back as it leaves, and a cloud shadow is
+  a soft patch one rung darker on its own slower crossing. Between
+  gusts the field rests, fully still, for a long and varying while;
+  the bands are orders, not things travelling. Reduced motion gets
+  the finished scene in one cut and no weather at all.
 
   The scene is built once, deterministically: one seeded random source
   places the grass and flowers and scrambles the reveal, so every load
@@ -81,8 +84,8 @@ const NIGHT_PALETTE = [
   "#cfe0f7", // 18 star
 ];
 
-// Shade ladders, brightest first. The light sweep steps a ground pixel
-// one rung up and later one rung back; it never invents a colour.
+// Shade ladders, brightest first. The weather steps a ground pixel one
+// rung up or down and later one rung back; it never invents a colour.
 const MEADOW_LADDER = [7, 8, 9, 10, 11];
 const HILL_LADDER = [7, 6, 8];
 const LADDERS = [MEADOW_LADDER, HILL_LADDER];
@@ -267,7 +270,7 @@ for (let x = 0; x < W; x += 1) {
 
 // One tiny lived detail: a distant copse standing on the hill crest.
 // Paler than the real tree, as distance makes things, and off the ladder
-// so the light sweep, which belongs to the near field, leaves it alone.
+// so the weather, which belongs to the near field, leaves it alone.
 {
   const copseX = 76;
   const copseBase = crest(copseX);
@@ -300,7 +303,7 @@ patch(52, 53, 15, 2.4, 4); // the tree's shadow, falling right
 // A foreground silhouette band closes the bottom of the scene, the way
 // a dark near bank frames a view: a wavy top edge at the meadow's
 // deepest rung, and the last two rows in canopy deep, off the ladder
-// entirely so the light sweep never lifts them. They are the frame,
+// entirely so the weather never lifts them. They are the frame,
 // not the field.
 const fgTop = (x) => Math.round(56.5 - 1.2 * Math.sin(x / 19 + 1) - 0.8 * Math.sin(x / 7.3));
 
@@ -320,7 +323,7 @@ for (let x = 0; x < W; x += 1) {
 // Tufts are clusters: three small shapes, repeated and varied, never a
 // lone cell. They take a rung one step off the ground they stand on, so
 // they read as grass catching or losing the light, and because they keep
-// a rung they join the light sweep like any other ground.
+// a rung they join the weather like any other ground.
 const TUFTS = [
   [
     [1, 0],
@@ -385,7 +388,7 @@ for (let n = 0; n < 30; n += 1) {
 }
 
 // Flowers: a handful of three-cell clusters low in the field, in the one
-// warm accent and in cloud white. Above the grass, so the sweep passes
+// warm accent and in cloud white. Above the grass, so the weather passes
 // under them and they stay lit. Their positions are recorded (no light
 // of their own, just bookkeeping) so the night scene can put most of
 // them to sleep.
@@ -643,7 +646,26 @@ function coverColour(x, y) {
   return BAYER_4[y % 4][x % 4] < 4 ? 2 : 3;
 }
 
-function paint(ctx, frame, revealed, front) {
+// Weather geometry. A gust is a band in a slanted coordinate, so its
+// front leans as it crosses and the top of the field catches it first:
+// u = x + GUST_SLANT * (y - 40). A cloud shadow is a soft ellipse of
+// shade whose rim breaks up on a fixed Bayer threshold, so the edge
+// reads as soft shade rather than a hard outline, and the broken
+// texture is each cell's own, identical on every pass.
+const GUST_SLANT = 0.45;
+const gustCoord = (x, y) => x + GUST_SLANT * (y - 40);
+
+function shadowCovers(shadow, x, y) {
+  const dx = (x - shadow.cx) / shadow.rx;
+  const dy = (y - shadow.cy) / shadow.ry;
+  const q = dx * dx + dy * dy;
+  if (q >= 1) return false;
+  const c = 1 - Math.sqrt(q); // 1 at the centre, 0 at the rim
+  if (c >= 0.6) return true;
+  return (BAYER_4[y % 4][x % 4] + 0.5) / 16 < (c / 0.6) * 0.75;
+}
+
+function paint(ctx, frame, revealed, fx) {
   const px = frame.data;
   for (let y = 0; y < H; y += 1) {
     for (let x = 0; x < W; x += 1) {
@@ -654,12 +676,34 @@ function paint(ctx, frame, revealed, front) {
         colour = coverColour(x, y);
       } else {
         colour = scene[i];
-        // The light: ground within the band behind the front steps one
-        // rung brighter. Everything else keeps its colour exactly.
-        if (rung[i] >= 0 && front !== null) {
-          const d = front - x;
-          if (d >= 0 && d <= 7) {
-            colour = LADDERS[ladderOf[i]][Math.max(0, rung[i] - 1)];
+        // The weather: ground inside a gust's band steps one rung
+        // brighter, ground inside a cloud shadow steps one rung
+        // darker, and the two compose where they overlap. Everything
+        // else keeps its colour exactly.
+        if (rung[i] >= 0 && fx !== null) {
+          let r = rung[i];
+          // A gust is a grass event: it lifts only the meadow ladder.
+          // On the hills its one-rung step is a far bigger jump, and
+          // there it read as a searchlight, not weather. Its edges
+          // break up on the same fixed Bayer threshold the shadow's
+          // rim uses, so the band arrives as a ragged front of light
+          // rather than a ruled stripe.
+          if (fx.gust !== null && ladderOf[i] === 0) {
+            const d = fx.gust.u - gustCoord(x, y);
+            if (d >= 0 && d <= fx.gust.width) {
+              const edge = Math.min(d, fx.gust.width - d);
+              if (
+                edge >= 2.5 ||
+                (BAYER_4[y % 4][x % 4] + 0.5) / 16 < edge / 2.5
+              ) {
+                r -= 1;
+              }
+            }
+          }
+          if (fx.shadow !== null && shadowCovers(fx.shadow, x, y)) r += 1;
+          if (r !== rung[i]) {
+            const ladder = LADDERS[ladderOf[i]];
+            colour = ladder[Math.min(ladder.length - 1, Math.max(0, r))];
           }
         }
       }
@@ -678,8 +722,11 @@ function paint(ctx, frame, revealed, front) {
 
 const REVEAL_STEPS = 14;
 const STEP_MS = 75; // the site's --motion-step
-const SWEEP_TICK_MS = 120;
-const REST_MS = 6500;
+const WEATHER_TICK_MS = 120;
+const REST_MS = 6500; // the pause before the first gust
+const GUST_STEP = 3; // band advance per tick, in slanted cells
+const GUST_U_MAX = 154; // the largest gust coordinate any ground cell has
+const SHADOW_STEP = 1; // the shadow crosses slower than the gusts
 
 for (const figure of document.querySelectorAll("[data-meadow]")) {
   const canvas = figure.querySelector("[data-meadow-canvas]");
@@ -689,7 +736,10 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   let revealed = reduced.matches ? BW * BH : 0;
-  let front = null;
+  // The weather in flight: a gust band by its slanted position and
+  // width, a cloud shadow by its centre. Either may be null, and most
+  // of the time both are: stillness is the field's default state.
+  const fx = { gust: null, shadow: null };
   let onScreen = false;
   let started = false;
 
@@ -699,7 +749,7 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
   // locally, since that list lives inside main.js. The resolved theme
   // is the pinned [data-theme] when one is set, and the OS preference
   // in system mode, where the attribute is removed. A swap re-renders
-  // the current state (same reveal, same light front) in the other
+  // the current state (same reveal, same weather) in the other
   // palette; nothing restarts.
   const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
   const resolvedTheme = () =>
@@ -713,7 +763,7 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
     theme = next;
     scene = theme === "dark" ? nightBase : base;
     RGB = theme === "dark" ? NIGHT_RGB : DAY_RGB;
-    paint(ctx, frame, revealed, front);
+    paint(ctx, frame, revealed, fx);
   }
 
   new MutationObserver(applyTheme).observe(document.documentElement, {
@@ -727,9 +777,12 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
 
   applyTheme();
 
-  // The light's timetable: sleep, cross, sleep. Timeouts rather than an
-  // interval, so at rest the scene costs nothing at all, and a wake that
-  // finds the figure off-screen or the tab hidden simply sleeps again.
+  // The weather's timetable: cross, rest, cross. Timeouts rather than
+  // an interval for the rests, so at rest the scene costs nothing at
+  // all, and a wake that finds the figure off-screen or the tab hidden
+  // simply sleeps again. One interval runs only while a gust or a
+  // shadow is actually crossing, and the weather waits, mid-field,
+  // while the tab is hidden or the figure is off-screen.
   function schedule(delay, fn) {
     setTimeout(() => {
       if (!onScreen || document.hidden) {
@@ -740,20 +793,63 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
     }, delay);
   }
 
-  function cross() {
-    front = -10;
-    const timer = setInterval(() => {
-      if (!onScreen || document.hidden) return; // the front waits, mid-field
-      front += 2;
-      if (front > W + 8) {
-        clearInterval(timer);
-        front = null;
-        paint(ctx, frame, revealed, front);
-        schedule(REST_MS, cross);
-        return;
+  // The timetable's own seed, so the scene's rolls stay untouched and
+  // every load breathes to the same loose rhythm: rests vary, gust
+  // widths vary, and now and then a second gust follows the first
+  // closely, the way real gusts arrive in trains.
+  const trng = mulberry32(20261121);
+  let ticker = null;
+
+  function startTicker() {
+    if (ticker !== null) return;
+    ticker = setInterval(tick, WEATHER_TICK_MS);
+  }
+
+  function tick() {
+    if (!onScreen || document.hidden) return; // the weather waits
+    if (fx.gust !== null) {
+      fx.gust.u += GUST_STEP;
+      if (fx.gust.u - fx.gust.width > GUST_U_MAX) {
+        fx.gust = null;
+        // A quarter of gusts are followed closely by another.
+        scheduleNextGust(trng() < 0.25);
       }
-      paint(ctx, frame, revealed, front);
-    }, SWEEP_TICK_MS);
+    }
+    if (fx.shadow !== null) {
+      fx.shadow.cx += SHADOW_STEP;
+      if (fx.shadow.cx - fx.shadow.rx > W) {
+        fx.shadow = null;
+        scheduleNextShadow();
+      }
+    }
+    paint(ctx, frame, revealed, fx);
+    if (fx.gust === null && fx.shadow === null) {
+      clearInterval(ticker);
+      ticker = null;
+    }
+  }
+
+  function startGust() {
+    if (fx.gust !== null) return;
+    const width = 9 + Math.floor(trng() * 5);
+    fx.gust = { u: -width - 6, width };
+    startTicker();
+  }
+
+  function scheduleNextGust(close) {
+    const rest = close ? 3000 + trng() * 2500 : 9000 + trng() * 12000;
+    schedule(rest, startGust);
+  }
+
+  function startShadow() {
+    if (fx.shadow !== null) return;
+    const rx = 38 + Math.floor(trng() * 10);
+    fx.shadow = { cx: -rx - 6, rx, cy: 49, ry: 6.5 };
+    startTicker();
+  }
+
+  function scheduleNextShadow() {
+    schedule(38000 + trng() * 34000, startShadow);
   }
 
   function reveal() {
@@ -761,17 +857,20 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
     started = true;
     if (reduced.matches) {
       revealed = BW * BH;
-      paint(ctx, frame, revealed, front);
-      return; // no sweep: the finished scene, held still
+      paint(ctx, frame, revealed, fx);
+      return; // no weather: the finished scene, held still
     }
     let step = 0;
     const timer = setInterval(() => {
       step += 1;
       revealed = Math.round((BW * BH * step) / REVEAL_STEPS);
-      paint(ctx, frame, revealed, front);
+      paint(ctx, frame, revealed, fx);
       if (step >= REVEAL_STEPS) {
         clearInterval(timer);
-        schedule(REST_MS, cross);
+        schedule(REST_MS, startGust);
+        // The first shadow comes later, on its own schedule, so the
+        // two systems are never in step.
+        schedule(20000 + trng() * 12000, startShadow);
       }
     }, STEP_MS);
   }
