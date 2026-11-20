@@ -80,6 +80,7 @@
     <link rel="stylesheet" href="assets/css/layout.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/components.css?v=20261114f" />
     <link rel="stylesheet" href="assets/css/palette.css" />
+    <link rel="stylesheet" href="assets/css/starmap.css" />
 
     <!-- Visit counting: GoatCounter. No cookies, no fingerprinting, no
          persistent identifier, nothing personal stored, so there is nothing
@@ -316,6 +317,10 @@
             <span class="links__value">@BenEmdon</span>
           </a>
         </nav>
+        <!-- Experiment: elsewhere star map. JS fills this strip with one
+             pixel star cluster per link above; without JS it stays empty
+             and the links lose nothing. Decoration only, aria-hidden. -->
+        <div class="starmap" data-starmap aria-hidden="true"></div>
       </section>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
@@ -435,5 +440,6 @@
 
     <script type="module" src="assets/js/main.js"></script>
     <script type="module" src="assets/js/palette.js"></script>
+    <script type="module" src="assets/js/starmap.js"></script>
   </body>
 </html>

@@ -1,0 +1,34 @@
+/*
+  Elsewhere star map experiment.
+
+  A slim fixed night strip under the $ elsewhere links, one pixel cluster
+  per link on canvas. The sky colour is fixed, not light-dark(), the same
+  call the portrait makes: night should not invert with the theme. Only
+  the frame and the caption follow the theme.
+*/
+.starmap {
+  margin-top: var(--step-half);
+}
+
+.starmap__sky {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #0d1522;
+  border: 1px solid var(--page-rule);
+}
+
+.starmap__cluster {
+  display: block;
+  width: 33px;
+  height: 33px;
+  image-rendering: pixelated;
+}
+
+.starmap__caption {
+  min-height: var(--step);
+  margin: 0;
+  color: var(--muted-color);
+  font-size: var(--text-caption);
+  line-height: var(--step);
+}
