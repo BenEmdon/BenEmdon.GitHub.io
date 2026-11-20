@@ -144,6 +144,28 @@
 .palette__item.is-selected .palette__item-hint,
 .palette__item.is-selected .palette__item-key { color: var(--inverted-color); }
 
+/* Drawn keycaps (keycaps.js): the same hand-off as the keys legend. When
+   a key hint carries a canvas cap, the cap is the visual and the text
+   stays in the DOM for screen readers only (font-size: 0, as the legend
+   does it). Without the caps the hints stay plain text, unchanged. */
+.palette__item-key.is-capped,
+.palette__inputrow kbd.is-capped {
+  font-size: 0;
+  line-height: 0;
+}
+.palette__inputrow kbd.is-capped {
+  border: 0;
+  padding: 0;
+}
+.palette__item-key canvas,
+.palette__inputrow kbd canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+/* A cap is 22px in a 24px row: centre capped rows instead of baselining
+   them, the same fix the legend applies under .has-caps. */
+.palette.has-caps .palette__item { align-items: center; }
+
 .palette__empty {
   padding: 0 var(--step);
   color: var(--muted-color);
@@ -189,6 +211,12 @@
 
 @media (hover: none) {
   .palette__head-hint, .palette__foot-note { display: none; }
+  /* iOS Safari zooms the page when a focused input's text is under 16px.
+     The terminal prompt runs at --text-small (14px), so on touch devices
+     the input steps up to 16px and the prompt block follows; desktop
+     keeps the smaller grid size. The palette input already runs at
+     --text-body (16px) and needs nothing. (Ben, 2026-11-20.) */
+  .term-prompt { font-size: var(--text-body); }
 }
 @media (prefers-reduced-motion: reduce) {
   .palette__box { box-shadow: 8px 8px 0 var(--page-rule); }
