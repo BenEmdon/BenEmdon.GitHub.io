@@ -329,6 +329,11 @@
   image-rendering: pixelated;
   border: 1px solid var(--page-rule);
 }
+/* Placement trial: hung at the top of the page, right-aligned under
+   the tagline. */
+.theme-scene--masthead {
+  margin-left: auto;
+}
 
 /* A keyboard hint is noise on a device with no keyboard. */
 @media (hover: none) {
