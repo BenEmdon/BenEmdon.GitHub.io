@@ -131,6 +131,17 @@ function setGround(x, y, ladder, r) {
   ladderOf[at(x, y)] = ladder;
 }
 
+// A subject drawn over the ground: the fence, the trunk and branches,
+// the canopy. Its colour is final, and the cell leaves the weather's
+// bookkeeping (rung -1, the copse's and the silhouette grass's own
+// trick), so a gust or a shadow passes behind the subject and never
+// repaints its wood or its leaves in ladder colours.
+function setStill(x, y, colour) {
+  if (!inside(x, y)) return;
+  base[at(x, y)] = colour;
+  rung[at(x, y)] = -1;
+}
+
 // Filled ellipse with stepped edges; the only curve the scene knows.
 function stamp(cx, cy, rx, ry, paint) {
   for (let y = Math.floor(cy - ry - 1); y <= cy + ry + 1; y += 1) {
@@ -415,13 +426,13 @@ for (let n = 0; n < 10; n += 1) {
 const fenceY = (x) => Math.round(45.5 - (x - 96) * 0.045);
 
 for (let x = 96; x <= 142; x += 1) {
-  set(x, fenceY(x) - 3, 14);
-  set(x, fenceY(x) - 1, 14);
+  setStill(x, fenceY(x) - 3, 14);
+  setStill(x, fenceY(x) - 1, 14);
 }
 for (const px of [98, 107, 116, 125, 134, 141]) {
   for (let y = fenceY(px) - 4; y <= fenceY(px); y += 1) {
-    set(px, y, 13);
-    set(px + 1, y, 14);
+    setStill(px, y, 13);
+    setStill(px + 1, y, 14);
   }
 }
 
@@ -436,12 +447,12 @@ for (let y = 29; y <= 54; y += 1) {
   const cx = trunkBaseX - Math.round((54 - y) * 0.04);
   const half = y >= 44 ? 2 : 1;
   for (let x = cx - half; x <= cx + half; x += 1) {
-    set(x, y, x === cx + half ? 14 : 13);
+    setStill(x, y, x === cx + half ? 14 : 13);
   }
 }
 // Root flares.
-set(trunkBaseX - 3, 54, 13);
-set(trunkBaseX + 3, 54, 14);
+setStill(trunkBaseX - 3, 54, 13);
+setStill(trunkBaseX + 3, 54, 14);
 
 // Branches, stepped diagonals stamped two cells wide; the canopy covers
 // their tops.
@@ -450,8 +461,8 @@ function branch(x0, y0, x1, y1) {
   for (let i = 0; i <= steps; i += 1) {
     const x = Math.round(x0 + ((x1 - x0) * i) / steps);
     const y = Math.round(y0 + ((y1 - y0) * i) / steps);
-    set(x, y, 13);
-    set(x, y + 1, 14);
+    setStill(x, y, 13);
+    setStill(x, y + 1, 14);
   }
 }
 branch(37, 34, 26, 26);
@@ -490,11 +501,16 @@ for (const [cx, cy, rx, ry] of [
 
 function canopyStamp(cx, cy, rx, ry, colour) {
   stamp(cx, cy, rx, ry, (x, y) => {
-    if (inside(x, y) && canopyMask[at(x, y)]) set(x, y, colour);
+    if (inside(x, y) && canopyMask[at(x, y)]) setStill(x, y, colour);
   });
 }
 
-for (let i = 0; i < W * H; i += 1) if (canopyMask[i]) base[i] = 12;
+for (let i = 0; i < W * H; i += 1) {
+  if (canopyMask[i]) {
+    base[i] = 12;
+    rung[i] = -1;
+  }
+}
 canopyStamp(42, 20, 16, 7, 11);
 canopyStamp(30, 23, 12, 4.5, 11);
 canopyStamp(36, 17, 14, 6, 10);
@@ -513,8 +529,8 @@ for (let y = 0; y < H; y += 1) {
     if (!canopyMask[at(x, y)]) continue;
     const openAbove = !inside(x, y - 1) || !canopyMask[at(x, y - 1)];
     const openLeft = !inside(x - 1, y) || !canopyMask[at(x - 1, y)];
-    if (openAbove) set(x, y, x < 45 ? 8 : 9);
-    else if (openLeft && y < 22) set(x, y, 8);
+    if (openAbove) setStill(x, y, x < 45 ? 8 : 9);
+    else if (openLeft && y < 22) setStill(x, y, 8);
   }
 }
 for (const [hx, hy] of [
@@ -663,6 +679,11 @@ function coverColour(x, y) {
 // identical on every pass.
 const gustWobble = (x) => 1.5 * Math.sin(x / 16 + 0.7) + 0.8 * Math.sin(x / 6.3 + 2.0);
 const GUST_FRINGE = 1.4; // rows of broken edge at the band's front and tail
+// The hill takes the gust as a dither, not a solid step: the share of
+// hill cells that step rises from none at the band's edges toward
+// HILL_GUST_COVER at its heart, over HILL_GUST_RAMP rows of band depth.
+const HILL_GUST_COVER = 0.7;
+const HILL_GUST_RAMP = 3;
 
 function shadowCovers(shadow, x, y) {
   const dx = (x - shadow.cx) / shadow.rx;
@@ -691,13 +712,7 @@ function paint(ctx, frame, revealed, fx) {
         // else keeps its colour exactly.
         if (rung[i] >= 0 && fx !== null) {
           let r = rung[i];
-          // A gust is a grass event: it lifts only the meadow ladder.
-          // On the hills its one-rung step is a far bigger jump, and
-          // there it read as a searchlight, not weather. Its edges
-          // break up on the same fixed Bayer threshold the shadow's
-          // rim uses, so the band arrives as a ragged front of light
-          // rather than a ruled stripe.
-          if (fx.gust !== null && ladderOf[i] === 0) {
+          if (fx.gust !== null) {
             // How far the front has rolled past this cell's row, in
             // the column's own wobbled frame. Inside the band the
             // cell steps one rung brighter; the band's front and tail
@@ -706,10 +721,20 @@ function paint(ctx, frame, revealed, fx) {
             const d = fx.gust.row + gustWobble(x + fx.gust.phase) - y;
             if (d >= 0 && d <= fx.gust.depth) {
               const edge = Math.min(d, fx.gust.depth - d);
-              if (
-                edge >= GUST_FRINGE ||
-                (BAYER_4[y % 4][x % 4] + 0.5) / 16 < edge / GUST_FRINGE
-              ) {
+              const bayer = (BAYER_4[y % 4][x % 4] + 0.5) / 16;
+              if (ladderOf[i] === 0) {
+                // The near field takes the full step.
+                if (edge >= GUST_FRINGE || bayer < edge / GUST_FRINGE) {
+                  r -= 1;
+                }
+              } else if (bayer < Math.min(HILL_GUST_COVER, edge / HILL_GUST_RAMP)) {
+                // The hill's one-rung step is a far bigger jump
+                // (#a9c198 to #bcd26c), and a solid band of it read
+                // as a searchlight, so the hill steps only in part:
+                // a Bayer share of its cells, rising toward the
+                // band's heart. At page scale the mix reads as a
+                // half-step of light rolling over the ridge, the
+                // same weather as the field's, quieter with distance.
                 r -= 1;
               }
             }
