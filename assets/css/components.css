@@ -224,6 +224,28 @@
   color: var(--muted-color);
 }
 
+/* Experiment: pixel keycaps. keycaps.js builds a canvas inside each kbd
+   and adds .has-caps to the panel; only then does the drawn cap take over
+   visually. The kbd text stays in the DOM for screen readers (font-size: 0
+   is a visual hand-off, not a removal), and without JS the panel never
+   unhides anyway, so the legend can never end up textless. */
+.keys.has-caps .keys__list li {
+  align-items: center;
+}
+
+.keys.has-caps kbd {
+  width: auto;
+  font-size: 0;
+  /* The canvas is a block, so the kbd text would otherwise keep its own
+     24px line box underneath it and double every row's height. */
+  line-height: 0;
+}
+
+.keys.has-caps kbd canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
 /* Nothing here can be pressed on a touch device. */
 @media (hover: none) {
   .keys {
