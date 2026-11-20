@@ -355,9 +355,20 @@
           >
             <kbd>?</kbd> keys
           </button>
-          <button class="footer__button" type="button" data-theme-toggle>
-            system
+          <button
+            class="footer__button"
+            type="button"
+            data-theme-toggle
+          >
+            <span data-theme-label>system</span>
           </button>
+          <canvas
+            class="theme-scene"
+            data-theme-scene
+            width="24"
+            height="12"
+            aria-hidden="true"
+          ></canvas>
           <button class="footer__button" type="button" data-palette-open>
             <kbd>⌘K</kbd> palette
           </button>
@@ -390,15 +401,15 @@
          wired up there. data-key matches the section ids in document order. -->
     <div class="keys" id="keys" data-keys hidden>
       <ul class="keys__list">
-        <li><kbd>1</kbd><span class="keys__label">whoami</span></li>
-        <li><kbd>2</kbd><span class="keys__label">about</span></li>
-        <li><kbd>3</kbd><span class="keys__label">thinking</span></li>
-        <li><kbd>4</kbd><span class="keys__label">work</span></li>
-        <li><kbd>5</kbd><span class="keys__label">elsewhere</span></li>
-        <li><kbd>t</kbd><span class="keys__label">theme</span></li>
-        <li><kbd>?</kbd><span class="keys__label">this</span></li>
-        <li><kbd>⌘K</kbd><span class="keys__label">palette</span></li>
-        <li><kbd>/</kbd><span class="keys__label">palette</span></li>
+        <li><kbd data-cap="1">1</kbd><span class="keys__label">whoami</span></li>
+        <li><kbd data-cap="2">2</kbd><span class="keys__label">about</span></li>
+        <li><kbd data-cap="3">3</kbd><span class="keys__label">thinking</span></li>
+        <li><kbd data-cap="4">4</kbd><span class="keys__label">work</span></li>
+        <li><kbd data-cap="5">5</kbd><span class="keys__label">elsewhere</span></li>
+        <li><kbd data-cap="t">t</kbd><span class="keys__label">theme</span></li>
+        <li><kbd data-cap="?">?</kbd><span class="keys__label">this</span></li>
+        <li><kbd data-cap="cmdk">⌘K</kbd><span class="keys__label">palette</span></li>
+        <li><kbd data-cap="/">/</kbd><span class="keys__label">palette</span></li>
       </ul>
     </div>
 
@@ -442,12 +453,19 @@
     <div class="boot" data-boot aria-hidden="true" hidden>
       <div class="boot__inner">
         <div data-boot-logo></div>
-        <ul class="boot__log" data-boot-log></ul>
+        <div class="boot__row">
+          <div class="boot__tree" data-boot-tree></div>
+          <div class="boot__main">
+            <ul class="boot__log" data-boot-log></ul>
+            <div class="boot__progress" data-boot-progress></div>
+          </div>
+        </div>
       </div>
     </div>
 
     <script type="module" src="assets/js/main.js"></script>
     <script type="module" src="assets/js/palette.js"></script>
     <script type="module" src="assets/js/meadow.js"></script>
+    <script type="module" src="assets/js/keycaps.js"></script>
   </body>
 </html>

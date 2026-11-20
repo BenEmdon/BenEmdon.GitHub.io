@@ -245,6 +245,28 @@
   color: var(--muted-color);
 }
 
+/* Experiment: pixel keycaps. keycaps.js builds a canvas inside each kbd
+   and adds .has-caps to the panel; only then does the drawn cap take over
+   visually. The kbd text stays in the DOM for screen readers (font-size: 0
+   is a visual hand-off, not a removal), and without JS the panel never
+   unhides anyway, so the legend can never end up textless. */
+.keys.has-caps .keys__list li {
+  align-items: center;
+}
+
+.keys.has-caps kbd {
+  width: auto;
+  font-size: 0;
+  /* The canvas is a block, so the kbd text would otherwise keep its own
+     24px line box underneath it and double every row's height. */
+  line-height: 0;
+}
+
+.keys.has-caps kbd canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
 /* Nothing here can be pressed on a touch device. */
 @media (hover: none) {
   .keys {
@@ -281,13 +303,85 @@
   margin-inline: auto;
 }
 
-.boot__log {
+/* The log gets a neighbour: a small spruce that builds beside it while the
+   lines resolve. The tree's colours are light-dark() pairs off the accent
+   family, the same trick the tokens use, so the mark follows the theme the
+   boot is busy restoring. Deep is the one new hex pair: the accent pushed
+   darker and cooler, the way a shade ramp shifts hue as it darkens. */
+.boot__row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--step);
   margin-block-start: var(--step);
+}
+
+.boot__tree {
+  --tree-lit: light-dark(#6ea8e1, #a9cdf2);
+  --tree-mid: light-dark(#1e5aa8, #6ea8e1);
+  --tree-deep: light-dark(#173f73, #2c5d94);
+  --tree-trunk: light-dark(#52637c, #33415a);
+  position: relative;
+  flex: none;
+  width: 66px;
+  height: 78px;
+}
+
+/* Cells are placed once, fully coloured, and never move or fade: the build
+   is the set of cells present, growing by whole clusters per tick. */
+.boot__pix {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+}
+
+.boot__pix.is-lit {
+  background: var(--tree-lit);
+}
+
+.boot__pix.is-mid {
+  background: var(--tree-mid);
+}
+
+.boot__pix.is-deep {
+  background: var(--tree-deep);
+}
+
+.boot__pix.is-trunk {
+  background: var(--tree-trunk);
+}
+
+.boot__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.boot__log {
   color: var(--muted-color);
   font-size: var(--text-small);
   /* Absolute, like everywhere else, so the log sits on the same 24px grid the
      page behind it does. */
   line-height: var(--step);
+}
+
+/* Progress as a row of pixel cells, the palette strip's own pattern: 4px
+   squares on an 8px pitch. A cell is either the track colour or the accent;
+   filling is a whole-cell swap on the tick, never a width sliding up. */
+.boot__progress {
+  position: relative;
+  height: 4px;
+  margin-block-start: var(--step-half);
+}
+
+.boot__pcell {
+  position: absolute;
+  top: 0;
+  width: 4px;
+  height: 4px;
+  background: var(--page-rule);
+}
+
+.boot__pcell.is-on {
+  background: var(--accent-color);
 }
 
 /* Fixed columns rather than padded strings. Iosevka draws ✓ at two columns

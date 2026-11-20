@@ -296,6 +296,7 @@
 
 .footer__controls {
   display: flex;
+  align-items: center;
   gap: var(--step);
 }
 
@@ -314,6 +315,19 @@
 
 .footer__button kbd {
   font: inherit;
+}
+
+/* The theme scene sits beside the toggle, not inside it (Ben's call,
+   2026-11-20): a 24x12 landscape at 2px cells, exactly one --step tall
+   so the footer row keeps its rhythm. It is decoration, not a control;
+   the toggle beside it stays a plain text button. */
+
+.theme-scene {
+  display: block;
+  width: 48px;
+  height: 24px;
+  image-rendering: pixelated;
+  border: 1px solid var(--page-rule);
 }
 
 /* A keyboard hint is noise on a device with no keyboard. */
