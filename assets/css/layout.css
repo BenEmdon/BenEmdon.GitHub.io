@@ -11,12 +11,14 @@
 
 /* ---------- masthead ---------- */
 
-/* Solid block-letter art, 75 columns x 5 rows, set in the accent colour: a
-   logo rather than a paragraph. Renders from the dedicated JetBrains Mono
-   glyph subset loaded in <head> (see the comment there), not a local system
-   font, so the exact glyph and advance width are guaranteed rather than
-   whatever happens to be installed. block-size is a whole --step multiple so
-   the baseline grid survives. */
+/* The no-JS fallback is solid block-letter art, 75 columns x 5 rows,
+   rendered from the dedicated JetBrains Mono glyph subset loaded in
+   <head> (see the comment there), not a local system font, so the exact
+   glyph and advance width are guaranteed rather than whatever happens
+   to be installed. With script, wordmark.js replaces it with a true
+   pixel grid drawn from bitmap letterforms (see .wordmark__grid below).
+   Either way it is a logo rather than a paragraph. block-size is a
+   whole --step multiple so the baseline grid survives. */
 /* Neutral page-color, not the accent blue; the accent colour does its work
    everywhere else on the page; the header doesn't need it too. No background:
    it sits directly on the page like the rest of the type, just bigger. */
@@ -32,6 +34,16 @@
   overflow: hidden;
   user-select: none;
   cursor: default;
+  /* The pixel grid's shadow colour: the face's own cooler shade. One
+     line to retune, and the lit states below key off it. */
+  --wordmark-shadow: var(--muted-color);
+}
+
+/* The grid state's cells size themselves; the fallback's top padding
+   existed for the block glyphs' baseline, so the grid drops it.
+   Block-size stays, so the swap never moves the page. */
+.wordmark.is-pixel {
+  padding-block-start: 0;
 }
 
 /* The wordmark paints in from the top on load, one band per step, like a
@@ -62,16 +74,42 @@
   }
 }
 
-/* Each character is one terminal cell. Animation changes a whole cell's
-   colour in place; cells never move or resize. */
-.wordmark__cell {
-  display: inline-block;
-  width: 1ch;
-  white-space: pre;
+/* The pixel grid the script builds: square cells on a fixed template,
+   52 columns over 8 rows including the offset shadow's margin, so the
+   inline size is capped at 6.5 times the block-size and the grid lands
+   exactly on the wordmark's block at both sizes. A cell is a whole
+   square of one palette colour, swapped in place on the scan's tick;
+   cells never move, resize, or fade. */
+.wordmark__grid {
+  display: grid;
+  inline-size: min(100%, 19.5rem);
 }
 
-.wordmark__cell.is-lit {
-  color: var(--accent-color);
+@media (min-width: 34rem) {
+  .wordmark__grid {
+    inline-size: min(100%, 29.25rem);
+  }
+}
+
+.wordmark__px {
+  background: var(--page-color);
+}
+
+/* The offset shadow: the letterforms again, one cell down and right,
+   in the face's cooler shade rather than a second hue. */
+.wordmark__px[data-shade="shadow"] {
+  background: var(--wordmark-shadow);
+}
+
+/* A lit column swaps to the accent family: face cells to the pulse,
+   shadow cells to the accent, so the lit column keeps the resting
+   art's light logic, face lighter than its shadow. */
+.wordmark__px.is-lit {
+  background: var(--accent-pulse-color);
+}
+
+.wordmark__px[data-shade="shadow"].is-lit {
+  background: var(--accent-color);
 }
 
 .tagline {
