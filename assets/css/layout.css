@@ -329,6 +329,12 @@
   image-rendering: pixelated;
   border: 1px solid var(--page-rule);
 }
+/* Placement trial: inline on the footer clock line, beside Ottawa. */
+.theme-scene--inline {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 0.5rem;
+}
 
 /* A keyboard hint is noise on a device with no keyboard. */
 @media (hover: none) {
