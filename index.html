@@ -209,6 +209,31 @@
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
+      <!-- Experiment: one tree, four seasons. Not a .section, so the
+           numbered key jumps stay as they are. Ships hidden and is
+           unwrapped by seasons.js, so without JS there is no empty frame
+           sitting on the page. The canvas is a fixed-palette piece, like
+           the portrait: its colours do not swap per theme. -->
+      <div class="seasons" data-seasons hidden>
+        <canvas
+          class="seasons__canvas"
+          data-seasons-canvas
+          width="512"
+          height="320"
+          role="img"
+          aria-label="A pixel tree in a small meadow plot, shown in the current Ottawa season. The same tree cycles through spring blossom, summer green, autumn colour, and bare winter branches under snow."
+        ></canvas>
+        <p class="seasons__caption">
+          <span class="prompt" aria-hidden="true">&gt;</span>
+          <span>one tree, four seasons: <span data-seasons-name>…</span></span>
+          <button class="seasons__button" type="button" data-seasons-next>
+            next season
+          </button>
+        </p>
+      </div>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
       <section class="section">
         <h2 class="section__title" id="thinking"><span class="prompt" aria-hidden="true">$</span> thinking<a class="anchor" href="#thinking" aria-label="Link to this section">#</a></h2>
         <ul class="entry__list">
@@ -435,5 +460,6 @@
 
     <script type="module" src="assets/js/main.js"></script>
     <script type="module" src="assets/js/palette.js"></script>
+    <script type="module" src="assets/js/seasons.js"></script>
   </body>
 </html>
