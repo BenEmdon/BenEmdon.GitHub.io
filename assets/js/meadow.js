@@ -22,13 +22,23 @@
   gathering a little speed as it comes, the way wind arriving across
   a real field reads. Between gusts the field rests, fully still, for
   a long and varying while; the bands are orders, not things
-  travelling. Reduced motion gets the finished scene in one cut and
-  no weather at all.
+  travelling.
+
+  The clouds (experiment, 2026-11-20) are the one part of the scene
+  not baked into it. Each cloud is kept as its own cell map and
+  composited over the sky, and on a slow timetable of its own it
+  steps a single column to the right, holds still for seconds, then
+  steps again: the site's stepped order applied to the sky, the way
+  the wordmark types a column per tick. Nothing slides and nothing
+  fades; between steps the sky is as still as the field. Reduced
+  motion gets the finished scene in one cut, no weather at all, and
+  the clouds parked where they have always hung.
 
   The scene is built once, deterministically: one seeded random source
   places the grass and flowers and scrambles the reveal, so every load
   is the same meadow. Painting is a single canvas of 144 x 60 cells;
-  frames are drawn only while revealing or while the light crosses.
+  frames are drawn only while revealing, while the light crosses, or
+  on a cloud's step.
 */
 
 /* ---------- anchor ---------- */
@@ -203,39 +213,69 @@ for (let y = 0; y < H; y += 1) {
 // Flat clusters built from overlapping ellipses, shaded underneath:
 // any cloud cell with open sky two rows below takes the shade, so the
 // shade hugs the underside the way a shadow would.
-const cloudMask = new Uint8Array(W * H);
+//
+// Each cloud is baked as its own cell map rather than painted into
+// the scene, so paint() can composite it over the sky at whatever
+// column the timetable has stepped it to. The bake reads the merged
+// mask of all three clouds for the shade rule, exactly as the scene
+// was always drawn, and each cell is claimed by the first cloud whose
+// own shape covers it: the big cloud and the middle one overlap by a
+// few cells, and the shared cells ride with the big one, so the
+// merged silhouette at rest is cell-for-cell the old sky. The third
+// number each cloud carries is its step interval in milliseconds,
+// the base its holds are seeded around; the highest cloud steps
+// slowest, parallax by patience.
+const cloudShapes = [];
+const cloudMasks = [];
 
-function cloud(cx, cy, parts) {
+function cloud(cx, cy, interval, parts) {
+  const mask = new Uint8Array(W * H);
   for (const [ox, oy, rx, ry] of parts) {
     stamp(cx + ox, cy + oy, rx, ry, (x, y) => {
-      if (inside(x, y)) cloudMask[at(x, y)] = 1;
+      if (inside(x, y)) mask[at(x, y)] = 1;
     });
   }
+  cloudMasks.push(mask);
+  cloudShapes.push({ cx, cy, interval, cells: [], minDx: W, maxDx: -1 });
 }
 
-cloud(100, 10, [
+cloud(100, 10, 6000, [
   [0, 0, 16, 4],
   [-12, 1, 11, 3.2],
   [12, 1, 12, 3.2],
   [0, 2, 18, 2.8],
 ]);
-cloud(70, 8, [
+cloud(70, 8, 9000, [
   [0, 0, 10, 3],
   [-8, 1, 7, 2.4],
   [8, 1, 8, 2.4],
 ]);
-cloud(20, 4, [
+cloud(20, 4, 14000, [
   [0, 0, 7, 2.2],
   [-6, 1, 5, 1.8],
   [6, 1, 5, 1.8],
 ]);
 
-for (let y = 0; y < H; y += 1) {
-  for (let x = 0; x < W; x += 1) {
-    if (!cloudMask[at(x, y)]) continue;
-    const openBelow = !inside(x, y + 2) || !cloudMask[at(x, y + 2)];
-    set(x, y, openBelow ? 5 : 4);
+{
+  const merged = new Uint8Array(W * H);
+  for (const mask of cloudMasks) {
+    for (let i = 0; i < W * H; i += 1) if (mask[i]) merged[i] = 1;
   }
+  const claimed = new Uint8Array(W * H);
+  cloudShapes.forEach((shape, s) => {
+    for (let y = 0; y < H; y += 1) {
+      for (let x = 0; x < W; x += 1) {
+        const i = at(x, y);
+        if (!cloudMasks[s][i] || claimed[i]) continue;
+        claimed[i] = 1;
+        const openBelow = !inside(x, y + 2) || !merged[at(x, y + 2)];
+        const dx = x - shape.cx;
+        shape.cells.push({ dx, dy: y - shape.cy, colour: openBelow ? 5 : 4 });
+        if (dx < shape.minDx) shape.minDx = dx;
+        if (dx > shape.maxDx) shape.maxDx = dx;
+      }
+    }
+  });
 }
 
 // Two birds, three cells each: a cluster, not a speck.
@@ -608,9 +648,12 @@ for (const i of moonCells) {
 }
 
 // Stars, sparse and clustered, placed only where every cell of the
-// cluster lands on open sky: a cluster that would touch a cloud, the
-// canopy, or the moon is skipped whole rather than clipped. Their own
-// seed, so the day scene's rolls are untouched.
+// cluster lands on open sky: a cluster that would touch the canopy
+// or the moon is skipped whole rather than clipped. The clouds are
+// not part of this scene (paint() composites them over it), so a
+// cluster may sit where a cloud hangs at rest; the cloud covers it
+// until it steps away, which is the correct order of things. Their
+// own seed, so the day scene's rolls are untouched.
 const nrng = mulberry32(20261120);
 const STAR_SHAPES = {
   triple: [
@@ -657,6 +700,14 @@ const NIGHT_RGB = NIGHT_PALETTE.map(toRgb);
 // whenever the resolved theme changes.
 let scene = base;
 let RGB = DAY_RGB;
+
+// Where the clouds are right now: an origin column per cloud, and a
+// gap flag for a cloud that has stepped off the right edge and is
+// waiting out its empty-sky pause before stepping in from the left.
+// The wiring's timetable moves these; paint() only reads them. Every
+// cloud starts at its baked column, which is the sky the scene has
+// always had.
+const cloudState = cloudShapes.map((shape) => ({ shape, x: shape.cx, gap: false }));
 
 // Reveal blocks of 6 x 6 cells, scrambled once with the same seed, so
 // the scene arrives in the same order on every load. An unopened block
@@ -759,6 +810,33 @@ function paint(ctx, frame, revealed, fx) {
       }
       const o = i * 4;
       const [r, g, b] = RGB[colour];
+      px[o] = r;
+      px[o + 1] = g;
+      px[o + 2] = b;
+      px[o + 3] = 255;
+    }
+  }
+  // The clouds ride over the sky and under everything else: a cell a
+  // cloud covers takes the cloud's colour only when what lies beneath
+  // it belongs to the sky, the day bands by day and at night also the
+  // moon and the stars, which a passing cloud duly eclipses for a
+  // while. The canopy, the birds, and the ground are subjects, not
+  // sky, so the clouds pass behind them. An unopened reveal block
+  // covers its clouds the way it covers everything else.
+  for (const cloud of cloudState) {
+    if (cloud.gap) continue;
+    for (const cell of cloud.shape.cells) {
+      const x = cloud.x + cell.dx;
+      const y = cloud.shape.cy + cell.dy;
+      if (!inside(x, y)) continue;
+      const i = at(x, y);
+      const block = Math.floor(y / BLOCK) * BW + Math.floor(x / BLOCK);
+      if (blockRank[block] >= revealed) continue;
+      const under = scene[i];
+      const sky = under <= 3 || (scene === nightBase && under >= 16);
+      if (!sky) continue;
+      const o = i * 4;
+      const [r, g, b] = RGB[cell.colour];
       px[o] = r;
       px[o + 1] = g;
       px[o + 2] = b;
@@ -937,6 +1015,36 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
     schedule(38000 + trng() * 34000, startShadow);
   }
 
+  // The clouds' timetable: sparse timeout chains on the same schedule
+  // helper as the weather, so a step that comes due while the figure
+  // is off-screen or the tab is hidden simply waits, and between
+  // steps the sky costs nothing at all, no interval, no repaint. A
+  // step is one whole column: the cloud's map is redrawn one column
+  // over in a single paint, then the cloud holds for seconds again,
+  // each hold seeded around the cloud's own interval. A cloud that
+  // steps off the right edge waits out a long seeded gap, so the sky
+  // is sometimes short a cloud, then steps in from the left a column
+  // at a time.
+  function scheduleCloud(cloud) {
+    const base = cloud.shape.interval;
+    schedule(base * (0.75 + trng() * 0.5), () => stepCloud(cloud));
+  }
+
+  function stepCloud(cloud) {
+    if (cloud.gap) {
+      cloud.gap = false;
+      cloud.x = -cloud.shape.maxDx - 1;
+    }
+    cloud.x += 1;
+    paint(ctx, frame, revealed, fx);
+    if (cloud.x + cloud.shape.minDx >= W) {
+      cloud.gap = true;
+      schedule(24000 + trng() * 36000, () => stepCloud(cloud));
+      return;
+    }
+    scheduleCloud(cloud);
+  }
+
   function reveal() {
     if (started) return;
     started = true;
@@ -956,6 +1064,10 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
         // The first shadow comes later, on its own schedule, so the
         // two systems are never in step.
         schedule(20000 + trng() * 12000, startShadow);
+        // The clouds start their slow stepping once the scene has
+        // arrived, each on its own chain. Reduced motion returned
+        // above and never reaches this, so its sky stays parked.
+        for (const cloud of cloudState) scheduleCloud(cloud);
       }
     }, STEP_MS);
   }
