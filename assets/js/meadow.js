@@ -27,10 +27,12 @@
   behind the hills in a shade mixed toward the sky, the way haze
   flattens far country, and a small tower stands on it, built with
   what detail its size allows: an antenna spike, a crown with an
-  overhang, band rows and a window slit in a deeper shade, a flared
-  base. By day it is a plain silhouette; after dark its lamp burns
-  Sheikah orange without ever going out, and blinks up to a brighter
-  rung with a warm halo every few seconds, a lamp with a heartbeat.
+  overhang, band rows and a window in a deeper shade, a flared
+  base. By day it is a plain silhouette; after dark the lamp in
+  its window burns Sheikah orange without ever going out, and
+  blinks up to a brighter rung every few seconds, the stone
+  around the window holding a warm ember shade, a lamp with a
+  heartbeat.
   The palettes are the first meadow's own, vibrant and unwashed:
   the ridge and tower shades are mixed from them, so nothing else
   in the scene shifts. (A washed-palette pass and a tiny figure by
@@ -87,9 +89,10 @@ const PALETTE = [
 // exist only at night: the far ridge (the day ridge's cells are
 // remapped to it in nightBase), mixed from the night hill halfway
 // toward the horizon glow, and the tower light's three-rung ladder:
-// a deep ember that warms the sky around the lamp, the Sheikah
-// orange the lamp burns at without ever going out, and one warm
-// pale rung above that for its blink. Twenty-three colours in all.
+// a deep ember for the stone around the tower's window, the Sheikah
+// orange the lamp in the window burns at without ever going out,
+// and one warm pale rung above that for its blink. Twenty-three
+// colours in all.
 const NIGHT_PALETTE = [
   "#060d21", // 0  sky zenith, deep blue
   "#0c1a38", // 1  sky mid
@@ -111,8 +114,8 @@ const NIGHT_PALETTE = [
   "#7f97bd", // 17 moon face
   "#cfe0f7", // 18 star
   "#1a3448", // 19 far ridge, the hill pulled toward the horizon glow
-  "#8a4a16", // 20 tower light, ember: the halo's warm shade around the lamp
-  "#ff9e2c", // 21 tower light, lit: Sheikah orange, the lamp's steady burn
+  "#8a4a16", // 20 tower light, ember: the warm shade in the stone flanking the window
+  "#ff9e2c", // 21 tower light, lit: Sheikah orange, the window lamp's steady burn
   "#ffd08a", // 22 tower light, bright: the blink above the burn
 ];
 
@@ -285,22 +288,27 @@ for (let x = 0; x < W; x += 1) {
 // One landmark on the ridge, the tower from the research: thin enough
 // to be mostly silhouette, tall enough to pull the eye from anywhere
 // in the frame, and built with what architecture its size allows.
-// An antenna spike at the very top; below it the lamp cell, which is
-// plain silhouette by day and the burning light after dark; a crown
-// five cells wide with an overhang, its underside in the tower's one
-// detail shade; a shaft three cells wide, its flat runs broken by
-// two band rows in the detail shade and one window slit high under
-// the crown; and a base that flares back to the crown's width for
-// its last two rows, sunk into the crest so it sits in the ground
-// rather than on it. By day it is a plain silhouette in the ridge's
-// deeper shade. After dark the night scene remaps its body to sky
-// low and its detail to sky mid, and the lamp cell burns on a ladder
-// of orange shades (see nightBase and the glow in paint() below).
+// An antenna spike at the very top; below it a plain silhouette
+// cell; a crown five cells wide with an overhang, its underside in
+// the tower's one detail shade; a shaft three cells wide, its flat
+// runs broken by two band rows in the detail shade and a two-cell
+// window high under the crown; and a base that flares back to the
+// crown's width for its last two rows, sunk into the crest so it
+// sits in the ground rather than on it. By day it is a plain
+// silhouette in the ridge's deeper shade, the window just a deeper
+// slit. After dark the night scene remaps its body to sky low and
+// its detail to sky mid, and the window becomes the lamp: it burns
+// on a ladder of orange shades, the shaft cells flanking it warmed
+// to the ember rung (see nightBase and the glow in paint() below).
+// The light used to sit at the tower's tip, under the spike; Ben
+// read that as a beacon on top of the tower, so in v4 it moved
+// down into the window, where a lamp inside a tower belongs.
 // Clear of the clouds, the birds, the moon, and the stars, and on
 // the right, balancing the tree.
 const TOWER_X = 118;
 const TOWER_TOP_Y = 15; // the antenna spike
-const TOWER_LIGHT_Y = 16; // the lamp, one cell below the spike
+const TOWER_LIGHT_Y = 16; // one cell below the spike, plain silhouette in both themes
+const TOWER_WINDOW_Y = TOWER_LIGHT_Y + 4; // the window, two cells tall: the lamp after dark
 const towerBaseY = farCrest(TOWER_X) + 2;
 set(TOWER_X, TOWER_TOP_Y, 17);
 set(TOWER_X, TOWER_LIGHT_Y, 17);
@@ -311,11 +319,13 @@ for (let tx = TOWER_X - 1; tx <= TOWER_X + 1; tx += 1) set(tx, TOWER_LIGHT_Y + 2
 for (let y = TOWER_LIGHT_Y + 3; y <= towerBaseY; y += 1) {
   for (let tx = TOWER_X - 1; tx <= TOWER_X + 1; tx += 1) set(tx, y, 17);
 }
-// Two band rows across the shaft, and the window slit.
+// Two band rows across the shaft, and the window, two cells tall
+// in the detail shade, sitting on the upper band row like a sill.
 for (const by of [TOWER_LIGHT_Y + 6, TOWER_LIGHT_Y + 10]) {
   for (let tx = TOWER_X - 1; tx <= TOWER_X + 1; tx += 1) set(tx, by, 18);
 }
-set(TOWER_X, TOWER_LIGHT_Y + 4, 18);
+set(TOWER_X, TOWER_WINDOW_Y, 18);
+set(TOWER_X, TOWER_WINDOW_Y + 1, 18);
 // The base flare, the crown's width again.
 for (let y = towerBaseY - 1; y <= towerBaseY; y += 1) {
   for (let tx = TOWER_X - 2; tx <= TOWER_X + 2; tx += 1) set(tx, y, 17);
@@ -623,18 +633,21 @@ const nightBase = Uint8Array.from(base);
 // cells are remapped to the night ridge (19); the tower's silhouette
 // (17) becomes the deep sky-low blue (2), a darker shape against the
 // horizon glow, and its detail shade (18) becomes sky mid (1), one
-// step darker again, so the crown underside, bands, and window stay
-// faintly readable on the night body; and the tower's lamp cell is
-// stored at the middle rung of its glow ladder (21), the rung it
-// burns at. paint() steps it through the ladder from there, so this
-// stored value is the light at rest and under reduced motion.
+// step darker again, so the crown underside and bands stay faintly
+// readable on the night body; and the tower's window cells are
+// stored at the middle rung of its glow ladder (21), the rung the
+// lamp burns at. paint() steps them through the ladder from there,
+// so this stored value is the light at rest and under reduced
+// motion. The cell under the spike that held the lamp in v3 is
+// plain body now and remaps with the rest of the silhouette.
 // Nothing else in the day scene uses slots 16, 17, or 18.
 for (let i = 0; i < W * H; i += 1) {
   if (nightBase[i] === 16) nightBase[i] = 19;
   else if (nightBase[i] === 17) nightBase[i] = 2;
   else if (nightBase[i] === 18) nightBase[i] = 1;
 }
-nightBase[at(TOWER_X, TOWER_LIGHT_Y)] = 21;
+nightBase[at(TOWER_X, TOWER_WINDOW_Y)] = 21;
+nightBase[at(TOWER_X, TOWER_WINDOW_Y + 1)] = 21;
 
 // All but the first two flower clusters fold back into the field's
 // deepest shade. The two that stay keep their slots, paled by the
@@ -735,22 +748,28 @@ let RGB = DAY_RGB;
 
 // The tower light's state at night: a rung on its ladder (slots
 // 20-22), stepped by the wiring's timetable and read here. The lamp
-// burns at the middle rung and never goes out; the timetable only
-// steps it up to the bright rung for its blink and back down. It
-// starts at the burning rung, and reduced motion parks it there.
-// The halo is the four sky cells around the lamp, to its sides and
-// above its corners (the spike takes the cell directly above): at
-// the steady burn they hold the ember rung, a faint warmth on the
-// sky, and while the lamp blinks bright they step up to the lit
-// rung, so the blink spills visibly before it falls back.
+// lives in the tower's window (v4): the two window cells show the
+// rung, burning at the middle one and never going out; the
+// timetable only steps them up to the bright rung for the blink
+// and back down. It starts at the burning rung, and reduced motion
+// parks it there. The shaft cells flanking the window hold the
+// ember rung after dark, light leaking into the stone around the
+// lamp; they do not step with the blink, so the window alone
+// carries it. (In v3 the lamp sat at the tower's tip and haloed
+// the sky around it; Ben read that as light coming from the top
+// of the tower, so the halo is gone and the warmth moved into
+// the stone.)
 const GLOW_RUNGS = [20, 21, 22];
 let glowRung = 1;
-const towerTip = at(TOWER_X, TOWER_LIGHT_Y);
-const towerHalo = new Set([
-  at(TOWER_X - 1, TOWER_LIGHT_Y),
-  at(TOWER_X + 1, TOWER_LIGHT_Y),
-  at(TOWER_X - 1, TOWER_LIGHT_Y - 1),
-  at(TOWER_X + 1, TOWER_LIGHT_Y - 1),
+const towerLamp = new Set([
+  at(TOWER_X, TOWER_WINDOW_Y),
+  at(TOWER_X, TOWER_WINDOW_Y + 1),
+]);
+const towerFlanks = new Set([
+  at(TOWER_X - 1, TOWER_WINDOW_Y),
+  at(TOWER_X + 1, TOWER_WINDOW_Y),
+  at(TOWER_X - 1, TOWER_WINDOW_Y + 1),
+  at(TOWER_X + 1, TOWER_WINDOW_Y + 1),
 ]);
 
 // Reveal blocks of 6 x 6 cells, scrambled once with the same seed, so
@@ -791,14 +810,14 @@ function paint(ctx, frame, revealed, front) {
             colour = LADDERS[ladderOf[i]][Math.max(0, rung[i] - 1)];
           }
         }
-        // The tower light, after dark only: the lamp cell shows the
-        // ladder rung the timetable has reached, and its halo cells
-        // hold the ember rung at the steady burn and the lit rung
-        // while it blinks bright. Whole-cell swaps, like everything
-        // else here.
+        // The tower light, after dark only: the window cells show
+        // the ladder rung the timetable has reached, and the shaft
+        // cells flanking the window hold the ember rung, the stone
+        // warmed by the lamp inside. Whole-cell swaps, like
+        // everything else here.
         if (scene === nightBase) {
-          if (i === towerTip) colour = GLOW_RUNGS[glowRung];
-          else if (towerHalo.has(i)) colour = glowRung === 2 ? GLOW_RUNGS[1] : GLOW_RUNGS[0];
+          if (towerLamp.has(i)) colour = GLOW_RUNGS[glowRung];
+          else if (towerFlanks.has(i)) colour = GLOW_RUNGS[0];
         }
       }
       const o = i * 4;
