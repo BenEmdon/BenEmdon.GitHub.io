@@ -150,12 +150,14 @@
 }
 
 /*
-  Dither installation (experiment): the portrait moment, extended to three
-  panels plus a skyline band above the footer. Panels 2 and 3 are drawn in
-  code by gallery.js and ship covered by a Bayer dither of themselves; the
-  cover clears in whole 8px blocks, in the same eight steps as the portrait
-  dissolve. No transitions anywhere in this block: a block is covered or it
-  is clear, and that is the whole animation.
+  Dither installation (experiment, v2): the portrait moment, extended to
+  three panels plus a skyline band above the footer. Panels 2 and 3 are
+  drawn in code by gallery.js on a 192 x 192 grid and ship covered by a
+  coarse three-shade Bayer dither of themselves; the cover clears in
+  whole 8-unit blocks over 16 steps, sky layer first and front layer
+  last, revealing a finer five-shade scene. No transitions anywhere in
+  this block: a block is covered or it is clear, and that is the whole
+  animation.
 */
 .gallery {
   display: grid;
@@ -223,7 +225,7 @@
   }
 }
 
-/* The skyline band: 360 x 30 grid units stretched across the column, so
+/* The skyline band: 720 x 60 grid units stretched across the column, so
    each unit lands as a rectangle of page pixels and stays crisp. Its
    border colour doubles as gallery.js's accent source (see gallery.js). */
 .skyline {
