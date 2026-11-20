@@ -25,13 +25,18 @@
 
   Vista variant: the same field, given distance. A far ridge stands
   behind the hills in a shade mixed toward the sky, the way haze
-  flattens far country, and a thin tower stands on it, its tip lit
-  orange after dark, the Sheikah colour for a tower at rest. A tiny
-  figure stands by the tree on a stone slab, back turned, looking at
-  all of it. Both palettes are washed one step paler than the first
-  meadow's, watercolour-pale, with saturation kept only for the
-  accents. The new pieces sit off the light ladders, like the distant
-  copse: the sweep belongs to the near field and leaves them alone.
+  flattens far country, and a thin tower stands on it. By day the
+  tower is a plain silhouette; after dark its tip glows Sheikah
+  orange, stepping slowly through a short ladder of shades with a
+  faint halo on the sky cells around it, then resting dim, the way a
+  distant light breathes rather than blinks. The palettes are the
+  first meadow's own, vibrant and unwashed: the ridge and tower
+  shades are mixed from them, so nothing else in the scene shifts.
+  (A washed-palette pass and a tiny figure by the tree were tried and
+  dropped on Ben's call: he prefers the vibrant colours, and the
+  tower was the piece worth keeping.) The new pieces sit off the
+  light ladders, like the distant copse: the sweep belongs to the
+  near field and leaves them alone.
 */
 
 /* ---------- anchor ---------- */
@@ -42,32 +47,30 @@ const H = 60;
 // Eighteen colours, each earning its place. Ramps hue-shift the way
 // pixel artists build them: sky cools upward and warms at the horizon,
 // meadow shadows lean blue-green while the highlights lean yellow.
-// Every colour here is the first meadow's, washed one step paler:
-// mixed 16% toward a warm pale grey (#edf2ea), the watercolour register
-// the BotW research points at. Only the flower (15) keeps its full
-// saturation; accents are where saturation is allowed to live. Two
-// vista slots close the list: the far ridge, mixed from the hill
-// toward the sky the way haze flattens distance, and the tower's
+// Slots 0-15 are the first meadow's palette exactly, vibrant as Ben
+// likes it. Two vista slots close the list, mixed from those colours
+// rather than invented: the far ridge, the hill stepped 55% toward
+// sky low, the way haze flattens distance, and the tower's
 // silhouette, the ridge stepped halfway back toward sky mid.
 const PALETTE = [
-  "#4d79b2", // 0  sky zenith
-  "#759ecb", // 1  sky mid
-  "#aac7e2", // 2  sky low
-  "#e1eff4", // 3  sky horizon
-  "#fafbfc", // 4  cloud
-  "#cde0ee", // 5  cloud shade
-  "#b4c9a5", // 6  hill far
-  "#c4d780", // 7  meadow highlight
-  "#9ec574", // 8  meadow 1
-  "#74af67", // 9  meadow 2
-  "#5a915f", // 10 meadow 3
-  "#4a7460", // 11 meadow 4, the cool shadow
-  "#3f6151", // 12 canopy deep
-  "#82654a", // 13 trunk
-  "#66523f", // 14 trunk shade
-  "#f2cf6b", // 15 flower, the one saturated accent, unwashed
-  "#aec8c7", // 16 far ridge, the hill pulled toward the sky
-  "#89adc8", // 17 tower silhouette, the ridge stepped deeper toward sky mid
+  "#2e62a7", // 0  sky zenith
+  "#5e8ec5", // 1  sky mid
+  "#9dbfe1", // 2  sky low
+  "#dfeef6", // 3  sky horizon
+  "#fdfdff", // 4  cloud
+  "#c7dcef", // 5  cloud shade
+  "#a9c198", // 6  hill far
+  "#bcd26c", // 7  meadow highlight
+  "#8fbc5e", // 8  meadow 1
+  "#5da24e", // 9  meadow 2
+  "#3e7f45", // 10 meadow 3
+  "#2b5c46", // 11 meadow 4, the cool shadow
+  "#1e4534", // 12 canopy deep
+  "#6e4a2c", // 13 trunk
+  "#4c331e", // 14 trunk shade
+  "#f2cf6b", // 15 flower
+  "#a2c0c0", // 16 far ridge, the hill pulled toward the sky
+  "#80a7c2", // 17 tower silhouette, the ridge stepped deeper toward sky mid
 ];
 
 // The night palette: indices 0-15 re-light the day colour in the same
@@ -75,34 +78,38 @@ const PALETTE = [
 // untouched and only the light changes. Night ramps compress and cool:
 // shadows fall toward blue and purple, the meadow goes deep blue-green,
 // and the canopy's lit rim (slots 7-9, the same cells the day rim uses)
-// stays the brightest thing in the field after the sky. The wash
-// applies here too, gentler: 10% toward a pale blue-grey (#46638c),
-// with the accents and lights (15-18) kept as they were. Five extra
-// slots exist only at night: the moon's lit rim, the moon's face,
-// starlight, the far ridge (the day ridge's cells are remapped to it
-// in nightBase), and the tower's glow. Twenty-one colours in all.
+// stays the brightest thing in the field after the sky. Slots 0-18
+// are the first meadow's night palette exactly. Four extra slots
+// exist only at night: the far ridge (the day ridge's cells are
+// remapped to it in nightBase), mixed from the night hill halfway
+// toward the horizon glow, and the tower light's three-rung ladder:
+// a deep ember it rests at, the Sheikah orange it burns at, and one
+// warm pale rung above that for the top of its pulse. Twenty-three
+// colours in all.
 const NIGHT_PALETTE = [
-  "#0c162c", // 0  sky zenith, deep blue
-  "#122140", // 1  sky mid
-  "#192e54", // 2  sky low; also the tower's body after dark
-  "#223c66", // 3  sky horizon, the last glow
-  "#2f446a", // 4  cloud, a faint shape against the sky
-  "#1e3252", // 5  cloud shade
-  "#1b3537", // 6  hill far, silhouetted on the horizon glow
-  "#3e6a55", // 7  meadow highlight, moonlit
-  "#2f5848", // 8  meadow 1
-  "#25493f", // 9  meadow 2
-  "#1c3a31", // 10 meadow 3
-  "#152a27", // 11 meadow 4, the cool shadow
-  "#10212b", // 12 canopy deep, near silhouette
-  "#272437", // 13 trunk, cooled toward plum
-  "#1c1a2c", // 14 trunk shade
+  "#060d21", // 0  sky zenith, deep blue
+  "#0c1a38", // 1  sky mid
+  "#14284e", // 2  sky low; also the tower's body after dark
+  "#1e3862", // 3  sky horizon, the last glow
+  "#2c4066", // 4  cloud, a faint shape against the sky
+  "#1a2c4c", // 5  cloud shade
+  "#16302e", // 6  hill far, silhouetted on the horizon glow
+  "#3d6b4f", // 7  meadow highlight, moonlit
+  "#2c5741", // 8  meadow 1
+  "#214636", // 9  meadow 2
+  "#173527", // 10 meadow 3
+  "#10241c", // 11 meadow 4, the cool shadow
+  "#0a1a20", // 12 canopy deep, near silhouette
+  "#241d2e", // 13 trunk, cooled toward plum
+  "#171221", // 14 trunk shade
   "#cbb877", // 15 flower, one or two still awake, paled
   "#e6eefb", // 16 moon rim
   "#7f97bd", // 17 moon face
   "#cfe0f7", // 18 star
-  "#1e384e", // 19 far ridge, the hill pulled toward the horizon glow
-  "#ff9e2c", // 20 tower glow, Sheikah orange: powered, asleep
+  "#1a3448", // 19 far ridge, the hill pulled toward the horizon glow
+  "#8a4a16", // 20 tower light, dim: the ember it rests at
+  "#ff9e2c", // 21 tower light, lit: Sheikah orange, powered, asleep
+  "#ffd08a", // 22 tower light, bright: the top of the pulse
 ];
 
 // Shade ladders, brightest first. The light sweep steps a ground pixel
@@ -276,9 +283,11 @@ for (let x = 0; x < W; x += 1) {
 // in the frame. Two cells wide with a three-cell cap and a single top
 // cell, standing on the crest and sunk two rows into it so it sits in
 // the ground rather than on it. By day it is a plain silhouette in the
-// ridge's deeper shade; the night scene remaps its body and lights
-// the top cell (see nightBase below). Clear of the clouds, the birds,
-// the moon, and the stars, and on the right, balancing the tree.
+// ridge's deeper shade. After dark the night scene remaps its body to
+// sky low and its top cell becomes a light that pulses on a ladder of
+// orange shades (see nightBase and the glow in paint() below). Clear
+// of the clouds, the birds, the moon, and the stars, and on the right,
+// balancing the tree.
 const TOWER_X = 118;
 const TOWER_TIP_Y = 17;
 const towerBaseY = farCrest(TOWER_X) + 2;
@@ -577,42 +586,6 @@ for (const [hx, hy] of [
   canopyStamp(hx, hy, 1.6, 0.8, 7);
 }
 
-/* ----- the figure ----- */
-
-// The Rückenfigur from the key art, shrunk to what 144 cells can
-// carry: six cells tall, back turned, standing on a low stone slab
-// beside the tree and looking out at the ridge and the tower. Pure
-// silhouette in canopy deep, so the night palette re-lights it to a
-// near-silhouette on its own. Off the ladder, like the copse and the
-// ridge: a person is not ground, and the sweep passes behind him.
-// The cells are recorded so the night scene can stamp him back over
-// any flower it put to sleep in his footprint.
-const figureCells = [];
-function figureSet(x, y, colour) {
-  if (!inside(x, y)) return;
-  set(x, y, colour);
-  rung[at(x, y)] = -1;
-  figureCells.push(at(x, y));
-}
-
-// The slab: two rows of stone, mossy on top, deep in shadow below.
-// He stands at the tree's left, in the sunlit swale: the lightest
-// ground in the field is behind him, so the dark silhouette and the
-// dark slab carry at reading size. (Pass 1 had him right of the
-// trunk, on the shadow patch's edge, where figure, slab, and ground
-// were all the same depth and he read as a stump.)
-for (let x = 28; x <= 32; x += 1) {
-  figureSet(x, 52, 11);
-  figureSet(x, 53, 12);
-}
-// Head, shoulders, torso, legs apart. Six rows, feet on the slab.
-for (const fx of [30, 31]) figureSet(fx, 46, 12);
-for (const fx of [29, 30, 31]) figureSet(fx, 47, 12);
-for (const fx of [30, 31]) figureSet(fx, 48, 12);
-for (const fx of [30, 31]) figureSet(fx, 49, 12);
-for (const fx of [29, 31]) figureSet(fx, 50, 12);
-for (const fx of [29, 31]) figureSet(fx, 51, 12);
-
 /* ----- the night scene ----- */
 
 // The same geometry, re-lit. nightBase starts as a copy of the day
@@ -626,14 +599,16 @@ const nightBase = Uint8Array.from(base);
 // colour (16) is the moon rim's slot in the night palette, so ridge
 // cells are remapped to the night ridge (19); the tower's silhouette
 // (17) becomes the deep sky-low blue (2), a darker shape against the
-// horizon glow; and the tower's single top cell lights Sheikah
-// orange (20), powered and asleep, the one warm note in the far
-// distance. Nothing else in the day scene uses slots 16 or 17.
+// horizon glow; and the tower's single top cell is stored at the
+// middle rung of its glow ladder (21). paint() steps it through the
+// ladder from there, so this stored value is the light at rest and
+// under reduced motion. Nothing else in the day scene uses slots 16
+// or 17.
 for (let i = 0; i < W * H; i += 1) {
   if (nightBase[i] === 16) nightBase[i] = 19;
   else if (nightBase[i] === 17) nightBase[i] = 2;
 }
-nightBase[at(TOWER_X, TOWER_TIP_Y)] = 20;
+nightBase[at(TOWER_X, TOWER_TIP_Y)] = 21;
 
 // All but the first two flower clusters fold back into the field's
 // deepest shade. The two that stay keep their slots, paled by the
@@ -716,11 +691,6 @@ for (const [sx, sy, shape] of [
   for (const [x, y] of cells) nightBase[at(x, y)] = 18;
 }
 
-// The figure and his slab are stamped back last, so a flower put to
-// sleep in his footprint cannot chew a hole in the silhouette. His
-// slots are the same day and night; the palettes do the re-lighting.
-for (const i of figureCells) nightBase[i] = base[i];
-
 /* ---------- painting ---------- */
 
 const toRgb = (hex) => [
@@ -736,6 +706,22 @@ const NIGHT_RGB = NIGHT_PALETTE.map(toRgb);
 // whenever the resolved theme changes.
 let scene = base;
 let RGB = DAY_RGB;
+
+// The tower light's state at night: a rung on its ladder (slots
+// 20-22), stepped by the wiring's timetable and read here. It starts
+// at the ember rung; reduced motion parks it at the middle rung.
+// The halo is the three sky cells touching the tip, above and to the
+// sides; when the light is lit or bright they take the dim rung, a
+// shade of warm on the sky around the point of light, and when the
+// light rests at its ember they are plain sky again.
+const GLOW_RUNGS = [20, 21, 22];
+let glowRung = 0;
+const towerTip = at(TOWER_X, TOWER_TIP_Y);
+const towerHalo = new Set([
+  at(TOWER_X, TOWER_TIP_Y - 1),
+  at(TOWER_X - 1, TOWER_TIP_Y),
+  at(TOWER_X + 1, TOWER_TIP_Y),
+]);
 
 // Reveal blocks of 6 x 6 cells, scrambled once with the same seed, so
 // the scene arrives in the same order on every load. An unopened block
@@ -774,6 +760,14 @@ function paint(ctx, frame, revealed, front) {
           if (d >= 0 && d <= 7) {
             colour = LADDERS[ladderOf[i]][Math.max(0, rung[i] - 1)];
           }
+        }
+        // The tower light, after dark only: the tip cell shows the
+        // ladder rung the timetable has reached, and its halo cells
+        // warm by one shade while it is lit. Whole-cell swaps, like
+        // everything else here.
+        if (scene === nightBase) {
+          if (i === towerTip) colour = GLOW_RUNGS[glowRung];
+          else if (glowRung > 0 && towerHalo.has(i)) colour = GLOW_RUNGS[0];
         }
       }
       const o = i * 4;
@@ -838,6 +832,11 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
   // differently.
   systemDark.addEventListener("change", applyTheme);
 
+  // Reduced motion holds the tower light at its middle rung, steady:
+  // the glow timetable below never starts, so the rung set here is
+  // the one every paint reads.
+  if (reduced.matches) glowRung = 1;
+
   applyTheme();
 
   // The light's timetable: sleep, cross, sleep. Timeouts rather than an
@@ -869,6 +868,29 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
     }, SWEEP_TICK_MS);
   }
 
+  // The tower light's own timetable, turning on the same schedule
+  // helper so it also waits while off-screen or hidden: step up to
+  // lit, step up to bright and hold, step back down, then a long
+  // rest at the ember. Slower and longer-rested than the Guardian
+  // variant's eye pulse: a distant light, not a watching one. Only
+  // the night scene reads the rung, so by day the cycle turns
+  // nothing visible, and a theme swap mid-pulse lands on whatever
+  // rung the cycle has reached and steps on from there.
+  const GLOW_CYCLE = [
+    [1, 900], // lit
+    [2, 1600], // bright, held
+    [1, 900], // stepping back down
+    [0, 6000], // the ember, resting
+  ];
+  let glowStep = 0;
+  function glowAdvance() {
+    const [rungNow, dwell] = GLOW_CYCLE[glowStep];
+    glowStep = (glowStep + 1) % GLOW_CYCLE.length;
+    glowRung = rungNow;
+    if (theme === "dark") paint(ctx, frame, revealed, front);
+    schedule(dwell, glowAdvance);
+  }
+
   function reveal() {
     if (started) return;
     started = true;
@@ -885,6 +907,7 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
       if (step >= REVEAL_STEPS) {
         clearInterval(timer);
         schedule(REST_MS, cross);
+        schedule(3000, glowAdvance);
       }
     }, STEP_MS);
   }
