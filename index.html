@@ -80,6 +80,7 @@
     <link rel="stylesheet" href="assets/css/layout.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/components.css?v=20261114f" />
     <link rel="stylesheet" href="assets/css/palette.css" />
+    <link rel="stylesheet" href="assets/css/sky.css" />
 
     <!-- Visit counting: GoatCounter. No cookies, no fingerprinting, no
          persistent identifier, nothing personal stored, so there is nothing
@@ -119,6 +120,14 @@
   <body>
     <main class="page">
       <header>
+        <!-- Experiment: cloud study. A slim sky strip above the wordmark,
+             Ghibli cumulus clusters on a fixed cell grid, shaded by the
+             Ottawa time of day. Ships hidden and is unwrapped by sky.js,
+             so without JS there is no empty strip. Decorative, so
+             aria-hidden; the heading below carries the meaning. -->
+        <div class="sky" data-sky hidden aria-hidden="true">
+          <canvas class="sky__canvas" data-sky-canvas width="96" height="8"></canvas>
+        </div>
         <h1>
           <span class="sr-only">Ben Emdon</span>
           <pre class="wordmark" aria-hidden="true">██████  ███████ ███    ██     ███████ ███    ███ ██████   ██████  ███    ██
@@ -435,5 +444,6 @@
 
     <script type="module" src="assets/js/main.js"></script>
     <script type="module" src="assets/js/palette.js"></script>
+    <script type="module" src="assets/js/sky.js"></script>
   </body>
 </html>

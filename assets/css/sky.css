@@ -1,0 +1,15 @@
+/* Experiment: cloud study. A slim sky strip above the wordmark.
+   The canvas is a 96 x 8 cell grid scaled to the column width, so at the
+   full 36rem the cells land near 6px and the strip is two --step units
+   tall. image-rendering: pixelated keeps the scale-up on integer edges. */
+
+.sky {
+  margin-block-end: var(--step);
+}
+
+.sky__canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
