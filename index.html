@@ -77,6 +77,7 @@
     <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="assets/css/layout.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/components.css?v=20261114f" />
+    <link rel="stylesheet" href="assets/css/spine.css?v=experiment" />
 
     <!-- Visit counting: GoatCounter. No cookies, no fingerprinting, no
          persistent identifier, nothing personal stored, so there is nothing
@@ -346,6 +347,62 @@
       </footer>
     </main>
 
+    <!-- EXPERIMENT: reactive dither spine. A pixel minimap in the left
+         margin: one segment per section, lit by where the visitor is on
+         the page, and a 4x4 day block at its base. The cells themselves
+         are built by spine.js; without JS the buttons still jump to
+         their sections by anchor. Not a .section, so the numbered key
+         jumps do not move. Hidden under 52rem, where the top strip
+         below takes over the progress job. -->
+    <nav class="spine" data-spine aria-label="Sections, as a pixel minimap">
+      <ol class="spine__list">
+        <li>
+          <button class="spine__seg" type="button" data-spine-seg data-target="whoami">
+            <span class="spine__cells" data-spine-cells aria-hidden="true"></span>
+            <span class="spine__label" aria-hidden="true">whoami</span>
+            <span class="sr-only">Go to whoami</span>
+          </button>
+        </li>
+        <li>
+          <button class="spine__seg" type="button" data-spine-seg data-target="about">
+            <span class="spine__cells" data-spine-cells aria-hidden="true"></span>
+            <span class="spine__label" aria-hidden="true">about</span>
+            <span class="sr-only">Go to about</span>
+          </button>
+        </li>
+        <li>
+          <button class="spine__seg" type="button" data-spine-seg data-target="thinking">
+            <span class="spine__cells" data-spine-cells aria-hidden="true"></span>
+            <span class="spine__label" aria-hidden="true">thinking</span>
+            <span class="sr-only">Go to thinking</span>
+          </button>
+        </li>
+        <li>
+          <button class="spine__seg" type="button" data-spine-seg data-target="work">
+            <span class="spine__cells" data-spine-cells aria-hidden="true"></span>
+            <span class="spine__label" aria-hidden="true">work</span>
+            <span class="sr-only">Go to work</span>
+          </button>
+        </li>
+        <li>
+          <button class="spine__seg" type="button" data-spine-seg data-target="elsewhere">
+            <span class="spine__cells" data-spine-cells aria-hidden="true"></span>
+            <span class="spine__label" aria-hidden="true">elsewhere</span>
+            <span class="sr-only">Go to elsewhere</span>
+          </button>
+        </li>
+      </ol>
+      <div class="spine__day" data-spine-day role="img" aria-label="Ottawa day progress">
+        <span class="spine__day-cells" data-spine-day-cells aria-hidden="true"></span>
+        <span class="spine__day-label" aria-hidden="true">day</span>
+      </div>
+    </nav>
+
+    <!-- The spine's narrow-screen stand-in: a row of cells across the
+         top, lit in whole-cell steps by scroll progress. spine.js
+         builds the cells. -->
+    <div class="spine-strip" data-spine-strip aria-hidden="true"></div>
+
     <!-- Ships hidden and stays hidden without JS, since every key it lists is
          wired up there. data-key matches the section ids in document order. -->
     <div class="keys" id="keys" data-keys hidden>
@@ -373,5 +430,6 @@
     </div>
 
     <script type="module" src="assets/js/main.js"></script>
+    <script type="module" src="assets/js/spine.js"></script>
   </body>
 </html>
