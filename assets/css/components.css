@@ -351,10 +351,15 @@
   between where neither shows. (An earlier prototype let the strip show
   on desktop as well; that overlap is what the split breakpoint fixes.)
 
-  Cells follow the site's pixel rule: an 8px square centred on a fixed
-  16px pitch, checkerboard parity only, snapping on or off via .is-lit.
-  Nothing here transitions or transforms, so a cell can only ever be lit
-  in place or not. The stepping itself lives in margin-field.js.
+  Cells follow the site's pixel rule, at v2 density: a 6px square
+  centred on a fixed 8px pitch, every cell in the grid able to light, so
+  the field is a surface rather than scattered dots. A cell is off or
+  one of four solid shades, all existing site semantics ordered faint
+  to bright: the rule tone, the muted tone, the accent, and the accent
+  pulse. Depth comes from those shade steps, never from opacity: there
+  is no opacity, transition, or transform anywhere in this block, so a
+  cell can only ever snap between off and solid shades, in place. The
+  stepping itself lives in margin-field.js.
 */
 .margin-field {
   position: fixed;
@@ -382,7 +387,7 @@
   display: none;
   inset-block-start: 0;
   inset-inline: 0;
-  block-size: 16px; /* one pitch tall: a single row of cells */
+  block-size: 16px; /* two pitches tall at the v2 8px pitch */
 }
 
 @media (min-width: 60rem) {
@@ -400,14 +405,28 @@
 
 .margin-field__cell {
   position: absolute;
-  inline-size: 8px;
-  block-size: 8px;
-  background: var(--accent-color);
-  opacity: 0;
+  inline-size: 6px;
+  block-size: 6px;
+  background: transparent;
 }
 
-.margin-field__cell.is-lit {
-  opacity: 1;
+/* The four shade steps, faint to bright. Each is one solid palette
+   colour; margin-field.js swaps the whole class in one tick, so a cell
+   steps between these and never passes through anything between them. */
+.margin-field__cell.is-shade-1 {
+  background: var(--page-rule);
+}
+
+.margin-field__cell.is-shade-2 {
+  background: var(--muted-color);
+}
+
+.margin-field__cell.is-shade-3 {
+  background: var(--accent-color);
+}
+
+.margin-field__cell.is-shade-4 {
+  background: var(--accent-pulse-color);
 }
 
 /* Reduced motion gets the static render margin-field.js leaves behind,
