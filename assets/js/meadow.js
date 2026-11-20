@@ -18,6 +18,15 @@
   not a thing travelling. Reduced motion gets the finished scene in one
   cut and no light at all.
 
+  Variant on the checkpoint meadow: a decayed Guardian stands in the
+  near foreground, cropped by the left edge of the frame the way the
+  reference Ben sent crops its own, half sunk into the grass with a
+  fallen leg piece beside it. By day it is a ruin, drawn from the
+  scene's own stone-adjacent slots, eye dark. At night the eye wakes
+  and pulses blue, whole palette slots stepping on a slow tick with
+  long rests in the dark; nothing moves and nothing fades, and
+  reduced motion parks the eye at one steady dim shade.
+
   The scene is built once, deterministically: one seeded random source
   places the grass and flowers and scrambles the reveal, so every load
   is the same meadow. Painting is a single canvas of 144 x 60 cells;
@@ -58,7 +67,10 @@ const PALETTE = [
 // and the canopy's lit rim (slots 7-9, the same cells the day rim uses)
 // stays the brightest thing in the field after the sky. Three extra
 // slots exist only at night: the moon's lit rim, the moon's face, and
-// starlight. Nineteen colours in all.
+// starlight. The Guardian adds two more night-only slots, its eye's
+// ring and core, whose values the pulse steps through a blue ladder
+// (see EYE_LADDER below); at rest they sit dark. Twenty-one colours
+// in all.
 const NIGHT_PALETTE = [
   "#060d21", // 0  sky zenith, deep blue
   "#0c1a38", // 1  sky mid
@@ -79,6 +91,20 @@ const NIGHT_PALETTE = [
   "#e6eefb", // 16 moon rim
   "#7f97bd", // 17 moon face
   "#cfe0f7", // 18 star
+  "#0e2038", // 19 Guardian eye ring, at rest; the pulse steps it
+  "#0a1a20", // 20 Guardian eye core, at rest; the pulse steps it
+];
+
+// The eye's ladder, ring and core together, darkest first. Game-true
+// blue: a lit Guardian eye is blue, flaring brighter as it charges,
+// while orange is Sheikah tech asleep and never an eye. The pulse
+// climbs these rungs, holds the top, and falls back; between pulses
+// the eye sits on rung 0, barely told from the socket around it.
+const EYE_LADDER = [
+  ["#0e2038", "#0a1a20"], // asleep
+  ["#1b6f96", "#14425f"], // waking
+  ["#29abe2", "#3fb6dd"], // lit
+  ["#29abe2", "#7fe7ff"], // the flare
 ];
 
 // Shade ladders, brightest first. The light sweep steps a ground pixel
@@ -518,6 +544,182 @@ for (const [hx, hy] of [
   canopyStamp(hx, hy, 1.6, 0.8, 7);
 }
 
+/* ----- the Guardian ----- */
+
+// A decayed Guardian in the near foreground, cropped by the left edge
+// of the frame and half sunk into the foreground band, with a fallen
+// leg piece in the grass beside it. Drawn last, over everything in
+// its footprint, and off the ladder everywhere, so the light sweep
+// passes it by the way light passes a stone. It is drawn from the
+// scene's own slots, no new day colours: lit stone is cloud shade,
+// mid stone is sky low, shadow stone is sky mid, crevices are canopy
+// deep, and the moss creeping over it is the meadow's own green. The
+// night palette re-lights those slots into the same stone family on
+// its own; only the eye is drawn differently after dark.
+const G_LIT = 5;
+const G_STONE = 2;
+const G_SHADE = 1;
+const G_DEEP = 12;
+const G_MOSS = 10;
+
+const gSaved = new Map(); // cell -> [colour, rung, ladder], first write only
+function gSet(x, y, colour) {
+  if (!inside(x, y)) return;
+  const i = at(x, y);
+  if (!gSaved.has(i)) gSaved.set(i, [base[i], rung[i], ladderOf[i]]);
+  base[i] = colour;
+  rung[i] = -1;
+}
+
+// The body on its own map, 30 wide and 27 tall, set down at (-6, 33)
+// so the widest rows run past the left edge of the frame and the dome
+// rises just under the hill crest. Rows are [left, right] silhouette
+// edges: a stepped dome, a wide head band, a slimmer waist, a flared
+// base rim, then the sink into the ground.
+const G_ROWS = [
+  [13, 16], [11, 18], [9, 20], [8, 21], [7, 22], [6, 23], [5, 24],
+  [5, 24], [4, 25], [4, 25], [4, 25], [5, 24], [5, 24], [6, 23],
+  [6, 23], [6, 23], [5, 24], [5, 24], [4, 25], [4, 25], [4, 25],
+  [5, 24], [5, 24], [6, 23], [6, 23], [7, 22], [7, 22],
+];
+const G_X = -6;
+const G_Y = 33;
+const gMask = new Uint8Array(W * H);
+G_ROWS.forEach(([left, right], row) => {
+  for (let col = left; col <= right; col += 1) {
+    const x = G_X + col;
+    const y = G_Y + row;
+    if (inside(x, y)) gMask[at(x, y)] = 1;
+  }
+});
+
+// Flat stone first, then the light in stamps, the canopy's idiom:
+// lit from the upper left, shadow settling lower right.
+for (let i = 0; i < W * H; i += 1) if (gMask[i]) gSet(i % W, Math.floor(i / W), G_STONE);
+function gStamp(cx, cy, rx, ry, colour) {
+  stamp(cx, cy, rx, ry, (x, y) => {
+    if (inside(x, y) && gMask[at(x, y)]) gSet(x, y, colour);
+  });
+}
+gStamp(G_X + 8, G_Y + 3, 6, 4, G_LIT); // the lit shoulder, kept small
+gStamp(G_X + 11, G_Y + 1, 5, 2, G_LIT); // the lit crown
+gStamp(G_X + 22, G_Y + 10, 5, 6, G_SHADE); // shadow down the right flank
+gStamp(G_X + 21, G_Y + 18, 8, 7, G_SHADE); // shadow, lower right
+gStamp(G_X + 15, G_Y + 25, 10, 3.5, G_SHADE); // shadow at the sink
+
+// Edges: the top silhouette keeps the lit stone, the right edge falls
+// to shadow, and the buried bottom edge goes deep. Segment notches on
+// the crown, the way the reference's Guardian is plated.
+for (let y = 0; y < H; y += 1) {
+  for (let x = 0; x < W; x += 1) {
+    if (!gMask[at(x, y)]) continue;
+    const openRight = !inside(x + 1, y) || !gMask[at(x + 1, y)];
+    const openBelow = !inside(x, y + 1) || !gMask[at(x, y + 1)];
+    if (openBelow && y >= G_Y + 20) gSet(x, y, G_DEEP);
+    else if (openRight) gSet(x, y, G_SHADE);
+  }
+}
+gSet(G_X + 12, G_Y + 1, G_DEEP);
+gSet(G_X + 17, G_Y + 1, G_DEEP);
+
+// The head plate: a shadow line under the band that carries the eye,
+// and the eye's housing, a dark disc set into the band with the eye
+// asleep inside it. By day the whole disc is one deep tone, a socket;
+// after dark the night scene re-draws the eye's own cells in its own
+// slots and the pulse takes them over.
+for (let col = 8; col <= 21; col += 1) gSet(G_X + col, G_Y + 12, G_SHADE);
+const eyeRing = [];
+const eyeCore = [];
+{
+  const ex = G_X + 14;
+  const ey = G_Y + 8;
+  for (const [dx, dy] of [
+    [-1, -2], [0, -2], [1, -2],
+    [-2, -1], [-1, -1], [0, -1], [1, -1], [2, -1],
+    [-2, 0], [2, 0],
+    [-2, 1], [-1, 1], [0, 1], [1, 1], [2, 1],
+    [-1, 2], [0, 2], [1, 2],
+  ]) gSet(ex + dx, ey + dy, G_DEEP);
+  for (let dy = -1; dy <= 1; dy += 1) {
+    for (let dx = -1; dx <= 1; dx += 1) {
+      if (dx === 0 && dy === 0) continue;
+      gSet(ex + dx, ey + dy, G_DEEP);
+      eyeRing.push(at(ex + dx, ey + dy));
+    }
+  }
+  gSet(ex, ey, G_DEEP);
+  eyeCore.push(at(ex, ey));
+}
+
+// Wear: a crack stepping down the right side, a chunk gone from the
+// lower right (the field it covered comes back exactly, rung and
+// all), and moss creeping up the base and over the left shoulder.
+for (const [cx, cy] of [
+  [22, 16], [21, 17], [22, 18], [21, 19],
+]) gSet(G_X + cx, G_Y + cy, G_DEEP);
+// A carved arc on the right flank, the engraved swirl the Sheikah
+// cut into every Guardian, suggested in four cells.
+for (const [sx, sy] of [
+  [18, 12], [19, 11], [20, 12], [20, 13],
+]) gSet(G_X + sx, G_Y + sy, G_DEEP);
+function gRestore(x, y) {
+  if (!inside(x, y)) return;
+  const i = at(x, y);
+  if (!gSaved.has(i)) return;
+  const [colour, r, lad] = gSaved.get(i);
+  base[i] = colour;
+  rung[i] = r;
+  ladderOf[i] = lad;
+  gMask[i] = 0;
+}
+for (let row = 20; row <= 22; row += 1) {
+  for (let col = 24; col <= 25; col += 1) gRestore(G_X + col, G_Y + row);
+}
+// A plate gone from the dome's top right, a stepped bite.
+for (const [nx, ny] of [
+  [20, 3], [21, 3], [21, 4], [22, 4],
+]) gRestore(G_X + nx, G_Y + ny);
+for (const [mx, my] of [
+  [6, 22], [7, 22], [6, 23], [8, 24], [7, 25],
+  [9, 3], [10, 3], [9, 4],
+  [23, 21], [22, 22],
+]) gSet(G_X + mx, G_Y + my, G_MOSS);
+
+// The fallen leg piece: a jointed segment lying in the grass to the
+// right of the base, a knob at its left end, its top in mid stone,
+// its underside deep, a joint line across it, moss on top.
+const LEG_ROWS = [
+  [52, [26, 29]], [53, [27, 31]], [54, [25, 33]], [55, [24, 34]],
+  [56, [25, 33]], [57, [26, 32]], [58, [28, 31]],
+];
+for (const [y, [left, right]] of LEG_ROWS) {
+  for (let x = left; x <= right; x += 1) {
+    gSet(x, y, y <= 55 ? G_STONE : G_SHADE);
+    if (y === 58) gSet(x, y, G_DEEP);
+  }
+}
+gSet(33, 55, G_SHADE);
+gSet(33, 56, G_SHADE);
+for (const jy of [54, 55, 56]) gSet(30, jy, G_DEEP);
+gSet(32, 54, G_DEEP); // the joint's cup, in shadow
+gSet(28, 53, G_MOSS);
+gSet(29, 53, G_MOSS);
+
+// Two silhouette tufts against the base and the leg, seating both in
+// the grass the way the foreground band's own grass stands.
+for (const tx of [21, 36]) {
+  const shape = TUFTS[1];
+  const depth = shape.reduce((m, [, d]) => Math.max(m, d), 0);
+  const baseY = fgTop(tx) + 1;
+  for (const [dx, dy] of shape) {
+    const gx = tx + dx;
+    const gy = baseY - depth + dy;
+    if (!inside(gx, gy)) continue;
+    set(gx, gy, 12);
+    rung[at(gx, gy)] = -1;
+  }
+}
+
 /* ----- the night scene ----- */
 
 // The same geometry, re-lit. nightBase starts as a copy of the day
@@ -526,6 +728,23 @@ for (const [hx, hy] of [
 // sleep, a moon hangs in the calm top-right of the sky, and a sparse
 // set of star clusters lights in the sky the clouds leave empty.
 const nightBase = Uint8Array.from(base);
+
+// The Guardian's eye, asleep in the day cells as plain deep stone,
+// is re-drawn in the night-only eye slots. The wiring steps those
+// slots' palette values through EYE_LADDER; the cells never change.
+for (const i of eyeRing) nightBase[i] = 19;
+for (const i of eyeCore) nightBase[i] = 20;
+
+// Moonlight catches the Guardian's crown the way it catches the
+// canopy's rim: the body's top-edge cells take the night sky's lit
+// blue-grey, so the ruin keeps its outline after dark.
+for (let y = 0; y < H; y += 1) {
+  for (let x = 0; x < W; x += 1) {
+    if (!gMask[at(x, y)]) continue;
+    const openAbove = !inside(x, y - 1) || !gMask[at(x, y - 1)];
+    if (openAbove) nightBase[at(x, y)] = 4;
+  }
+}
 
 // All but the first two flower clusters fold back into the field's
 // deepest shade. The two that stay keep their slots, paled by the
@@ -617,6 +836,7 @@ const toRgb = (hex) => [
 ];
 const DAY_RGB = PALETTE.map(toRgb);
 const NIGHT_RGB = NIGHT_PALETTE.map(toRgb);
+const EYE_RGB = EYE_LADDER.map(([ring, core]) => [toRgb(ring), toRgb(core)]);
 
 // What paint() reads: the day cells under the day palette, or the night
 // cells under the night palette. The wiring swaps the pair together
@@ -680,6 +900,10 @@ const REVEAL_STEPS = 14;
 const STEP_MS = 75; // the site's --motion-step
 const SWEEP_TICK_MS = 120;
 const REST_MS = 6500;
+const EYE_TICK_MS = 450;
+const EYE_REST_MS = 7000;
+// Rungs of EYE_LADDER the pulse visits: climb, hold the flare, fall.
+const EYE_SEQUENCE = [1, 2, 3, 3, 2, 1, 0];
 
 for (const figure of document.querySelectorAll("[data-meadow]")) {
   const canvas = figure.querySelector("[data-meadow-canvas]");
@@ -725,6 +949,15 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
   // differently.
   systemDark.addEventListener("change", applyTheme);
 
+  // The Guardian's eye lives in two night palette slots; stepping the
+  // slots steps every eye cell at once, in place. Reduced motion
+  // parks it at the waking rung, lit but steady, before first paint.
+  function setEye(rungIdx) {
+    NIGHT_RGB[19] = EYE_RGB[rungIdx][0];
+    NIGHT_RGB[20] = EYE_RGB[rungIdx][1];
+  }
+  if (reduced.matches) setEye(1);
+
   applyTheme();
 
   // The light's timetable: sleep, cross, sleep. Timeouts rather than an
@@ -738,6 +971,23 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
       }
       fn();
     }, delay);
+  }
+
+  // The eye's timetable, kept like the light's: pulse, then a long
+  // rest in the dark. The pulse only repaints after dark; by day the
+  // eye cells are plain stone and the ladder turns unseen.
+  function pulse() {
+    let i = 0;
+    const timer = setInterval(() => {
+      if (!onScreen || document.hidden) return; // the eye waits, like the front
+      setEye(EYE_SEQUENCE[i]);
+      if (theme === "dark") paint(ctx, frame, revealed, front);
+      i += 1;
+      if (i >= EYE_SEQUENCE.length) {
+        clearInterval(timer);
+        schedule(EYE_REST_MS, pulse);
+      }
+    }, EYE_TICK_MS);
   }
 
   function cross() {
@@ -772,6 +1022,7 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
       if (step >= REVEAL_STEPS) {
         clearInterval(timer);
         schedule(REST_MS, cross);
+        schedule(3000, pulse);
       }
     }, STEP_MS);
   }
