@@ -323,9 +323,16 @@ for (let x = 0; x < W; x += 1) {
   }
 }
 
-// One tiny lived detail: a distant copse standing on the hill crest.
-// Paler than the real tree, as distance makes things, and off the ladder
-// so the weather, which belongs to the near field, leaves it alone.
+// One tiny lived detail: a distant tree standing on the hill crest.
+// It began as a copse, two flat stamps that read as a bush; now it is
+// drawn the way the real tree is, at a tenth of the size: a lobed
+// canopy built into a mask, shaded in clipped stamps, deep at the
+// lower right and lit at the upper left, over a trunk that stands
+// clear of the ground on both sides. Paler than the real tree, as
+// distance makes things: its ramp is the canopy's own shifted one
+// step paler (deep 11, body 10, lit 9, rim 8, one highlight in 7),
+// and it stays off the ladder so the weather, which belongs to the
+// near field, leaves it alone.
 {
   const copseX = 76;
   const copseBase = crest(copseX);
@@ -334,10 +341,53 @@ for (let x = 0; x < W; x += 1) {
     set(x, y, colour);
     rung[at(x, y)] = -1;
   };
-  stamp(copseX, copseBase - 3, 4, 2.6, copseSet(10));
-  stamp(copseX, copseBase - 1, 3, 1, copseSet(11));
-  copseSet(11)(copseX, copseBase - 1);
-  copseSet(11)(copseX, copseBase);
+
+  const copseMask = new Uint8Array(W * H);
+  const mark = (x, y) => {
+    if (inside(x, y)) copseMask[at(x, y)] = 1;
+  };
+  stamp(copseX, copseBase - 6, 4.2, 2.8, mark); // the main lobe
+  stamp(copseX - 3, copseBase - 4.5, 2.3, 2, mark); // a lower lobe, left
+  stamp(copseX + 3, copseBase - 7.5, 2.4, 1.9, mark); // a higher lobe, right
+
+  const copseStamp = (cx, cy, rx, ry, colour) => {
+    stamp(cx, cy, rx, ry, (x, y) => {
+      if (inside(x, y) && copseMask[at(x, y)]) copseSet(colour)(x, y);
+    });
+  };
+
+  for (let i = 0; i < W * H; i += 1) {
+    if (copseMask[i]) {
+      base[i] = 11;
+      rung[i] = -1;
+    }
+  }
+  copseStamp(copseX, copseBase - 6, 4, 2.3, 10);
+  copseStamp(copseX - 2, copseBase - 7, 2.6, 1.6, 9);
+
+  // Rim light on the top edge, the main tree's own move at this scale:
+  // the lit green where the sky opens above, giving up to the merely
+  // lit shade toward the right, where the light gives up. Only the
+  // canopy's upper rows take it: a top-edge cell low on a side lobe is
+  // a knob, not a rim, and lit it reads as a stray bright cell.
+  for (let y = 0; y < H; y += 1) {
+    for (let x = 0; x < W; x += 1) {
+      if (!copseMask[at(x, y)] || y >= copseBase - 5) continue;
+      const openAbove = !inside(x, y - 1) || !copseMask[at(x, y - 1)];
+      if (openAbove) copseSet(x <= copseX + 2 ? 8 : 9)(x, y);
+    }
+  }
+  copseStamp(copseX - 2.5, copseBase - 8.2, 1.4, 0.7, 7);
+
+  // The trunk, drawn last so it tucks into the canopy's underside and
+  // stands against the horizon: three cells of the trunk's lit side,
+  // a shaded root flare at its foot.
+  copseSet(13)(copseX, copseBase - 3);
+  copseSet(13)(copseX, copseBase - 2);
+  copseSet(13)(copseX, copseBase - 1);
+  copseSet(13)(copseX, copseBase);
+  copseSet(13)(copseX - 1, copseBase);
+  copseSet(14)(copseX + 1, copseBase);
 }
 
 // Sunlit and shadowed ground, as stepped patches one rung off the base
