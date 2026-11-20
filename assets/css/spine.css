@@ -1,0 +1,200 @@
+/*
+  EXPERIMENT: reactive dither spine.
+
+  A narrow column of pixel cells parked in the left margin, beside the
+  reading column. It is art that does three jobs:
+
+  - minimap: one segment per section, in page order;
+  - progress: the segment for the section at the centre of the viewport
+    is fully lit in the accent, segments already read are dithered
+    (half their cells lit, on a Bayer pattern), segments still ahead are
+    outline only;
+  - clock: a 4x4 block at the base whose lit count, again in Bayer
+    order, is the share of the Ottawa day that has passed.
+
+  It follows the site's pixel rule, the same one the hiring sparkle and
+  the wordmark follow. Cells sit on a fixed grid and only ever snap lit
+  or unlit in place. Nothing here transitions, transforms a cell, or
+  fades: a cell is on or it is off, and changes land on 75ms steps
+  (--motion-step). Pointer and scroll positions are quantized to whole
+  cells before they are allowed to change anything.
+
+  The spine is extra. It is not a .section, so the numbered key jumps
+  (1 to 5) are untouched, and it carries its own navigation in its
+  buttons instead.
+*/
+
+.spine {
+  --spine-cell: 6px;
+  --spine-gap: 2px;
+
+  position: fixed;
+  z-index: 5;
+  /* In the left margin: half the viewport, minus half the column, minus
+     the spine's own width and a breathing gap. On a screen only just
+     wide enough this goes negative, which is why the hide rule below
+     exists rather than letting it overlap the text. */
+  inset-inline-start: calc(50% - var(--content-width) / 2 - 3.5rem);
+  inset-block-start: 50%;
+  translate: 0 -50%;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--step);
+}
+
+.spine__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--step-half);
+  list-style: none;
+}
+
+/* A segment is a button, because it is navigation first and a picture
+   second. The base link/button resets in base.css already strip its
+   chrome; what remains is the grid of cells and a label. */
+.spine__seg {
+  position: relative;
+  display: block;
+  padding: 0;
+}
+
+/* 4 columns x 6 rows of cells, on an 8px pitch: the same pitch as the
+   hiring sparkle, so the two pixel fields on the page agree. */
+.spine__cells {
+  display: grid;
+  grid-template-columns: repeat(4, var(--spine-cell));
+  grid-auto-rows: var(--spine-cell);
+  gap: var(--spine-gap);
+}
+
+.spine__cell {
+  inline-size: var(--spine-cell);
+  block-size: var(--spine-cell);
+  border: 1px solid var(--page-rule);
+  background: transparent;
+}
+
+/* Past: dithered. JS lights the Bayer-half of the cells; the rest stay
+   outline, so a read segment reads as a half-tone, not a dimmer solid.
+   There is no opacity involved anywhere in this file. */
+.spine__cell.is-dither {
+  border-color: var(--muted-color);
+  background: var(--muted-color);
+}
+
+/* Current (and the stepped reveal on its way there): solid accent. */
+.spine__cell.is-on {
+  border-color: var(--accent-color);
+  background: var(--accent-color);
+}
+
+/* Hover and keyboard focus are the deliberate signals, so they win over
+   whichever scroll state the segment is in, the same call layout.css
+   makes for section frames. The cells light in place; the label appears
+   beside them in one cut, not a slide. */
+.spine__seg:hover .spine__cell,
+.spine__seg:focus-visible .spine__cell {
+  border-color: var(--accent-color);
+  background: var(--accent-color);
+}
+
+.spine__seg:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 4px;
+}
+
+.spine__label {
+  position: absolute;
+  inset-inline-start: calc(100% + var(--step-half));
+  inset-block-start: 50%;
+  translate: 0 -50%;
+  padding-inline: 0.5ch;
+  background: var(--page-background);
+  color: var(--accent-color);
+  font-size: var(--text-small);
+  white-space: nowrap;
+  visibility: hidden;
+}
+
+.spine__seg:hover .spine__label,
+.spine__seg:focus-visible .spine__label {
+  visibility: visible;
+}
+
+/* ---------- day block ---------- */
+
+/* Separated from the last segment by the spine's own gap, with a rule
+   above it so it does not read as a sixth, shorter segment. */
+.spine__day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spine-gap);
+  padding-block-start: var(--step-half);
+  border-block-start: 1px solid var(--page-rule);
+}
+
+.spine__day-cells {
+  display: grid;
+  grid-template-columns: repeat(4, var(--spine-cell));
+  grid-auto-rows: var(--spine-cell);
+  gap: var(--spine-gap);
+}
+
+.spine__day-label {
+  color: var(--muted-color);
+  font-size: var(--text-caption);
+}
+
+/* ---------- narrow screens ---------- */
+
+/* The top strip that replaces the spine where there is no margin to
+   hold it: a single row of cells across the top of the viewport, lit in
+   whole-cell steps by overall scroll progress. Decoration only, so it
+   is aria-hidden in the markup and takes no pointer input; the 1 to 5
+   keys and ordinary scrolling still do the navigating there. */
+.spine-strip {
+  display: none;
+}
+
+@media (max-width: 52rem) {
+  .spine {
+    display: none;
+  }
+
+  .spine-strip {
+    position: fixed;
+    z-index: 5;
+    inset-block-start: 0;
+    inset-inline: 0;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 2px;
+    padding: 2px;
+    pointer-events: none;
+  }
+
+  .spine-strip__cell {
+    block-size: 4px;
+    border: 1px solid var(--page-rule);
+    background: transparent;
+  }
+
+  .spine-strip__cell.is-on {
+    border-color: var(--accent-color);
+    background: var(--accent-color);
+  }
+
+  .spine-strip__cell.is-dither {
+    border-color: var(--muted-color);
+    background: var(--muted-color);
+  }
+}
+
+/* Reduced motion: JS sets every state in one cut and never runs the
+   stepped reveal, so there is nothing for a CSS rule to calm down; the
+   strip and spine simply hold still between scroll steps, which are
+   the visitor's own doing. */
