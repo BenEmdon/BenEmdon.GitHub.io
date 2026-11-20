@@ -20,19 +20,19 @@
   down the field, from the horizon toward the viewer: the gust's front
   reaches the far rows first and the near rows last, widening and
   gathering a little speed as it comes, the way wind arriving across
-  a real field reads. Between gusts the field rests, fully still, for
-  a long and varying while; the bands are orders, not things
-  travelling.
+  a real field reads. Between gusts the field rests, fully still,
+  for a breath of at most about a second; the bands are orders, not
+  things travelling.
 
-  The clouds (experiment, 2026-11-20) are the one part of the scene
-  not baked into it. Each cloud is kept as its own cell map and
-  composited over the sky, and on a slow timetable of its own it
-  steps a single column to the right, holds still for seconds, then
-  steps again: the site's stepped order applied to the sky, the way
-  the wordmark types a column per tick. Nothing slides and nothing
-  fades; between steps the sky is as still as the field. Reduced
-  motion gets the finished scene in one cut, no weather at all, and
-  the clouds parked where they have always hung.
+  The clouds are the one part of the scene not baked into it. Each
+  cloud is kept as its own cell map and composited over the sky, and
+  on a slow timetable of its own it steps a single column to the
+  right, holds still for seconds, then steps again: the site's
+  stepped order applied to the sky, the way the wordmark types a
+  column per tick. Nothing slides and nothing fades; between steps
+  the sky is as still as the field. Reduced motion gets the finished
+  scene in one cut, no weather at all, and the clouds parked where
+  they have always hung.
 
   The scene is built once, deterministically: one seeded random source
   places the grass and flowers and scrambles the reveal, so every load
@@ -851,7 +851,7 @@ function paint(ctx, frame, revealed, fx) {
 const REVEAL_STEPS = 14;
 const STEP_MS = 75; // the site's --motion-step
 const WEATHER_TICK_MS = 120;
-const REST_MS = 6500; // the pause before the first gust
+const REST_MS = 2500; // the pause before the first gust
 const GUST_START_ROW = 28; // above the field's horizon edge (rows 36-44)
 // The shadow's size grows as it comes forward, perspective doing the
 // same work the gust's widening band does: far away it is a small,
@@ -930,9 +930,8 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
   }
 
   // The timetable's own seed, so the scene's rolls stay untouched and
-  // every load breathes to the same loose rhythm: rests vary, gust
-  // widths vary, and now and then a second gust follows the first
-  // closely, the way real gusts arrive in trains.
+  // every load breathes to the same loose rhythm: the short rests
+  // vary, gust widths vary, and the field is rarely still for long.
   const trng = mulberry32(20261121);
   let ticker = null;
 
@@ -956,7 +955,7 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
       if (fx.gust.row - fx.gust.depth > H + 2) {
         fx.gust = null;
         // A quarter of gusts are followed closely by another.
-        scheduleNextGust(trng() < 0.25);
+        scheduleNextGust();
       }
     }
     if (fx.shadow !== null) {
@@ -992,8 +991,12 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
     startTicker();
   }
 
-  function scheduleNextGust(close) {
-    const rest = close ? 3000 + trng() * 2500 : 9000 + trng() * 12000;
+  function scheduleNextGust() {
+    // Ben's cadence call, 2026-11-20: the long rests (9-21s) made the
+    // weather feel absent. Gusts now follow each other closely, at
+    // most about a second of still field between one ending and the
+    // next starting, never two at once.
+    const rest = 200 + trng() * 800;
     schedule(rest, startGust);
   }
 

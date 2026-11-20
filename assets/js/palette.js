@@ -123,7 +123,7 @@ function render() {
     const title = document.createElement("span"); title.className = "palette__item-title"; title.textContent = cmd.title;
     const hint = document.createElement("span"); hint.className = "palette__item-hint"; hint.textContent = cmd.hint;
     li.append(cat, title, hint);
-    if (cmd.key) { const k = document.createElement("span"); k.className = "palette__item-key"; k.textContent = cmd.key; li.append(k); }
+    if (cmd.key) { const k = document.createElement("span"); k.className = "palette__item-key"; k.textContent = cmd.key; li.append(k); window.mochiKeycap?.(k, cmd.key); }
     li.addEventListener("pointermove", () => { if (selected !== i) { selected = i; render(); } });
     li.addEventListener("click", () => run(cmd));
     list.append(li);
