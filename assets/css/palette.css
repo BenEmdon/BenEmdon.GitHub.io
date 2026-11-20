@@ -189,6 +189,12 @@
 
 @media (hover: none) {
   .palette__head-hint, .palette__foot-note { display: none; }
+  /* iOS Safari zooms the page when a focused input's text is under 16px.
+     The terminal prompt runs at --text-small (14px), so on touch devices
+     the input steps up to 16px and the prompt block follows; desktop
+     keeps the smaller grid size. The palette input already runs at
+     --text-body (16px) and needs nothing. (Ben, 2026-11-20.) */
+  .term-prompt { font-size: var(--text-body); }
 }
 @media (prefers-reduced-motion: reduce) {
   .palette__box { box-shadow: 8px 8px 0 var(--page-rule); }
