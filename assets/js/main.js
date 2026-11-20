@@ -339,21 +339,70 @@ function setUp() {
 
   /* ---------- boot ---------- */
 
-  // Every value here is already stated somewhere further down the page. The
-  // log is a bit of theatre; it is not the place to introduce a fact.
+  // Every value here is read back out of the page's own state: the theme the
+  // toggle above just applied, the Ottawa time the footer clock is about to
+  // start telling, and the command palette's own count. The log is a bit of
+  // theatre; it is not the place to introduce a fact.
+  const themeValue =
+    mode === "system" ? `system (${systemDark.matches ? "dark" : "light"})` : mode;
+  const ottawaTime = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Toronto",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date());
+
   const BOOT_LOG = [
-    ["initializing", "ok"],
-    ["resolving identity", "ben emdon"],
-    ["mounting teams", "code forge, code review"],
-    ["locating", "ottawa, ca"],
+    ["loading type", "iosevka (the good one)"],
+    ["restoring theme", themeValue],
+    ["syncing clock", `ottawa ${ottawaTime}`],
+    ["indexing palette", "13 commands"],
   ];
+
+  // A spruce, drawn as data: one character per cell on an 11 x 13 grid.
+  // L, M and D are the canopy ramp, lit from the upper left: the lit shade
+  // rims the left edge and catches the top row of each tier, the deep
+  // shade is the underside of each tier and grows down the right side,
+  // and the ground row is one deep cluster the trunk lands in, a shadow
+  // rather than a lawn. The colours themselves live in components.css as
+  // the .boot__tree custom properties. It builds beside the log while the
+  // lines resolve: ground first, apex last, one row per motion step, so
+  // it is finished inside the log's last beat and the screen's total wait
+  // is unchanged.
+  const TREE = [
+    ".....M.....",
+    "....LLD....",
+    "....LMD....",
+    "...LLMMD...",
+    "...LMMDD...",
+    "..LLMMMMD..",
+    "..LMMMDDD..",
+    ".LLMMMMMMD.",
+    ".LMMMMDDDD.",
+    "LLMMMMMMMMD",
+    "LMMMMMMDDDD",
+    ".....T.....",
+    "...DDDDD...",
+  ];
+  const TREE_SHADE = {
+    L: "is-lit",
+    M: "is-mid",
+    D: "is-deep",
+    T: "is-trunk",
+  };
+  const TREE_CELL = 6;
+
+  // Progress as cells rather than a bar: this many squares, filled a few
+  // per settled line. Four per line, so the row completes exactly when the
+  // log does.
+  const PROGRESS_CELLS = 16;
 
   // Braille rather than the circle spinners git-merge uses: Iosevka draws
   // those at two columns and these at one, so these keep the mark column the
   // same width from frame to frame.
   const SPINNER = [..."⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"];
 
-  // Roughly 2.3s of log, plus however long main.js took to arrive. Slow enough
+  // Roughly 1.3s of log, plus however long main.js took to arrive. Slow enough
   // that each line lands as its own event and the spinner gets a few frames on
   // screen before it resolves, rather than the whole thing reading as one
   // flash. Anything much past this stops being a flourish and starts being a
@@ -390,8 +439,60 @@ function setUp() {
       }
     }, 80);
 
+    // The tree builds one row per motion step, ground first. Rows are
+    // pre-built as detached cells and placed group by group; a cell is
+    // either there, fully coloured, or not there. Nothing slides or fades.
+    const treeBox = boot.querySelector("[data-boot-tree]");
+    const treeRows = TREE.map((row, y) => {
+      const cells = [];
+      [...row].forEach((ch, x) => {
+        if (ch === ".") return;
+        const cell = document.createElement("span");
+        cell.className = `boot__pix ${TREE_SHADE[ch]}`;
+        cell.style.left = `${x * TREE_CELL}px`;
+        cell.style.top = `${y * TREE_CELL}px`;
+        cells.push(cell);
+      });
+      return cells;
+    }).reverse();
+
+    let treeRow = 0;
+    const grow = setInterval(() => {
+      if (treeRow >= treeRows.length) {
+        clearInterval(grow);
+        return;
+      }
+      treeBox.append(...treeRows[treeRow]);
+      treeRow += 1;
+    }, 75);
+
+    // The progress row: every cell starts as track, and settling a line
+    // raises the target by its share. The filler walks two cells per
+    // motion step until it catches up, so the row reads as steps of work
+    // done rather than a bar sliding.
+    const progressBox = boot.querySelector("[data-boot-progress]");
+    const pcells = [];
+    for (let i = 0; i < PROGRESS_CELLS; i++) {
+      const cell = document.createElement("span");
+      cell.className = "boot__pcell";
+      cell.style.left = `${i * 8}px`;
+      progressBox.append(cell);
+      pcells.push(cell);
+    }
+    let progressTarget = 0;
+    let progressFilled = 0;
+    const fill = setInterval(() => {
+      for (let n = 0; n < 2 && progressFilled < progressTarget; n++) {
+        pcells[progressFilled].classList.add("is-on");
+        progressFilled += 1;
+      }
+      if (progressFilled >= PROGRESS_CELLS) clearInterval(fill);
+    }, 75);
+
     function done() {
       clearInterval(spin);
+      clearInterval(grow);
+      clearInterval(fill);
       timers.forEach(clearTimeout);
       removeEventListener("keydown", done);
       boot.remove();
@@ -436,6 +537,7 @@ function setUp() {
               mark.textContent = "\u2713";
               result.className = "boot__value";
               result.textContent = value;
+              progressTarget = (i + 1) * (PROGRESS_CELLS / BOOT_LOG.length);
             }, LINE_SETTLES)
           );
         }, i * LINE_EVERY)
