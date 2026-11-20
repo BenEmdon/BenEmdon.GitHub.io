@@ -152,7 +152,8 @@
       <section class="section">
         <h2 class="section__title" id="whoami"><span class="prompt" aria-hidden="true">$</span> whoami<a class="anchor" href="#whoami" aria-label="Link to this section">#</a></h2>
         <div class="id">
-          <button class="dither" type="button" data-dither aria-label="Show the undithered photo">
+          <div class="id__stack">
+            <button class="dither" type="button" data-dither aria-label="Show the undithered photo">
             <img
               class="dither__photo"
               src="assets/img/ben.jpg"
@@ -162,6 +163,8 @@
             />
             <canvas class="dither__canvas" data-dither-canvas aria-hidden="true"></canvas>
           </button>
+            <canvas class="theme-scene" data-theme-scene width="24" height="12" aria-hidden="true"></canvas>
+          </div>
           <div class="facts">
             <p class="facts__row">
               <span class="facts__key">role</span>
@@ -362,13 +365,7 @@
           >
             <span data-theme-label>system</span>
           </button>
-          <canvas
-            class="theme-scene"
-            data-theme-scene
-            width="24"
-            height="12"
-            aria-hidden="true"
-          ></canvas>
+          
           <button class="footer__button" type="button" data-palette-open>
             <kbd>⌘K</kbd> palette
           </button>

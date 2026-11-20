@@ -329,6 +329,14 @@
   image-rendering: pixelated;
   border: 1px solid var(--page-rule);
 }
+/* Placement trial: stacked under the portrait in whoami. */
+.id__stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--step) / 2);
+  flex: none;
+}
 
 /* A keyboard hint is noise on a device with no keyboard. */
 @media (hover: none) {
