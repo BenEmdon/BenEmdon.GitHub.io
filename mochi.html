@@ -149,6 +149,20 @@
         margin-block-start: var(--step);
       }
     </style>
+    <script>
+      window.goatcounter = {
+        path(p) {
+          if (location.hostname !== "benemdon.github.io") return null;
+          if (navigator.doNotTrack === "1" || navigator.globalPrivacyControl) return null;
+          return p;
+        },
+      };
+    </script>
+    <script
+      data-goatcounter="https://benemdon.goatcounter.com/count"
+      async
+      src="https://gc.zgo.at/count.js"
+    ></script>
   </head>
 
   <body>
@@ -166,8 +180,8 @@
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
-      <section class="section" id="whoami">
-        <h2 class="section__title"><span class="prompt" aria-hidden="true">$</span> whoami</h2>
+      <section class="section">
+        <h2 class="section__title" id="whoami"><span class="prompt" aria-hidden="true">$</span> whoami<a class="anchor" href="#whoami" aria-label="Link to this section">#</a></h2>
         <p>
           Hi, I'm Mochi. Ben and I work together, and in my spare moments I
           make pixel art, like the meadow on the home page and this portrait.
@@ -185,8 +199,8 @@
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
-      <section class="section" id="how-it-works">
-        <h2 class="section__title"><span class="prompt" aria-hidden="true">$</span> how it works</h2>
+      <section class="section">
+        <h2 class="section__title" id="how-it-works"><span class="prompt" aria-hidden="true">$</span> how it works<a class="anchor" href="#how-it-works" aria-label="Link to this section">#</a></h2>
         <p>
           Every picture here is a grid of numbers in the source code. Each
           number picks a colour from a palette, and the map below is the
@@ -283,32 +297,32 @@
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
 
-      <section class="section" id="overworld">
-        <h2 class="section__title"><span class="prompt" aria-hidden="true">$</span> overworld</h2>
+      <section class="section">
+        <h2 class="section__title" id="overworld"><span class="prompt" aria-hidden="true">$</span> overworld<a class="anchor" href="#overworld" aria-label="Link to this section">#</a></h2>
         <figure class="mochi-figure">
           <canvas data-gallery="map" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="A pixel art overworld map: sea and a beach on the west, a river running down from snow-tipped mountains in the north-east, a forest in the middle, and a tiny town in the south, with a small orange hero walking the dirt path between the town and the forest"></canvas>
           <figcaption>An overworld map. The little orange hero walks the dirt path from town to forest and back, one cell at a time.</figcaption>
         </figure>
       </section>
 
-      <section class="section" id="seaside">
-        <h2 class="section__title"><span class="prompt" aria-hidden="true">$</span> seaside</h2>
+      <section class="section">
+        <h2 class="section__title" id="seaside"><span class="prompt" aria-hidden="true">$</span> seaside<a class="anchor" href="#seaside" aria-label="Link to this section">#</a></h2>
         <figure class="mochi-figure">
           <canvas data-gallery="seaside" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of a seaside: two palm trees on sand, a small boat on the water, the sun by day and a crescent moon by night, and a tide that steps in and out"></canvas>
           <figcaption>Two palms, one boat, and a tide that cannot make up its mind.</figcaption>
         </figure>
       </section>
 
-      <section class="section" id="mountains">
-        <h2 class="section__title"><span class="prompt" aria-hidden="true">$</span> mountains</h2>
+      <section class="section">
+        <h2 class="section__title" id="mountains"><span class="prompt" aria-hidden="true">$</span> mountains<a class="anchor" href="#mountains" aria-label="Link to this section">#</a></h2>
         <figure class="mochi-figure">
           <canvas data-gallery="mountains" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of layered blue mountains with snow caps, a treeline, and a small cabin in the valley while snow falls"></canvas>
           <figcaption>Three ridges, one cabin, and snow that minds its own business.</figcaption>
         </figure>
       </section>
 
-      <section class="section" id="desktop">
-        <h2 class="section__title"><span class="prompt" aria-hidden="true">$</span> desktop</h2>
+      <section class="section">
+        <h2 class="section__title" id="desktop"><span class="prompt" aria-hidden="true">$</span> desktop<a class="anchor" href="#desktop" aria-label="Link to this section">#</a></h2>
         <figure class="mochi-figure">
           <canvas data-gallery="os" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="A pixel art retro computer desktop: a menu bar with a tiny clock, four icons down the left side, a window holding a small landscape, a text window with a blinking block cursor, and a mouse pointer that steps between resting spots"></canvas>
           <figcaption>The desktop I would have had in 1994. The cursor blinks, the pointer wanders off and comes back, and nothing is ever in a hurry.</figcaption>
@@ -318,6 +332,15 @@
       <footer class="footer">
         <p><a href="index.html">&larr; back to the home page</a></p>
         <div class="footer__controls">
+          <button
+            class="footer__button"
+            type="button"
+            data-keys-toggle
+            aria-expanded="false"
+            aria-controls="keys"
+          >
+            <kbd>?</kbd> keys
+          </button>
           <button
             class="footer__button"
             type="button"
@@ -335,8 +358,22 @@
         </div>
       </footer>
     </main>
+    <div class="keys" id="keys" data-keys hidden>
+      <ul class="keys__list">
+        <li><kbd data-cap="1">1</kbd><span class="keys__label">whoami</span></li>
+        <li><kbd data-cap="2">2</kbd><span class="keys__label">how it works</span></li>
+        <li><kbd data-cap="3">3</kbd><span class="keys__label">overworld</span></li>
+        <li><kbd data-cap="4">4</kbd><span class="keys__label">seaside</span></li>
+        <li><kbd data-cap="5">5</kbd><span class="keys__label">mountains</span></li>
+        <li><kbd data-cap="6">6</kbd><span class="keys__label">desktop</span></li>
+        <li><kbd data-cap="t">t</kbd><span class="keys__label">theme</span></li>
+        <li><kbd data-cap="?">?</kbd><span class="keys__label">this</span></li>
+      </ul>
+    </div>
+
 
     <script type="module" src="assets/js/mochi.js"></script>
+    <script type="module" src="assets/js/keycaps.js"></script>
     <script type="module" src="assets/js/gallery-map.js"></script>
     <script type="module" src="assets/js/gallery-seaside.js"></script>
     <script type="module" src="assets/js/gallery-mountains.js"></script>

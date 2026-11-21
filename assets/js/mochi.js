@@ -346,8 +346,78 @@ function setUpThemeToggle() {
   applyMode();
 }
 
+/* ---------- keys ---------- */
+
+// The home page's interaction model, in miniature: digit keys jump to
+// sections and frame them, t works the theme toggle, ? opens the keys
+// legend. Mirrors main.js so the two pages feel like one site.
+function setUpKeys() {
+  const sections = document.querySelectorAll(".section");
+  const keys = document.querySelector("[data-keys]");
+  const keysToggle = document.querySelector("[data-keys-toggle]");
+  const themeToggle = document.querySelector("[data-theme-toggle]");
+  if (!sections.length || !keys || !keysToggle) return;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  let jumpingUntil = 0;
+
+  function frame(section) {
+    for (const other of sections) {
+      other.classList.toggle("is-active", other === section);
+    }
+  }
+
+  const centreLine = new IntersectionObserver(
+    (entries) => {
+      if (performance.now() < jumpingUntil) return;
+      const arrived = entries.findLast((entry) => entry.isIntersecting);
+      if (arrived) frame(arrived.target);
+    },
+    { rootMargin: "-50% 0px -50% 0px" }
+  );
+  for (const section of sections) centreLine.observe(section);
+
+  function showKeys(open) {
+    keys.hidden = !open;
+    keysToggle.setAttribute("aria-expanded", String(open));
+  }
+
+  function jump(section) {
+    section.scrollIntoView({
+      behavior: reduced.matches ? "auto" : "smooth",
+      block: "start",
+    });
+    jumpingUntil = performance.now() + (reduced.matches ? 0 : 1000);
+    frame(section);
+    history.replaceState(null, "", `#${section.querySelector("[id]").id}`);
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    const el = event.target;
+    if (el.isContentEditable || /^(input|textarea|select)$/i.test(el.tagName)) return;
+
+    const digit = Number(event.key);
+    if (Number.isInteger(digit) && digit >= 1 && digit <= sections.length) {
+      jump(sections[digit - 1]);
+    } else if (event.key === "t") {
+      themeToggle?.click();
+    } else if (event.key === "?") {
+      showKeys(keys.hidden);
+    } else if (event.key === "Escape") {
+      showKeys(false);
+    } else {
+      return;
+    }
+    event.preventDefault();
+  });
+
+  keysToggle.addEventListener("click", () => showKeys(keys.hidden));
+}
+
 setUpPortrait();
 setUpThemeToggle();
+setUpKeys();
 
 /* ---------- the pixel lab ---------- */
 
