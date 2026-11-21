@@ -3,6 +3,15 @@
   drawn. A grid of cells, a palette kept as data, and a renderer that
   only ever swaps whole cells between palette colours.
 
+  Refinement pass: the composition borrows Eastward's device, density
+  with purpose. Every element gets a face (inset readout panel, bevelled
+  window edges lit from the upper left, scrollbar arrows, a margin rule
+  in the text window, nameplates with text dashes, a crumpled paper ball
+  by the trash), and the landscape inside the picture window is built in
+  planes like the other gallery pieces: banded sky, a disc sun, a
+  two-tone far hill, a layered tree canopy with a cast shadow, and a
+  path leading out of the frame. One grade of blues unifies it all.
+
   The static scene (menu bar, icons, two windows) is a cell map of
   palette keys built once by the draw helpers below. The text window's
   block cursor and the mouse pointer are overlays painted after the
@@ -108,9 +117,9 @@ function buildScene() {
      desktop is dithered. */
   const patches = [
     [34, 11, 15, 4],
-    [101, 10, 13, 3],
+    [101, 10, 11, 3],
     [30, 40, 19, 4],
-    [104, 37, 15, 5],
+    [105, 38, 12, 4],
     [66, 7, 12, 3],
   ];
   for (const [cx, cy, rx, ry] of patches) {
@@ -131,12 +140,15 @@ function buildScene() {
   set(3, 2, "pale");
   set(4, 2, "accent");
   set(3, 3, "accent");
-  // Menu label dashes.
+  // Menu label dashes, with separator dots between the groups.
   for (const [a, b] of [[7, 12], [15, 21], [24, 28]]) rect(a, 2, b, 2, "metalDeep");
-  // A readout dash left of the clock.
-  rect(100, 2, 106, 2, "metalDeep");
-  // The clock: a 7x5 face, hands at twelve and four.
-  frame(109, 0, 115, 4, "ink");
+  set(13, 2, "metalDeep");
+  set(22, 2, "metalDeep");
+  // A readout panel left of the clock: metal inset, one dash inside.
+  frame(98, 1, 107, 3, "metal");
+  rect(100, 2, 105, 2, "metalDeep");
+  // The clock: a 7x5 face in a metal frame, hands at twelve and four.
+  frame(109, 0, 115, 4, "metalDeep");
   set(112, 2, "ink");
   set(112, 1, "ink");
   set(113, 2, "ink");
@@ -148,7 +160,9 @@ function buildScene() {
   rect(4, 9, 13, 13, "warmDeep");
   rect(3, 11, 14, 15, "warm");
   frame(3, 11, 14, 15, "warmDeep");
+  rect(6, 13, 11, 13, "pale"); // a label strip on the folder's face
   rect(5, 16, 12, 16, "pale");
+  rect(7, 16, 10, 16, "metalDeep"); // nameplate text
 
   // Floppy disk: deep body, metal shutter with its notch, paper label.
   rect(4, 18, 13, 25, "deep");
@@ -159,6 +173,7 @@ function buildScene() {
   rect(6, 23, 9, 23, "metalDeep");
   rect(6, 24, 11, 24, "metalDeep");
   rect(5, 26, 12, 26, "pale");
+  rect(7, 26, 10, 26, "metalDeep");
 
   // A picture of the meadow, framed, as an icon.
   frame(3, 28, 14, 34, "ink");
@@ -174,6 +189,7 @@ function buildScene() {
   set(6, 32, "greenDeep");
   set(10, 32, "greenDeep");
   rect(5, 35, 12, 35, "pale");
+  rect(7, 35, 10, 35, "metalDeep");
 
   // Trash can: lid with an overhang, tapered metal body, full ribs.
   rect(8, 36, 9, 36, "metalDeep");
@@ -184,9 +200,18 @@ function buildScene() {
   frame(5, 41, 12, 43, "metalDeep");
   for (const x of [6, 9, 12]) rect(x, 39, x, 40, "metalDeep");
   for (const x of [7, 10]) rect(x, 41, x, 42, "metalDeep");
+  rect(5, 44, 12, 44, "pale");
+  rect(7, 44, 10, 44, "metalDeep");
+  // A crumpled paper ball that missed the can.
+  set(16, 42, "paper");
+  set(17, 42, "paper");
+  set(16, 43, "paper");
+  set(17, 43, "metalDeep");
 
   /* ---------- picture window ---------- */
   rect(29, 13, 81, 36, "deep"); // drop shadow, bottom-right
+  rect(27, 10, 79, 10, "soft"); // bevel: lit top edge, light from upper left
+  rect(26, 11, 26, 34, "soft"); // bevel: lit left edge
   rect(27, 11, 79, 34, "paper");
   frame(27, 11, 79, 34, "ink");
   // Title bar with pinstripes and a close box.
@@ -197,20 +222,35 @@ function buildScene() {
   set(30, 13, "paper");
   rect(48, 13, 53, 13, "paper");
   rect(55, 13, 62, 13, "paper");
-  // The landscape inside.
+  // The landscape inside. Sky first, banded: a soft row at the top,
+  // one checker row stepping down to pale at the horizon.
   rect(28, 15, 78, 33, "pale");
-  rect(33, 17, 36, 20, "warm");
-  set(36, 20, "warmDeep");
-  rect(56, 17, 63, 17, "paper");
+  rect(28, 15, 78, 15, "soft");
+  for (let x = 28; x <= 78; x += 1) {
+    if (x % 4 === 0) set(x, 16, "soft");
+  }
+  // The sun, a disc now, shaded at its lower right.
+  rect(34, 17, 35, 17, "warm");
+  rect(33, 18, 36, 19, "warm");
+  rect(34, 20, 35, 20, "warm");
+  set(36, 19, "warmDeep");
+  set(35, 20, "warmDeep");
+  // The big cloud, rounder on top, with a shaded underside row.
+  rect(57, 17, 62, 17, "paper");
   rect(54, 18, 66, 18, "paper");
-  rect(57, 19, 64, 19, "paper");
+  rect(56, 19, 64, 19, "paper");
   rect(58, 20, 63, 20, "soft");
-  // Far hill, a seeded smooth crest.
+  // A second, smaller cloud answering it from the right.
+  rect(71, 16, 73, 16, "paper");
+  rect(69, 17, 75, 17, "paper");
+  rect(71, 18, 74, 18, "soft");
+  // Far hill, a seeded smooth crest, two tones: soft above, accent
+  // on its lowest rows so it sits behind the ground with weight.
   let crest = 24;
   for (let x = 28; x <= 78; x += 1) {
     if (x > 28 && x % 3 === 0) crest += rand() < 0.5 ? -1 : 1;
     crest = Math.max(20, Math.min(25, crest));
-    for (let y = crest; y <= 26; y += 1) set(x, y, "soft");
+    for (let y = crest; y <= 26; y += 1) set(x, y, y >= crest + 3 ? "accent" : "soft");
   }
   // Near ground.
   crest = 27;
@@ -226,20 +266,48 @@ function buildScene() {
     set(x + 1, 31, "green");
     set(x, 32, "greenDeep");
   }
+  // Speckle clusters in the green, two cells each, never singles.
+  for (const [x, y] of [[34, 29], [49, 30], [59, 28], [67, 30], [74, 29]]) {
+    set(x, y, "greenDeep");
+    set(x + 1, y, "greenDeep");
+  }
+  // A pale path out of the tree's shade, stepping down to the corner.
+  for (const [x, y] of [[47, 28], [48, 28], [49, 29], [50, 29], [51, 30], [52, 30], [53, 31], [54, 31]]) {
+    set(x, y, "pale");
+  }
   // The tree, left of centre so the text window cannot swallow it.
+  // Layered canopy clusters: lit top and left, deep underside.
+  rect(44, 18, 45, 18, "green");
   rect(43, 19, 46, 19, "greenDeep");
+  set(43, 19, "green");
+  set(44, 19, "green");
+  set(45, 19, "green");
   rect(42, 20, 47, 21, "greenDeep");
   set(42, 20, "green");
-  set(43, 20, "green");
+  set(42, 21, "green");
   rect(43, 22, 46, 22, "greenDeep");
   rect(44, 23, 45, 27, "warmDeep");
-  // Three flowers, deliberate single-cell details.
+  rect(43, 27, 46, 27, "warmDeep"); // root flare
+  set(47, 27, "greenDeep"); // cast shadow, falling right
+  set(48, 27, "greenDeep");
+  set(47, 28, "greenDeep");
+  // Flowers, deliberate single-cell details, warm and paper.
   set(38, 30, "warm");
   set(58, 30, "warm");
   set(70, 29, "warm");
+  set(37, 29, "paper");
+  set(69, 30, "paper");
+  // A bottom scrollbar across the picture, classic chrome: metal
+  // track, deep thumb, ink arrow dots at both ends.
+  rect(28, 33, 78, 33, "metal");
+  rect(40, 33, 52, 33, "metalDeep");
+  set(29, 33, "ink");
+  set(77, 33, "ink");
 
   /* ---------- text window, in front ---------- */
   rect(61, 21, 115, 44, "deep"); // drop shadow
+  rect(59, 18, 113, 18, "soft"); // bevel: lit top edge
+  rect(58, 19, 58, 42, "soft"); // bevel: lit left edge
   rect(59, 19, 113, 42, "paper");
   frame(59, 19, 113, 42, "ink");
   rect(60, 20, 112, 20, "accent");
@@ -261,12 +329,20 @@ function buildScene() {
     const y = 24 + i * 3;
     for (const [a, b] of segments) rect(a, y, b, y + 1, "text");
   });
-  // A rule and a status dash near the foot of the window.
+  // A margin rule down the left of the text, notebook style.
+  rect(61, 23, 61, 38, "metal");
+  // A rule and status dashes near the foot of the window, plus a
+  // small chip at the rule's right end.
   rect(60, 39, 109, 39, "metal");
   rect(62, 40, 72, 40, "metalDeep");
-  // Scrollbar: metal track, deep thumb.
+  rect(95, 40, 105, 40, "metalDeep");
+  frame(108, 39, 110, 41, "metalDeep");
+  set(109, 40, "metalDeep");
+  // Scrollbar: metal track, deep thumb, ink arrow dots at the ends.
   rect(110, 23, 112, 38, "metal");
   rect(110, 24, 112, 28, "metalDeep");
+  set(111, 23, "ink");
+  set(111, 38, "ink");
 }
 
 /* The block cursor lives at the end of the last text line. */
