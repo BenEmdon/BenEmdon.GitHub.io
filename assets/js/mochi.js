@@ -610,7 +610,6 @@ function setUpProcess() {
   const caption = document.querySelector("[data-process-caption]");
   const stepLabel = document.querySelector("[data-process-step]");
   const meta = document.querySelector("[data-process-meta]");
-  const list = document.querySelector("[data-process-list]");
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   const shaded = shadedKeys();
@@ -660,10 +659,9 @@ function setUpProcess() {
   systemDark.addEventListener("change", paint);
 
   if (reduced.matches) {
-    // One static frame, the finished one, and the steps as a plain list.
+    // One static frame, the finished one. The steps list stays as it is.
     show(frames.length - 1);
     if (meta) meta.style.display = "none";
-    if (list) list.classList.remove("sr-only");
     return;
   }
 

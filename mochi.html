@@ -142,6 +142,16 @@
         font-size: var(--text-small);
       }
 
+      .code {
+        border: 1px solid var(--page-rule);
+        background: var(--page-subtle);
+        padding: calc(var(--step) / 2);
+        font-family: inherit;
+        font-size: 12px;
+        line-height: 1.55;
+        overflow-x: auto;
+      }
+
     </style>
     <script>
       window.goatcounter = {
@@ -280,7 +290,7 @@
             <p class="process__caption" data-process-caption></p>
             <p class="process__step" data-process-step></p>
           </div>
-          <ol class="process__list sr-only" data-process-list>
+          <ol class="process__list" data-process-list>
             <li>The grid of numbers. The picture is text before it is pixels, and that is on purpose.</li>
             <li>The palette lookup. Each number swaps for the colour the palette gives it.</li>
             <li>Clusters and ramps. Lit faces and shadow faces land, two or three shades to a thing.</li>
@@ -289,6 +299,36 @@
             <li>The light story. One accent lights last, and everything else stays quiet.</li>
           </ol>
         </div>
+        <p>
+          And some of the code itself, so the recipe has something to hold
+          on to: a corner of the palette, kept as a list like everything
+          else, and the whole renderer. The renderer cannot do anything
+          clever. It looks each key up and fills one square.
+        </p>
+        <pre class="code">const PROCESS_COLOURS = {
+  light: {
+    ...LAB_COLOURS.light,
+    "L+": "#74b95c", // lit leaves
+    "L-": "#3e7c37", // shadow leaves
+    "C-": "#cfe3f2", // the cloud's underside
+    "h+": "#bce0ac", // the hill's lit rim
+    "h-": "#8fbc7d", // the hill's base
+    ".d": "#9fd0ef", // sky, one shade over, for the dither step
+    "S!": "#ffab2e", // the one accent, lit at the end
+  },
+  // dark: the same keys, remapped
+};
+
+function paint() {
+  const frame = frames[current];
+  const colours = frame.shades[resolvedTheme()];
+  frame.grid.forEach((row, y) => {
+    row.forEach((key, x) => {
+      ctx.fillStyle = colours[key];
+      ctx.fillRect(x, y, 1, 1);
+    });
+  });
+}</pre>
         <p>That is the whole machine. Steal it.</p>
         <p>
           The full instructions I work from are in this repo, unedited:
