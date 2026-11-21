@@ -7,10 +7,17 @@
     <title>Music maker · Ben Emdon</title>
     <meta
       name="description"
-      content="A small sequencer for 16-bit adventure music. The song is text first: one character per step, edited as a grid or as lines."
+      content="A small music maker with seven famous game themes. Each song is text in a tiny music language, drawn as a grid, rendered whole, then looped."
     />
     <!-- An experiment, kept unlisted while it is reviewed. -->
     <meta name="robots" content="noindex" />
+
+    <!-- Sample credits: the Zelda voices are short excerpts from
+         VSCO-2 CE (Versilian Studios Community Edition), released
+         CC0, taken from github.com/sgossner/VSCO-2-CE. Eight mono
+         MP3s, about 145 KB in total, pitch-shifted in the browser.
+         The chip voices are synthesized from waveforms. No game
+         audio is used anywhere on this page. -->
 
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32" />
@@ -82,15 +89,18 @@
       <section class="section">
         <h2 class="section__title" id="music-maker"><span class="prompt" aria-hidden="true">$</span> music-maker<a class="anchor" href="#music-maker" aria-label="Link to this section">#</a></h2>
         <p>
-          A small sequencer for 16-bit adventure music, made the way the
-          pixel art on this site is made: the song is text first. Every
-          channel is a little map, one character per step, and the grid
-          below is that same text in another form. Click cells or edit
-          the text; the other view follows, even mid-song.
+          A small music maker holding seven famous game themes: three
+          from Ocarina of Time, three from Pokémon Red and Blue, and
+          the Mario overworld. Pick a song and press play.
+        </p>
+        <p>
+          Every song is written as text, one line per channel, in a
+          tiny music language. The grid under the buttons is that same
+          text drawn as a piano roll. Edit either one and the other
+          follows, even mid-song.
         </p>
         <div class="music-transport">
           <button class="music-btn music-btn--play" type="button" data-play aria-pressed="false">play</button>
-          <button class="music-btn" type="button" data-restart>restart</button>
           <span class="music-tempo">
             <span class="music-tempo__label">tempo</span>
             <button class="music-btn" type="button" data-tempo="-1" aria-label="Slower">−</button>
@@ -102,23 +112,13 @@
         <div class="music-group">
           <span class="music-group__label" id="songs-label">songs</span>
           <div class="music-group__btns" role="group" aria-labelledby="songs-label">
-            <button class="music-btn" type="button" data-demo="forest" aria-pressed="false">forest (demo)</button>
-            <button class="music-btn" type="button" data-demo="village" aria-pressed="false">village (demo)</button>
-            <button class="music-btn" type="button" data-demo="storms" aria-pressed="false">Song of Storms (Zelda)</button>
-            <button class="music-btn" type="button" data-demo="lullaby" aria-pressed="false">Zelda's Lullaby (Zelda)</button>
-            <button class="music-btn" type="button" data-demo="saria" aria-pressed="false">Saria's Song (Zelda)</button>
-            <button class="music-btn" type="button" data-demo="pallet" aria-pressed="false">Pallet Town (Pokémon)</button>
-            <button class="music-btn" type="button" data-demo="center" aria-pressed="false">Pokémon Center (Pokémon)</button>
-            <button class="music-btn" type="button" data-demo="lavender" aria-pressed="false">Lavender Town (Pokémon)</button>
-          </div>
-        </div>
-        <div class="music-group">
-          <span class="music-group__label" id="take-label">take it away</span>
-          <div class="music-group__btns" role="group" aria-labelledby="take-label">
-            <button class="music-btn" type="button" data-export>export wav</button>
-            <button class="music-btn" type="button" data-copy>copy song text</button>
-            <button class="music-btn" type="button" data-download>download .txt</button>
-            <button class="music-btn" type="button" data-share>share link</button>
+            <button class="music-btn" type="button" data-song="storms" aria-pressed="false">Song of Storms (Zelda)</button>
+            <button class="music-btn" type="button" data-song="lullaby" aria-pressed="false">Zelda's Lullaby (Zelda)</button>
+            <button class="music-btn" type="button" data-song="saria" aria-pressed="false">Saria's Song (Zelda)</button>
+            <button class="music-btn" type="button" data-song="pallet" aria-pressed="false">Pallet Town (Pokémon)</button>
+            <button class="music-btn" type="button" data-song="center" aria-pressed="false">Pokémon Center (Pokémon)</button>
+            <button class="music-btn" type="button" data-song="lavender" aria-pressed="false">Lavender Town (Pokémon)</button>
+            <button class="music-btn" type="button" data-song="mario" aria-pressed="false">Overworld (Mario)</button>
           </div>
         </div>
         <div class="music-ptabs" data-ptabs hidden></div>
@@ -126,9 +126,10 @@
           <div data-grid></div>
         </div>
         <p class="music-hint">
-          Click a cell to step it through rest, note, hold, rest. Rows
-          are pitches, high at the top, and the wide gaps fall where the
-          text puts its beat marks. Each channel has a mute of its own.
+          The tabs switch channels. Click an empty cell to place a
+          note, click the end of a note to trim it, click its first
+          cell to remove it, and click the cell just after a note to
+          stretch it. Rows are pitches, high at the top.
         </p>
       </section>
 
@@ -137,33 +138,57 @@
       <section class="section">
         <h2 class="section__title" id="the-text"><span class="prompt" aria-hidden="true">$</span> the-song-as-text<a class="anchor" href="#the-text" aria-label="Link to this section">#</a></h2>
         <p>
-          The whole song, exactly as the sequencer reads it. Change
-          anything and it recompiles on the spot. A typo never stops the
-          music: the last good version keeps playing, and the problem
-          shows in plain words above the text.
+          The whole song, exactly as the player reads it. Change
+          anything and it renders again. A typo never breaks the page:
+          the problem shows in plain words above the text, and the
+          last good version is the one that plays.
         </p>
         <p class="music-status music-status--text" data-text-status aria-live="polite"></p>
         <textarea
           class="music-text"
           data-song-text
           rows="26"
+          wrap="soft"
           spellcheck="false"
           aria-label="Song text"
         ></textarea>
         <p>
-          The alphabet is four characters:
+          The language is a small subset of MML, the format Japanese
+          home computers used for music. One line per channel,
+          starting with its letter, A to H. Notes are the letters a
+          to g. A # or + after a note sharpens it, a - flattens it. A
+          number sets the length: 1 is a whole note, 2 a half, 4 a
+          quarter, 8 an eighth, 16 a sixteenth, and a dot adds half
+          again. r rests. ^ ties the next length onto the note before
+          it.
         </p>
-        <pre class="code">.  rest
-x  a note starts
--  the note holds
-|  one beat (four steps)</pre>
         <p>
-          A block in [brackets] names a channel and its instrument, and
-          can set its volume, its echo send, and its pan. Rows are
-          pitches, or drum names in a drums block. <em>:: A</em> starts
-          a pattern, and an <em>order:</em> line at the end chains the
-          patterns together. With one pattern and no order line, the
-          pattern simply loops.
+          A few letters steer the channel instead of playing: o sets
+          the octave and &lt; &gt; step it down or up, l sets the
+          default length for notes with no number of their own, v is
+          volume from 0 to 15, @ picks an instrument from the fixed
+          table below, and t sets the tempo. [ ] plays what is inside
+          again, twice unless a number follows the closing bracket. L
+          marks where the loop restarts, so anything before it plays
+          once, as an intro. A semicolon starts a comment.
+        </p>
+        <pre class="code">@0 pulse 12.5%   @4 triangle    @8  strings
+@1 pulse 25%     @5 noise       @9  cello
+@2 pulse 50%     @6 ocarina     @10 harp
+@3 pulse 75%     @7 flute</pre>
+        <p>
+          Everything lands on a sixteenth-note grid. That grid is
+          what lets the text and the grid view stay two views of one
+          song. After a grid edit the text is rewritten in a plain
+          standard form, one line per channel with every length
+          spelled out. Text you type by hand is left as you typed it
+          until then.
+        </p>
+        <pre class="code">A @6 t144 o5 d f >d</pre>
+        <p>
+          That line is the ocarina's opening of Song of Storms:
+          instrument 6, 144 beats a minute, octave 5, then D, F, and
+          the D above.
         </p>
       </section>
 
@@ -172,27 +197,33 @@ x  a note starts
       <section class="section">
         <h2 class="section__title" id="how-it-works"><span class="prompt" aria-hidden="true">$</span> how-it-works<a class="anchor" href="#how-it-works" aria-label="Link to this section">#</a></h2>
         <p>
-          The instruments are made when the page loads: short sums of
-          sine and saw waves, softened until they sound sampled, because
-          sampled is what the 16-bit consoles played. There is no audio
-          file anywhere in this page, and nothing to download.
+          Nothing here is scheduled live. Pressing play renders the
+          whole loop into one stretch of audio, start to finish, and
+          then loops that recording. No timer is placing notes while
+          the music plays, so a busy page cannot make it stutter. An
+          edit or a tempo change renders again and swaps in at the
+          next loop boundary.
         </p>
         <p>
-          Every channel can send into one shared echo, a delay with a
-          dark filter inside its loop. That single echo, on top of the
-          sampled sound, is most of what makes this era of game music
-          feel like itself.
+          The Mario and Pokémon songs use the old hardware's own
+          voices: pulse waves at their real duty cycles, the triangle
+          channel with its stepped 4-bit wave, noise from a shift
+          register, and envelopes that move in steps instead of
+          fading. Nothing sweetens them. No reverb, no softening.
         </p>
         <p>
-          Timing runs on the audio clock, not the screen clock. A timer
-          wakes every 25 milliseconds and places notes a little ahead of
-          the speakers, reading the song as it stands at that moment.
-          That is why an edit lands in the music almost at once.
+          The Zelda songs could not work that way. The N64 played
+          samples, so these do too: one or two real notes per
+          instrument, pitch-shifted to reach the rest, with a small
+          generated room echo for the space the console added. The
+          samples are short excerpts from VSCO-2 CE, a community
+          orchestra library released CC0. All eight files together
+          come to about 145 KB.
         </p>
         <p>
-          The idea is Ben's, from a Swift Playground he wrote as a
-          student: a grid of blocks you toggle while the music plays.
-          This is that idea at 16 bits, and taught to read text.
+          The grid itself is Ben's idea, from a Swift Playground he
+          wrote as a student: a grid of blocks you toggle while the
+          music plays. This is that idea taught to read text.
         </p>
       </section>
 

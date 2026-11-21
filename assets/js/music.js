@@ -1,24 +1,31 @@
 /*
-  The music maker: a small sequencer for 16-bit adventure music, built
-  the way the pixel art on this site is built. The song is text first.
-  Each channel is a piano-roll character map, one character per step,
-  and the grid on the page is the same text in another form. Editing
-  either view edits the one text, even while the song plays.
+  The music maker, rebuilt. Songs are MML: the text notation game
+  music was actually composed in, one line per channel. The grid and
+  the text are two views of one song; editing either rewrites the
+  other.
 
-  The sound is the SNES recipe, faked lightly: no console had a synth
-  worth the name in 16 bits, it played short samples through one shared
-  echo. So the instruments here are tiny procedural samples made at
-  load (sine and saw sums, softened), and every channel can send into
-  one feedback delay with a dark filter in its loop.
+  There is no live scheduler. The whole loop is rendered once with
+  OfflineAudioContext into a single buffer, and playback is that
+  buffer on loop, so the phone's main thread does nothing per note
+  and cannot stutter it. An edit re-renders and swaps in at the
+  loop boundary.
 
-  Timing follows the two-clocks pattern: a 25 ms timer schedules notes
-  0.2 s ahead against the audio clock, always reading the current
-  compiled song, so a toggle lands in the music within a step or two.
-  No assets, no WASM, no worklet, no build step.
+  Two voice families, matched to the eras. The 8-bit songs use the
+  fixed channels the hardware had: pulse waves at real duty cycles
+  (PeriodicWave, not plain square), a stepped 32-step triangle, and
+  LFSR noise, with stepped envelopes and no reverb. The Zelda songs
+  are sample-based, as the N64 was: short recordings from VSCO-2 CE
+  (Versilian Studios, CC0), trimmed and encoded to small MP3s under
+  assets/audio/, pitch-shifted by playbackRate, with one generated
+  -impulse convolver for the N64's space. Sample roots were set by
+  measuring the recordings, not by trusting their file names: the
+  VSCO wind and string folders label an octave below sounding pitch
+  (their "C5" flute sounds C6), so each file here is named for the
+  pitch it actually sounds.
 
-  main.js is not loaded here: it assumes the home page's DOM. The theme
-  toggle below is the same miniature mochi.js uses, same localStorage
-  key, so a choice made on any page holds on all of them.
+  main.js is not loaded here: it assumes the home page's DOM. The
+  theme toggle below is the same miniature mochi.js uses, same
+  localStorage key, so a choice made on any page holds on all.
 */
 
 import { createThemeScene } from "./theme-scene.js";
@@ -92,9 +99,7 @@ function setUpThemeToggle() {
 
 // The site's interaction model, in miniature, mirroring mochi.js:
 // digit keys jump to sections and frame them, t works the theme
-// toggle, ? opens the keys legend. The scroll framing comes with
-// it, so a section the reader is inside of wears the accent frame
-// here exactly as it does on the other pages.
+// toggle, ? opens the keys legend.
 function setUpKeys() {
   const sections = document.querySelectorAll(".section");
   const keys = document.querySelector("[data-keys]");
@@ -159,1850 +164,1059 @@ function setUpKeys() {
   keysToggle.addEventListener("click", () => showKeys(keys.hidden));
 }
 
-/* ---------- demo songs ---------- */
-/*
-  Both demos are original loops written straight into the format.
-  The forest is the full eight channels over two patterns. The village
-  is the small case: one pattern, no order line, looped as it stands.
-*/
-
-const DEMO_FOREST = `title: First Light Over the Forest
-bpm: 126
-key: D dorian
-steps: 32
-echo: .35
-
-:: A
-
-[lead · ocarina · vol .9 · echo .55 · pan -.08]
-C6 |....|....|....|....|....|....|x--.|....|
-A5 |....|....|x---|....|....|....|....|x-..|
-G5 |....|....|....|....|....|....|....|..x-|
-F5 |....|x-..|....|x-..|x---|....|....|....|
-E5 |....|....|....|..x-|....|....|....|....|
-D5 |x--.|....|....|....|....|....|....|....|
-
-[harmony · flute · vol .55 · echo .4 · pan .15]
-A4 |x---|--..|....|....|....|....|....|....|
-F4 |....|....|....|....|x---|--..|....|....|
-E4 |....|....|....|....|....|....|x---|....|
-
-[harp · harp · vol .5 · echo .35 · pan .05]
-F5 |....|....|....|....|....|..x.|....|..x.|
-D5 |....|..x.|....|..x.|....|....|....|....|
-C5 |....|....|....|....|....|x...|....|x...|
-A4 |....|x...|....|x...|..x.|....|..x.|....|
-F4 |..x.|....|..x.|....|x...|....|x...|....|
-D4 |x...|....|x...|....|....|....|....|....|
-
-[strings · strings · vol .5 · echo .25]
-C5 |....|....|....|....|x---|----|----|----|
-A4 |x---|----|----|----|x---|----|----|----|
-F4 |x---|----|----|----|x---|----|----|----|
-D4 |x---|----|----|----|....|....|....|....|
-
-[bass · bass · vol .8 · echo .05]
-D3 |x-..|....|....|x...|....|....|....|....|
-C3 |....|....|....|....|....|....|x...|....|
-A2 |....|....|x...|....|....|....|....|....|
-F2 |....|....|....|....|x-..|....|....|x...|
-
-[bells · bell · vol .45 · echo .6 · pan .2]
-D6 |x...|....|....|....|....|....|....|....|
-C6 |....|....|....|....|....|....|x...|....|
-A5 |....|....|....|....|x...|....|....|....|
-
-[arp · pulse · vol .22 · echo .2 · pan -.15]
-C5 |....|....|....|....|..x.|..x.|..x.|..x.|
-A4 |..x.|..x.|..x.|..x.|.x.x|.x.x|.x.x|.x.x|
-F4 |.x.x|.x.x|.x.x|.x.x|x...|x...|x...|x...|
-D4 |x...|x...|x...|x...|....|....|....|....|
-
-[drums · drums · vol .7 · echo .12]
-hat  |....|x...|....|x...|....|x...|....|x...|
-snare|....|....|x...|....|....|....|x...|....|
-kick |x...|....|....|....|x...|....|....|....|
-
-:: B
-
-[lead · ocarina · vol .9 · echo .55 · pan -.08]
-G5 |x---|....|....|....|....|....|....|....|
-E5 |....|..x-|....|..x-|....|....|....|....|
-D5 |....|....|....|x-..|x---|....|....|..x-|
-C5 |....|....|x---|....|....|....|....|....|
-B4 |....|....|....|....|....|x-..|....|x-..|
-A4 |....|....|....|....|....|....|x---|....|
-G4 |....|....|....|....|....|..x-|....|....|
-
-[harmony · flute · vol .55 · echo .4 · pan .15]
-E4 |....|....|x---|....|....|....|....|....|
-D4 |....|....|....|....|x---|--..|....|....|
-C4 |x---|--..|....|....|....|....|....|....|
-B3 |....|....|....|....|....|....|x---|....|
-
-[harp · harp · vol .5 · echo .35 · pan .05]
-G5 |....|....|....|....|....|..x.|....|..x.|
-D5 |....|....|....|....|....|x...|....|x...|
-C5 |....|..x.|....|..x.|....|....|....|....|
-B4 |....|....|....|....|..x.|....|..x.|....|
-G4 |....|x...|....|x...|x...|....|x...|....|
-E4 |..x.|....|..x.|....|....|....|....|....|
-C4 |x...|....|x...|....|....|....|....|....|
-
-[strings · strings · vol .5 · echo .25]
-G4 |x---|----|----|----|x---|----|----|----|
-E4 |x---|----|----|----|....|....|....|....|
-D4 |....|....|....|....|x---|----|----|----|
-C4 |x---|----|----|----|....|....|....|....|
-B3 |....|....|....|....|x---|----|----|----|
-
-[bass · bass · vol .8 · echo .05]
-D3 |....|....|....|....|....|....|x...|....|
-C3 |x-..|....|....|x...|....|....|....|....|
-G2 |....|....|x...|....|x-..|....|....|x...|
-
-[bells · bell · vol .45 · echo .6 · pan .2]
-D6 |....|....|....|....|x...|....|....|....|
-B5 |....|....|....|....|....|....|x...|....|
-G5 |x...|....|....|....|....|....|....|....|
-
-[arp · pulse · vol .22 · echo .2 · pan -.15]
-D5 |....|....|....|....|..x.|..x.|..x.|..x.|
-B4 |....|....|....|....|.x.x|.x.x|.x.x|.x.x|
-G4 |..x.|..x.|..x.|..x.|x...|x...|x...|x...|
-E4 |.x.x|.x.x|.x.x|.x.x|....|....|....|....|
-C4 |x...|x...|x...|x...|....|....|....|....|
-
-[drums · drums · vol .7 · echo .12]
-shaker|x...|x...|x...|x...|x...|x...|x...|x...|
-hat  |....|x...|....|x...|....|x...|....|x...|
-snare|....|....|x...|....|....|....|x...|....|
-kick |x...|....|....|....|x...|....|....|....|
-
-order: A B
-`;
-
-const DEMO_VILLAGE = `title: Village Morning
-bpm: 112
-key: G major
-steps: 16
-echo: .3
-
-[lead · flute · vol .85 · echo .5 · pan -.05]
-D5 |x...|....|....|x--.|
-C5 |....|....|..x.|....|
-B4 |..x.|....|x-..|...x|
-A4 |....|..x.|....|....|
-G4 |....|x-..|....|....|
-
-[harp · harp · vol .5 · echo .3 · pan .08]
-D5 |....|x...|....|....|
-B4 |..x.|..x.|....|....|
-A4 |....|....|....|x...|
-G4 |x...|....|..x.|....|
-F#4|....|....|....|..x.|
-E4 |....|....|x...|....|
-
-[strings · strings · vol .45 · echo .2]
-B4 |x---|----|....|....|
-G4 |x---|----|x---|....|
-A4 |....|....|....|x---|
-F#4|....|....|....|x---|
-E4 |....|....|x---|....|
-D4 |x---|----|....|x---|
-C4 |....|....|x---|....|
-
-[bass · bass · vol .8 · echo .05]
-D3 |....|....|....|x-..|
-C3 |....|....|x-..|....|
-B2 |....|x-..|....|....|
-G2 |x-..|....|....|....|
-
-[bells · bell · vol .4 · echo .55 · pan .18]
-D6 |x...|....|....|....|
-G5 |....|....|x...|....|
-
-[drums · drums · vol .6 · echo .1]
-hat   |..x.|..x.|..x.|..x.|
-shaker|....|x...|....|x...|
-kick  |x...|....|x...|....|
-`;
-
-/*
-  Six presets Ben asked for by name: the famous loops from Zelda
-  and Pokémon, transcribed as their main loop sections and
-  arranged for this maker's channels and instruments. Song of
-  Storms and Zelda's Lullaby keep their 3/4 sway; the grid's
-  beat marks still fall every four steps, so the bars and the
-  gaps part company there. That is cosmetic only.
-*/
-
-const SONG_STORMS = `title: Song of Storms (Zelda)
-bpm: 144
-key: D minor
-steps: 48
-echo: .35
-
-:: A
-
-[lead · ocarina · vol .9 · echo .6 · pan -.06]
-D5  |....|....|x---|....|....|x---|....|....|....|....|x-..|....|
-F5  |....|....|....|....|....|....|..x-|..x-|....|....|..x-|....|
-E5  |....|....|....|....|....|....|x-..|x-..|x-..|....|....|....|
-C5  |....|....|....|....|....|....|....|....|..x-|....|....|....|
-G5  |....|....|....|....|....|....|....|....|....|....|....|x-..|
-A5  |....|....|....|....|....|....|....|....|....|....|....|..x-|
-A4  |....|....|....|....|....|....|....|....|....|x---|....|....|
-F4  |....|x---|....|....|x---|....|....|....|....|....|....|....|
-D4  |x---|....|....|x---|....|....|....|....|....|....|....|....|
-
-[strings · strings · vol .45 · echo .25]
-A4  |x---|----|----|----|----|----|x---|----|----|----|----|----|
-F4  |x---|----|----|----|----|----|....|....|....|....|....|....|
-E4  |....|....|....|....|....|....|x---|----|----|----|----|----|
-D4  |x---|----|----|----|----|----|....|....|....|....|....|....|
-
-[bass · bass · vol .8 · echo .05]
-D3  |x---|----|----|x---|----|----|....|....|....|x---|----|----|
-A2  |....|....|....|....|....|....|x---|----|----|....|....|....|
-
-:: B
-
-[lead · ocarina · vol .9 · echo .6 · pan -.06]
-D5  |....|x-..|....|....|....|x---|....|....|....|..x-|....|....|
-F5  |....|..x-|....|....|....|....|..x-|..x-|....|....|x-..|....|
-E5  |....|....|..x-|....|....|....|x-..|x-..|x-..|....|....|....|
-C5  |....|....|....|....|....|....|....|....|..x-|....|....|....|
-G5  |....|....|x-..|....|....|....|....|....|....|....|..x-|....|
-A5  |....|....|....|....|....|....|....|....|....|....|....|x---|
-A4  |x---|....|....|....|....|....|....|....|....|x-..|....|....|
-F4  |....|....|....|....|x---|....|....|....|....|....|....|....|
-D4  |....|....|....|x---|....|....|....|....|....|....|....|....|
-
-[strings · strings · vol .45 · echo .25]
-A4  |x---|----|----|....|....|....|x---|----|----|....|....|....|
-F4  |....|....|....|x---|----|----|....|....|....|x---|----|----|
-E4  |x---|----|----|....|....|....|x---|----|----|....|....|....|
-D4  |....|....|....|x---|----|----|....|....|....|x---|----|----|
-
-[bass · bass · vol .8 · echo .05]
-D3  |....|....|....|x---|----|----|....|....|....|x---|----|----|
-A2  |x---|----|----|....|....|....|x---|----|----|....|....|....|
-
-order: A B
-`;
-
-const SONG_LULLABY = `title: Zelda's Lullaby (Zelda)
-bpm: 100
-key: G major
-steps: 48
-echo: .4
-
-:: A
-
-[lead · ocarina · vol .9 · echo .55 · pan -.05]
-A5  |....|....|....|....|....|....|....|....|....|....|....|x---|
-D5  |....|x---|....|....|....|....|....|x---|....|....|x---|....|
-B4  |x---|....|....|....|....|....|x---|....|....|x---|....|....|
-A4  |....|....|x---|....|....|x---|....|....|x---|....|....|....|
-G4  |....|....|....|x---|----|....|....|....|....|....|....|....|
-
-[strings · strings · vol .45 · echo .25]
-G4  |....|....|....|....|....|....|x---|----|----|----|----|----|
-D4  |x---|----|----|----|----|----|x---|----|----|----|----|----|
-B3  |x---|----|----|----|----|----|x---|----|----|----|----|----|
-
-[bass · bass · vol .75 · echo .05]
-D3  |....|....|....|....|....|....|....|....|....|x---|----|----|
-G2  |x---|----|----|x---|----|----|x---|----|----|....|....|....|
-
-:: B
-
-[lead · ocarina · vol .9 · echo .55 · pan -.05]
-A5  |x---|....|....|....|....|....|....|....|....|....|....|....|
-G5  |....|x---|....|....|....|....|....|....|....|....|....|....|
-D5  |....|....|x---|....|....|....|....|x---|....|....|....|....|
-C5  |....|....|....|x---|....|....|....|....|....|....|....|....|
-B4  |....|....|....|....|x---|....|x---|....|....|....|....|....|
-A4  |....|....|....|....|....|x---|....|....|x---|....|....|x---|
-G4  |....|....|....|....|....|....|....|....|....|x---|----|....|
-
-[strings · strings · vol .45 · echo .25]
-G4  |....|....|....|x---|----|----|----|----|----|x---|----|----|
-E4  |x---|----|----|....|....|....|....|....|....|....|....|....|
-D4  |....|....|....|....|....|....|....|....|....|x---|----|----|
-C4  |x---|----|----|....|....|....|....|....|....|....|....|....|
-B3  |....|....|....|x---|----|----|----|----|----|....|....|....|
-
-[bass · bass · vol .75 · echo .05]
-C3  |x---|----|----|....|....|....|....|....|....|....|....|....|
-G2  |....|....|....|x---|----|----|x---|----|----|x---|----|----|
-
-order: A B
-`;
-
-const SONG_SARIA = `title: Saria's Song (Zelda)
-bpm: 138
-key: C major
-steps: 64
-echo: .3
-
-[lead · flute · vol .9 · echo .5 · pan -.05]
-E5  |....|....|....|....|....|....|....|....|x---|....|....|....|....|....|....|....|
-D5  |....|....|....|....|....|....|....|....|....|x---|....|....|....|....|....|....|
-C5  |....|....|....|....|....|....|....|....|....|....|..x-|....|....|....|....|....|
-B4  |....|....|x---|....|....|x---|....|x---|....|....|x-..|x-..|....|....|....|....|
-A4  |....|x---|....|....|x---|....|..x-|....|....|....|....|....|....|....|....|....|
-G4  |....|....|....|....|....|....|....|....|....|....|....|..x-|....|....|..x-|....|
-F4  |x---|....|....|x---|....|....|x-..|....|....|....|....|....|....|....|....|....|
-E4  |....|....|....|....|....|....|....|....|....|....|....|....|x---|....|x-..|x---|
-D4  |....|....|....|....|....|....|....|....|....|....|....|....|....|x---|....|....|
-
-[strings · strings · vol .4 · echo .2]
-C4  |x---|----|----|----|----|----|....|....|....|....|....|....|....|x---|----|----|
-A3  |x---|----|----|----|----|----|....|....|....|....|....|....|....|....|....|....|
-G3  |....|....|....|....|....|....|....|....|....|....|x---|----|----|....|....|....|
-F3  |....|....|....|....|....|....|x---|----|----|----|....|....|....|....|....|....|
-
-[bass · bass · vol .8 · echo .05]
-C3  |....|....|....|....|....|....|....|....|x---|----|....|....|....|x---|----|----|
-G2  |....|....|....|....|....|....|....|....|....|....|x---|----|----|....|....|....|
-F2  |x---|----|----|x---|----|----|x---|----|....|....|....|....|....|....|....|....|
-
-[drums · drums · vol .5 · echo .08]
-hat |..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|
-kick|x...|....|....|....|x...|....|....|....|x...|....|....|....|x...|....|....|....|
-`;
-
-const SONG_PALLET = `title: Pallet Town (Pokémon)
-bpm: 120
-key: G major
-steps: 48
-echo: .3
-
-:: A
-
-[lead · flute · vol .9 · echo .5 · pan -.05]
-G5  |....|....|x---|....|....|....|....|....|....|....|....|....|
-F#5 |....|....|....|..x-|....|....|....|....|....|....|....|....|
-E5  |....|....|....|x-..|x-..|....|....|....|....|....|....|....|
-D5  |x-..|....|....|....|..x-|....|....|....|....|....|....|....|
-C5  |..x-|....|....|....|....|....|....|..x-|....|..x-|....|....|
-B4  |....|x-..|....|....|....|x-..|....|x-..|....|....|x-..|....|
-A4  |....|..x-|....|....|....|....|..x-|....|....|x-..|..x-|....|
-G4  |....|....|....|....|....|..x-|x-..|....|x-..|....|....|x---|
-
-[strings · strings · vol .4 · echo .2]
-D4  |x---|----|----|----|----|----|----|----|----|----|----|----|
-B3  |x---|----|----|----|----|----|----|----|----|----|----|----|
-
-[bass · bass · vol .8 · echo .05]
-D3  |....|....|....|....|....|....|....|....|....|x---|----|----|
-C3  |....|....|....|x---|----|----|....|....|....|....|....|....|
-G2  |x---|----|----|....|....|....|x---|----|----|....|....|....|
-
-:: B
-
-[lead · flute · vol .9 · echo .5 · pan -.05]
-G5  |....|....|x---|....|x-..|....|....|....|....|....|....|....|
-F#5 |....|....|....|x-x-|....|....|....|....|....|....|....|....|
-E5  |....|....|....|....|..x-|--..|....|....|....|....|....|....|
-D5  |x-..|..x-|....|....|....|..x-|x-..|....|....|x-..|....|....|
-C5  |..x-|....|....|....|....|....|..x-|....|....|..x-|....|....|
-B4  |....|x-..|....|....|....|....|....|x-..|....|....|x-..|....|
-A4  |....|....|....|....|....|....|....|..x-|....|....|..x-|....|
-G4  |....|....|....|....|....|....|....|....|x---|....|....|x---|
-
-[strings · strings · vol .4 · echo .2]
-D4  |x---|----|----|----|----|----|----|----|----|----|----|----|
-B3  |x---|----|----|----|----|----|----|----|----|----|----|----|
-
-[bass · bass · vol .8 · echo .05]
-D3  |....|....|....|....|....|....|x---|----|----|....|....|....|
-C3  |....|....|....|x---|----|----|....|....|....|....|....|....|
-G2  |x---|----|----|....|....|....|....|....|....|x---|----|----|
-
-:: C
-
-[lead · flute · vol .9 · echo .5 · pan -.05]
-D6  |....|....|..x-|--..|....|....|....|....|..x-|--..|....|....|
-C6  |....|....|x-..|..x-|....|....|....|..x-|x-..|..x-|....|....|
-B5  |....|..x-|....|....|..x-|--..|....|x-..|....|....|..x-|----|
-A5  |....|x-..|....|....|....|....|..x-|....|....|....|....|....|
-G5  |x---|....|....|....|....|..x-|--..|....|....|....|....|....|
-
-[strings · strings · vol .4 · echo .2]
-G4  |x---|----|----|----|----|----|----|----|----|----|----|----|
-E4  |x---|----|----|----|----|----|----|----|----|----|----|----|
-
-[bass · bass · vol .8 · echo .05]
-D3  |....|....|....|....|....|....|....|....|....|x---|----|----|
-C3  |x---|----|----|....|....|....|x---|----|----|....|....|....|
-G2  |....|....|....|x---|----|----|....|....|....|....|....|....|
-
-:: D
-
-[lead · flute · vol .9 · echo .5 · pan -.05]
-B5  |x---|....|....|x---|....|....|....|x---|x---|....|....|....|
-A5  |....|x-..|x-..|....|x-..|....|....|....|....|x---|----|----|
-G5  |....|..x-|....|....|..x-|....|x---|....|....|....|....|....|
-F#5 |....|....|....|....|....|..x-|....|....|....|....|....|....|
-E5  |....|....|..x-|....|....|x-..|....|....|....|....|....|....|
-
-[strings · strings · vol .4 · echo .2]
-E4  |x---|----|----|----|----|----|----|----|----|----|----|----|
-B3  |x---|----|----|----|----|----|----|----|----|----|----|----|
-
-[bass · bass · vol .8 · echo .05]
-D3  |....|....|....|x---|----|----|....|....|....|....|....|....|
-C3  |x---|----|----|....|....|....|....|....|....|....|....|....|
-G2  |....|....|....|....|....|....|x---|----|----|x---|----|----|
-
-order: A B C D
-`;
-
-const SONG_CENTER = `title: Pokémon Center (Pokémon)
-bpm: 120
-key: D major
-steps: 64
-echo: .3
-
-:: A
-
-[lead · flute · vol .9 · echo .5 · pan -.05]
-D5  |x-..|x-..|....|....|....|....|....|x-..|x-..|x-..|....|....|....|....|....|x-..|
-A5  |....|..x-|....|....|....|....|....|....|....|..x-|....|....|....|....|....|....|
-G5  |....|....|x-..|....|....|....|....|....|....|....|x-..|....|....|....|....|....|
-F#5 |....|....|..x-|....|....|....|x-..|..x-|....|....|..x-|....|....|....|x-..|..x-|
-E5  |....|....|....|x-..|....|....|..x-|....|....|....|....|x-..|....|....|..x-|....|
-C#5 |....|....|....|..x-|x-..|..x-|....|....|....|....|....|..x-|x-..|..x-|....|....|
-A4  |..x-|....|....|....|..x-|....|....|....|..x-|....|....|....|..x-|....|....|....|
-
-[harp · harp · vol .35 · echo .35 · pan .12]
-A5  |....|....|....|x-..|....|....|....|x-..|....|....|....|x-..|....|....|....|x-..|
-F#5 |....|....|x-..|....|....|....|x-..|....|....|....|x-..|....|....|....|x-..|....|
-D5  |....|x-..|....|....|....|x-..|....|....|....|x-..|....|....|....|x-..|....|....|
-
-[bass · bass · vol .8 · echo .05]
-D3  |x-..|....|x-..|....|x-..|....|x-..|....|x-..|....|x-..|....|x-..|....|x-..|....|
-A2  |....|x-..|....|x-..|....|x-..|....|x-..|....|x-..|....|x-..|....|x-..|....|x-..|
-
-[drums · drums · vol .55 · echo .08]
-hat |..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|
-snare|....|....|x...|....|....|....|x...|....|....|....|x...|....|....|....|x...|....|
-kick|x...|....|....|....|x...|....|....|....|x...|....|....|....|x...|....|....|....|
-
-:: B
-
-[lead · flute · vol .9 · echo .5 · pan -.05]
-B5  |....|....|....|....|....|....|....|....|....|....|x-..|....|....|....|....|....|
-A5  |..x-|..x-|....|....|....|....|....|..x-|....|..x-|..x-|....|....|....|....|....|
-G5  |....|x-..|x-..|....|....|x-..|....|....|x-..|x-..|....|x-..|x-..|x-..|....|....|
-F#5 |x-..|....|..x-|....|..x-|..x-|....|x-..|..x-|....|....|..x-|..x-|..x-|....|....|
-E5  |....|....|....|x-..|x-..|....|x-..|....|....|....|....|....|....|....|x-..|....|
-D5  |....|....|....|....|....|....|..x-|....|....|....|....|....|....|....|..x-|----|
-C#5 |....|....|....|..x-|....|....|....|....|....|....|....|....|....|....|....|....|
-
-[harp · harp · vol .35 · echo .35 · pan .12]
-B5  |....|....|....|....|....|....|....|x-..|....|....|....|....|....|....|....|....|
-A5  |....|....|....|x-..|....|....|....|....|....|....|....|x-..|....|....|....|....|
-G5  |....|....|....|....|....|x-..|....|....|....|....|....|....|....|....|....|....|
-F#5 |....|....|x-..|....|....|....|....|....|....|....|x-..|....|....|....|....|....|
-D5  |....|x-..|....|....|....|....|....|....|....|x-..|....|....|....|....|....|....|
-
-[bass · bass · vol .8 · echo .05]
-D3  |x-..|....|x-..|....|x-..|....|x-..|....|....|....|....|x-..|....|x-..|....|x-..|
-G2  |....|....|....|....|....|....|....|x-..|....|x-..|....|....|....|....|....|....|
-A2  |....|....|....|....|....|....|....|....|x-..|....|x-..|....|x-..|....|x-..|....|
-
-[drums · drums · vol .55 · echo .08]
-hat |..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|..x.|
-snare|....|....|x...|....|....|....|x...|....|....|....|x...|....|....|....|x...|....|
-kick|x...|....|....|....|x...|....|....|....|x...|....|....|....|x...|....|....|....|
-
-order: A B
-`;
-
-const SONG_LAVENDER = `title: Lavender Town (Pokémon)
-bpm: 92
-key: E minor
-steps: 64
-echo: .45
-
-:: A
-
-[lead · flute · vol .85 · echo .7 · pan -.05]
-C6  |x---|----|....|....|....|....|....|....|x---|----|....|....|....|....|....|....|
-B5  |....|....|....|....|x---|----|....|....|....|....|....|....|x---|----|....|....|
-G5  |....|....|x---|----|....|....|....|....|....|....|x---|----|....|....|....|....|
-F#5 |....|....|....|....|....|....|x---|----|....|....|....|....|....|....|x---|----|
-
-[strings · strings · vol .4 · echo .3]
-B4  |x---|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|
-G4  |x---|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|
-E4  |x---|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|
-
-[bass · bass · vol .7 · echo .05]
-E3  |x---|----|----|----|....|....|....|....|x---|----|----|----|....|....|....|....|
-B2  |....|....|....|....|x---|----|----|----|....|....|....|....|x---|----|----|----|
-
-[bells · bell · vol .35 · echo .7 · pan .18]
-E6  |x-..|....|....|....|....|....|....|....|x-..|....|....|....|....|....|....|....|
-
-:: B
-
-[lead · flute · vol .85 · echo .7 · pan -.05]
-C6  |....|....|....|....|....|....|x---|----|....|....|....|....|....|....|x---|----|
-B5  |....|....|x---|----|....|....|....|....|....|....|x---|----|....|....|....|....|
-G5  |x---|----|....|....|....|....|....|....|x---|----|....|....|....|....|....|....|
-F#5 |....|....|....|....|x---|----|....|....|....|....|....|....|x---|----|....|....|
-
-[strings · strings · vol .4 · echo .3]
-C5  |....|....|....|....|....|....|....|....|x---|----|----|----|----|----|----|----|
-B4  |x---|----|----|----|----|----|----|----|....|....|....|....|....|....|....|....|
-G4  |x---|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|
-E4  |x---|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|
-
-[bass · bass · vol .7 · echo .05]
-E3  |x---|----|----|----|....|....|....|....|x---|----|----|----|....|....|....|....|
-C3  |....|....|....|....|x---|----|----|----|....|....|....|....|....|....|....|....|
-B2  |....|....|....|....|....|....|....|....|....|....|....|....|x---|----|----|----|
-
-[bells · bell · vol .35 · echo .7 · pan .18]
-E6  |....|....|....|....|x-..|....|....|....|....|....|....|....|x-..|....|....|....|
-
-order: A B
-`;
-
-const PRESETS = {
-  forest: DEMO_FOREST,
-  village: DEMO_VILLAGE,
-  storms: SONG_STORMS,
-  lullaby: SONG_LULLABY,
-  saria: SONG_SARIA,
-  pallet: SONG_PALLET,
-  center: SONG_CENTER,
-  lavender: SONG_LAVENDER,
+/* ---------- instruments ---------- */
+
+// The fixed table. @n in the text picks one of these; there is no
+// instrument design beyond the list, by design. Chip voices first,
+// then the sampled ones. Sample files are named for the pitch they
+// sound (see the header note), and a voice uses the nearest root.
+const INSTRUMENTS = [
+  { name: "pulse 12.5%", kind: "pulse", duty: 0.125 },
+  { name: "pulse 25%", kind: "pulse", duty: 0.25 },
+  { name: "pulse 50%", kind: "pulse", duty: 0.5 },
+  { name: "pulse 75%", kind: "pulse", duty: 0.75 },
+  { name: "triangle", kind: "tri" },
+  { name: "noise", kind: "noise" },
+  { name: "ocarina", kind: "sample", verb: 0.5, vib: true,
+    files: [[72, "ocarina-72.mp3"], [84, "ocarina-84.mp3"]] },
+  { name: "flute", kind: "sample", verb: 0.45,
+    files: [[81, "flute-81.mp3"], [84, "flute-84.mp3"]] },
+  { name: "strings", kind: "sample", verb: 0.6,
+    files: [[72, "strings-72.mp3"]] },
+  { name: "cello", kind: "sample", verb: 0.5,
+    files: [[60, "cello-60.mp3"]] },
+  { name: "harp", kind: "sample", verb: 0.35,
+    files: [[48, "harp-48.mp3"], [72, "harp-72.mp3"]] },
+];
+const AUDIO_BASE = "assets/audio/";
+
+/* ---------- songs ---------- */
+
+// Bouncy bass bar for the Mario and Pokémon channels: root and
+// octave alternating in eighths. Expanded before the text is shown,
+// so what the page displays is still plain MML.
+const bounce = (r) => `[${r} ${r} >${r}< ${r} ${r} >${r}< ${r} >${r}<]`;
+const bassBar = (r, f) => `[${r} ${f}]4`;
+
+const SONGS = {
+  storms: {
+    title: "Song of Storms (Zelda)",
+    text: `; Song of Storms — The Legend of Zelda: Ocarina of Time (N64, 1998)
+; D minor, 3/4. The ocarina line over a waltz: bass on one,
+; string stabs on two and three. Melody from the in-game ocarina
+; recording, cross-checked against published sheet-music
+; transcriptions of Koji Kondo's theme.
+A @6 t144 v13 l4 o5 d f >d <d f >d e f e f e c <<a >d f g a2 <a >d f g e2
+B @8 v9 l4 o5 r f a r f a r f a r f a r f a r f a r f a r c# a
+C @9 v12 l4 o3 d2. d2. d2. a2. d2. a2. d2. a2.`,
+  },
+  lullaby: {
+    title: "Zelda's Lullaby (Zelda)",
+    text: `; Zelda's Lullaby — The Legend of Zelda: Ocarina of Time (N64, 1998)
+; G major, 3/4, unhurried. Ocarina over a strings cushion, cello
+; roots, and a quiet harp figure. Melody from the in-game ocarina
+; recording, cross-checked against published transcriptions.
+A @6 t100 v13 l4 o4 b >d <a g a2 b >d <a b >d a a g d c <b a b >d <a g2.
+B @8 v9 l2. o4 b b b >d e <c b b
+C @9 v11 l2. o3 g g g g c a g g
+D @10 v7 l8 o5 [d g]3 [d g]3 [d g]3 [d g]3 [e g]3 [e a]3 [d g]3 [d g]3`,
+  },
+  saria: {
+    title: "Saria's Song (Zelda)",
+    text: `; Saria's Song — The Legend of Zelda: Ocarina of Time (N64, 1998)
+; C major with a Lydian lift, 4/4, quick. Flute lead, harp
+; offbeats, cello roots, and a whisper of chip noise for the
+; forest-floor bounce. Melody from the in-game ocarina recording,
+; cross-checked against published transcriptions.
+A @7 t152 v13 l4 o5 f a b2 f a b2 f a b >e8 d8 <b >c8< b8 g e d e g e d e g e f a b2 d e g e
+B @10 v8 l8 o4 [f >c<]4 [f >c<]4 [f >c<]4 [c g]4 [c g]4 [g >d<]4 [f >c<]4 [c g]4
+C @9 v11 l2 o3 f f f f f f c c c c g g f f c c
+D @5 v5 l8 o6 [r c]4 [r c]4 [r c]4 [r c]4 [r c]4 [r c]4 [r c]4 [r c]4`,
+  },
+  pallet: {
+    title: "Pallet Town (Pokémon)",
+    text: `; Pallet Town — Pokémon Red & Blue (Game Boy, 1996)
+; G major, 4/4, 120 bpm, Junichi Masuda. The lead sits high, as
+; it does on the Game Boy. Melody pitch stream decoded from a
+; published guitar tab transcription (csguitar89), tempo and key
+; from Nayuki's Game Boy transcription project; accompaniment
+; follows the harmony those sources give (G Em C D).
+A @1 t120 v13 l4 o6 g e f# e d c <b2 >d <b g2 g a b >c <f# g a b >c2< b a >g f# f# g e d c <b >d d c <b a g >d c <b a g2 b >c d c <b g a b >c c d c d2 <b4 r4 b a g a e b a g e f# g b b b a4 g4
+B @2 v8 l2 o5 d b d b b g g e a f# d b d b b g g e a f# d b g e d b g e d b b g e c a f# d b
+C @4 v12 l8 o3 ${bassBar("g", "d")} ${bassBar("g", "d")} ${bassBar("e", "b")} ${bassBar("c", "g")} ${bassBar("d", "a")} ${bassBar("g", "d")} ${bassBar("g", "d")} ${bassBar("e", "b")} ${bassBar("c", "g")} ${bassBar("d", "a")} ${bassBar("g", "d")} ${bassBar("c", "g")} ${bassBar("g", "d")} ${bassBar("d", "a")} ${bassBar("g", "d")} ${bassBar("e", "b")} ${bassBar("c", "g")} ${bassBar("d", "a")} ${bassBar("g", "d")}`,
+  },
+  center: {
+    title: "Pokémon Center (Pokémon)",
+    text: `; Pokémon Center — Pokémon Red & Blue (Game Boy, 1996)
+; D major, 4/4, 134 bpm, Junichi Masuda. Melody from published
+; letter-note transcriptions of the theme (vivace-music.org),
+; tempo and key from Nayuki's transcription project. The bass is
+; Masuda's own trick, named in that project's notes: two eighth
+; notes, root and fifth, repeated all bar.
+A @1 t134 v13 l8 o5 d <a >d a g f# e c# c# <a >c# f# e c# d f# f# a g a g f# e c# e f# g f# e4 d4 d <a >d a g f# e c# c# <a >c# f# e c# d f# f# a g f# g a b a g f# g f# g f# e d
+B @2 v8 l2 o4 f# a f# a f# a b d f# a f# a f# a b4 d4 f#4 a4
+C @4 v12 l8 o3 [d a]4 [d a]4 [d a]4 [g d]4 [d a]4 [d a]4 [d a]4 [g d]2 [d a]2`,
+  },
+  lavender: {
+    title: "Lavender Town (Pokémon)",
+    text: `; Lavender Town — Pokémon Red & Blue (Game Boy, 1996)
+; E minor, 4/4, slow. The famous cycle, C G B F#, on a thin
+; pulse, with the same cycle echoing a beat behind it and a slow
+; wave arpeggio underneath. Cycle from published letter-note
+; transcriptions (pianoletternotes); the echo lines there are
+; staggered the same way.
+A @0 t96 v11 l2 o6 c <g b >f# c <g b <f# c <g b >f# c <g b <f#
+B @2 v6 l2 o6 r4 c <g b >f# c <g b <f# c <g b >f# c <g b <f#4
+C @4 v12 l2 o3 [e g b g]4`,
+  },
+  mario: {
+    title: "Overworld (Mario)",
+    text: `; Overworld — Super Mario Bros. (NES, 1985)
+; C major, 4/4, 180 bpm, Koji Kondo. Lead, a thirds harmony, the
+; bouncing triangle bass, and noise hats. Melody from published
+; letter-note transcriptions of the theme (noobnotes), tempo
+; from Philip Kim's piano transcription of the NES score.
+A @1 t180 v13 l8 [o5 e e r e r c e r g2. r4 <g2. r4 >c4 <g4 e4 a4 b4 b-4 a2 g4 >e4 g4 a4 f4 g4 r4 e4 c4 d4 <b2]2 o5 g4 f#4 f4 e-4 e2 r2 <a4 >c4 d4 r4 g4 f#4 f4 e-4 e2 r2 >c4 c4 c4 r4 <g4 f#4 f4 e-4 e2 r2 <a4 >c4 d4 r4 e-4 d4 c2 c4 c4 c4 r4 c4 d4 e4 c4 <a2 g2 >c4 c4 c4 r4 c4 d4 e2 c4 c4 c4 r4 c4 d4 e4 c4 <a2 g2
+B @2 v9 l8 [o5 c c r c r a c r e2. r4 <e2. r4 a4 e4 c4 f4 g4 g4 f2 e4 >c4 e4 f4 d4 e4 r4 c4 <a4 b4 g2]2 r1 o4 g#4 a4 >c4 r4 r1 r1 <g#4 a4 >c4 r4 r1 r1 <g#4 a4 >c4 r4 r1 r1 o4 c2 e2 a2 g2 f2 e2 c2 e2 a2 g2 c2 e2 a2 g2 f2 e2
+C @4 v13 l8 o2 [c c >c< c c >c< c >c<][c c >c< c c >c< c >c<][c c >c< c c >c< c >c<][f f >f< f f >f< f >f<][c c >c< c c >c< c >c<][c c >c< c c >c< c >c<][c c >c< c c >c< c >c<][g g >g< g g >g< g >g<][c c >c< c c >c< c >c<][c c >c< c c >c< c >c<][c c >c< c c >c< c >c<][c c >c< c c >c< c >c<][c c >c< c c >c< c >c<][c c >c< c c >c< c >c<][c c >c< c c >c< c >c<][f f >f< f f >f< f >f<][c c >c< c c >c< c >c<]
+D @5 v7 l8 [o7 c c o5 c4 o7 c c o5 c4]34`,
+  },
 };
 
-/* ---------- the song parser ---------- */
-/*
-  Line-oriented and forgiving. Header lines (key: value) come first,
-  then blocks. A block starts with a bracket header naming the channel
-  and its instrument, then one row per pitch. ":: A" starts a new
-  pattern; "order:" at the end says how patterns chain. Comments start
-  with ";" anywhere, or with "#" at the start of a line or after a
-  space (a "#" glued to a letter is a sharp, as in F#5).
+/* ---------- MML parser ---------- */
 
-  Each row records the exact character position of every step in the
-  source line, so a click in the grid can rewrite one character of the
-  text and the two views can never drift apart.
-*/
+// The subset, whole: one line per channel, starting with its
+// letter A-H. Notes a-g, # or + sharp, - flat, an optional length
+// (1, 2, 4, 8, 16) and dots; r rests; ^ ties the next length onto
+// the last note; o sets the octave, < and > move it; l sets the
+// default length; v volume 0-15; @ instrument; t tempo; [ ]n
+// repeats a passage; L marks where the loop restarts (everything
+// before it plays once, as an intro). ; starts a comment.
+// Lengths land on a 16th-note grid: that grid is the single source
+// of truth for time, which is what lets the grid view and the text
+// stay two views of one song.
 
-const NOTE_SEMITONES = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-const DRUM_ROWS = ["kick", "snare", "hat", "shaker"];
-const INSTRUMENT_NAMES = [
-  "ocarina", "flute", "strings", "harp", "bell", "bass", "pulse", "drums",
-];
+const NOTE_PC = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+const PC_NAME = ["c", "c#", "d", "e-", "e", "f", "f#", "g", "a-", "a", "b-", "b"];
+const LENGTH_STEPS = { 1: 16, 2: 8, 4: 4, 8: 2, 16: 1 };
 
-const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-
-function parsePitch(label) {
-  const m = /^([A-G])(#|b)?(-?\d)$/.exec(label);
-  if (!m) return null;
-  let semi = NOTE_SEMITONES[m[1]];
-  if (m[2] === "#") semi += 1;
-  if (m[2] === "b") semi -= 1;
-  return (parseInt(m[3], 10) + 1) * 12 + semi;
+function tokenizeMML(body, letter, errors) {
+  const tokens = [];
+  let i = 0;
+  const fail = (msg) => errors.push(`Channel ${letter}: ${msg}`);
+  while (i < body.length) {
+    const ch = body[i];
+    if (ch === " " || ch === "\t" || ch === "|") { i++; continue; }
+    if (ch === ";") break;
+    if (ch === "[") { tokens.push({ k: "[" }); i++; continue; }
+    if (ch === "]") {
+      i++;
+      let n = "";
+      while (i < body.length && /\d/.test(body[i])) n += body[i++];
+      tokens.push({ k: "]", n: n ? parseInt(n, 10) : 2 });
+      continue;
+    }
+    if (ch === "<" || ch === ">") { tokens.push({ k: ch }); i++; continue; }
+    if (ch === "L") { tokens.push({ k: "L" }); i++; continue; }
+    if (ch === "^") {
+      i++;
+      const len = readLength(body, () => i, (v) => { i = v; });
+      tokens.push({ k: "^", len });
+      continue;
+    }
+    const cmd = ch.toLowerCase();
+    if (cmd === "t" || cmd === "v" || cmd === "o" || cmd === "l" || ch === "@") {
+      i++;
+      let n = "";
+      while (i < body.length && /\d/.test(body[i])) n += body[i++];
+      let dots = 0;
+      while (body[i] === ".") { dots++; i++; }
+      if (!n) { fail(`"${ch}" needs a number after it`); continue; }
+      tokens.push({ k: ch === "@" ? "@" : cmd, n: parseInt(n, 10), dots });
+      continue;
+    }
+    if (NOTE_PC[cmd] !== undefined || cmd === "r") {
+      i++;
+      let acc = 0;
+      if (body[i] === "#" || body[i] === "+") { acc = 1; i++; }
+      else if (body[i] === "-") { acc = -1; i++; }
+      const len = readLength(body, () => i, (v) => { i = v; });
+      tokens.push({ k: cmd === "r" ? "r" : "n", pc: NOTE_PC[cmd], acc, len });
+      continue;
+    }
+    fail(`I do not know "${ch}"`);
+    i++;
+  }
+  return tokens;
 }
 
-function stripComment(line) {
-  for (let i = 0; i < line.length; i++) {
-    if (line[i] === ";") return line.slice(0, i);
-    if (line[i] === "#" && (i === 0 || /\s/.test(line[i - 1]))) {
-      return line.slice(0, i);
-    }
+// Reads "4", "8.", "2.." after a note. Returns {n, dots} or null
+// when the note carries no length of its own.
+function readLength(body, get, set) {
+  let i = get();
+  let n = "";
+  while (i < body.length && /\d/.test(body[i])) n += body[i++];
+  let dots = 0;
+  while (body[i] === ".") { dots++; i++; }
+  set(i);
+  if (!n && !dots) return null;
+  return { n: n ? parseInt(n, 10) : null, dots };
+}
+
+function lengthSteps(len, def, warnings, letter) {
+  const n = len ? (len.n ?? def.n) : def.n;
+  const dots = len ? len.dots : def.dots;
+  const base = LENGTH_STEPS[n];
+  if (base === undefined) {
+    warnings.push(`Channel ${letter}: length ${n} is not one of 1, 2, 4, 8, 16; read as a quarter`);
+    return 4 * (dots ? 1.5 : 1);
   }
-  return line;
+  const steps = base * (dots === 1 ? 1.5 : dots === 2 ? 1.75 : 1);
+  if (!Number.isInteger(steps)) {
+    warnings.push(`Channel ${letter}: a dotted length fell between steps and was rounded`);
+    return Math.max(1, Math.round(steps));
+  }
+  return steps;
+}
+
+// Repeats are expanded before the linear pass, so the note builder
+// never has to think about them.
+function expandTokens(tokens, depth, errors, letter) {
+  const out = [];
+  let i = 0;
+  while (i < tokens.length) {
+    const tok = tokens[i];
+    if (tok.k === "[") {
+      let d = 1, j = i + 1;
+      while (j < tokens.length && d > 0) {
+        if (tokens[j].k === "[") d++;
+        if (tokens[j].k === "]") d--;
+        j++;
+      }
+      if (d > 0) { errors.push(`Channel ${letter}: a [ is never closed`); return out; }
+      const closer = tokens[j - 1];
+      if (depth >= 4) {
+        errors.push(`Channel ${letter}: repeats nested too deep`);
+        return out;
+      }
+      const inner = expandTokens(tokens.slice(i + 1, j - 1), depth + 1, errors, letter);
+      for (let r = 0; r < closer.n; r++) out.push(...inner);
+      i = j;
+      continue;
+    }
+    if (tok.k === "]") { errors.push(`Channel ${letter}: a ] with no [`); i++; continue; }
+    out.push(tok);
+    i++;
+  }
+  return out;
 }
 
 function parseSong(text) {
-  const warnings = [];
-  const meta = { title: "untitled", bpm: 120, key: "", steps: 16, echo: 0.3 };
-  const patterns = new Map();
-  let order = null;
-  let pattern = null;
-  let channel = null;
-  let inBlocks = false;
-
-  const fail = (msg) => {
-    throw new Error(msg);
-  };
-
-  const newPattern = (name) => {
-    if (patterns.has(name)) fail(`pattern ${name} is defined twice`);
-    const p = { name, channels: [], byName: new Map() };
-    patterns.set(name, p);
-    return p;
-  };
-
-  text.split("\n").forEach((raw, lineIndex) => {
-    const line = stripComment(raw);
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    const at = `line ${lineIndex + 1}`;
-
-    const patMatch = /^::\s*(\S+)\s*$/.exec(trimmed);
-    if (patMatch) {
-      pattern = newPattern(patMatch[1]);
-      channel = null;
-      inBlocks = true;
-      return;
+  const errors = [], warnings = [];
+  const lines = text.split("\n");
+  const header = [];
+  const bodies = new Map();
+  let seenChannel = false;
+  for (const raw of lines) {
+    const m = raw.match(/^\s*([A-H])\s+(.*)$/) || raw.match(/^\s*([A-H])\s*$/);
+    if (m) {
+      seenChannel = true;
+      const letter = m[1];
+      bodies.set(letter, (bodies.get(letter) || "") + " " + (m[2] || ""));
+    } else if (!seenChannel) {
+      header.push(raw);
+    } else if (raw.trim() && !raw.trim().startsWith(";")) {
+      warnings.push(`A line that is not a channel line was ignored: "${raw.trim().slice(0, 24)}…"`);
     }
-
-    const orderMatch = /^order\s*:\s*(.+)$/i.exec(trimmed);
-    if (orderMatch) {
-      order = orderMatch[1].split(/[\s,]+/).filter(Boolean);
-      channel = null;
-      return;
-    }
-
-    const blockMatch = /^\[(.*)\]$/.exec(trimmed);
-    if (blockMatch) {
-      inBlocks = true;
-      if (!pattern) pattern = newPattern("A");
-      const parts = blockMatch[1].split("·").map((s) => s.trim());
-      const name = parts[0];
-      const instrument = (parts[1] || "").toLowerCase();
-      if (!name) fail(`${at}: a block needs a channel name`);
-      if (!INSTRUMENT_NAMES.includes(instrument)) {
-        fail(
-          `${at}: unknown instrument "${parts[1] || ""}" ` +
-            `(try ${INSTRUMENT_NAMES.join(", ")})`
-        );
-      }
-      if (pattern.byName.has(name)) {
-        fail(`${at}: two blocks named "${name}" in pattern ${pattern.name}`);
-      }
-      channel = {
-        name,
-        instrument,
-        vol: 0.8,
-        echo: meta.echo,
-        pan: 0,
-        rows: [],
-      };
-      for (const part of parts.slice(2)) {
-        const kv = /^(\w+)\s+(-?[\d.]+)$/.exec(part);
-        if (!kv) {
-          warnings.push(`${at}: ignored "${part}" in the ${name} header`);
-          continue;
-        }
-        const val = parseFloat(kv[2]);
-        if (kv[1] === "vol") channel.vol = clamp(val, 0, 1);
-        else if (kv[1] === "echo") channel.echo = clamp(val, 0, 1);
-        else if (kv[1] === "pan") channel.pan = clamp(val, -1, 1);
-        else warnings.push(`${at}: unknown setting "${kv[1]}", ignored`);
-      }
-      pattern.channels.push(channel);
-      pattern.byName.set(name, channel);
-      return;
-    }
-
-    if (!inBlocks) {
-      const kv = /^([a-z]+)\s*:\s*(.*)$/i.exec(trimmed);
-      if (kv) {
-        const k = kv[1].toLowerCase();
-        const v = kv[2].trim();
-        if (k === "title") meta.title = v || meta.title;
-        else if (k === "key") meta.key = v;
-        else if (k === "bpm") {
-          const n = parseFloat(v);
-          if (n > 20 && n < 400) meta.bpm = n;
-          else warnings.push(`${at}: bpm "${v}" looks wrong, kept ${meta.bpm}`);
-        } else if (k === "steps") {
-          const n = parseInt(v, 10);
-          if (n >= 4 && n <= 64) meta.steps = n;
-          else warnings.push(`${at}: steps "${v}" out of range, kept ${meta.steps}`);
-        } else if (k === "echo") {
-          const n = parseFloat(v);
-          if (!Number.isNaN(n)) meta.echo = clamp(n, 0, 1);
-        } else {
-          warnings.push(`${at}: unknown header "${k}", ignored`);
-        }
-        return;
-      }
-    }
-
-    if (!channel) {
-      fail(`${at}: "${trimmed.slice(0, 28)}" sits outside any [block]`);
-    }
-    const bar = line.indexOf("|");
-    if (bar < 0) fail(`${at}: rows look like "D5 |x...|....|"`);
-    const label = line.slice(0, bar).trim();
-    const drumName = label.toLowerCase();
-    const isDrum = DRUM_ROWS.includes(drumName);
-    const midi = isDrum ? null : parsePitch(label);
-    if (!isDrum && midi === null) {
-      fail(
-        `${at}: "${label}" is not a pitch like F#5 ` +
-          `or a drum (kick, snare, hat, shaker)`
-      );
-    }
-
-    let cells = "";
-    const charPos = [];
-    for (let i = bar; i < line.length; i++) {
-      const c = line[i];
-      if (c === "." || c === "x" || c === "-") {
-        cells += c;
-        charPos.push(i);
-      } else if (c === "|" || c === " ") {
-        continue;
-      } else {
-        fail(`${at}: unexpected "${c}" in a row (only . x - and |)`);
-      }
-    }
-
-    let editable = true;
-    if (cells.length !== meta.steps) {
-      warnings.push(
-        `${at}: row ${label} has ${cells.length} steps, ` +
-          `the song has ${meta.steps}; adjusted, and this row ` +
-          `cannot be edited from the grid until the counts match`
-      );
-      editable = false;
-      cells =
-        cells.length < meta.steps
-          ? cells.padEnd(meta.steps, ".")
-          : cells.slice(0, meta.steps);
-    }
-    if (channel.rows.some((r) => r.label === (isDrum ? drumName : label))) {
-      warnings.push(`${at}: row ${label} appears twice in ${channel.name}`);
-    }
-    channel.rows.push({
-      label: isDrum ? drumName : label,
-      midi,
-      drum: isDrum ? drumName : null,
-      cells,
-      charPos,
-      lineIndex,
-      editable,
-    });
-  });
-
-  if (patterns.size === 0) {
-    fail("no [channel] blocks found: a song needs at least one");
   }
-  if (!order) order = [...patterns.keys()];
-  if (order.length === 0) fail("the order line is empty");
-  for (const name of order) {
-    if (!patterns.has(name)) {
-      fail(`the order line names pattern "${name}", which does not exist`);
+  if (!bodies.size) errors.push("No channel lines. Start a line with a letter, A to H, then the music.");
+
+  let tempo = null, loopStep = null;
+  const channels = [];
+  for (const letter of [...bodies.keys()].sort()) {
+    const tokens = expandTokens(
+      tokenizeMML(bodies.get(letter), letter, errors), 0, errors, letter);
+    const st = { oct: 4, def: { n: 4, dots: 0 }, vol: 12, inst: 1 };
+    const notes = [];
+    let step = 0, last = null;
+    for (const tok of tokens) {
+      if (tok.k === "t") {
+        if (tempo === null) tempo = tok.n;
+        else if (tempo !== tok.n) warnings.push(`Channel ${letter}: tempo ${tok.n} ignored, the song is already at ${tempo}`);
+      } else if (tok.k === "v") {
+        if (tok.n < 0 || tok.n > 15) { errors.push(`Channel ${letter}: volume ${tok.n} is outside 0-15`); }
+        st.vol = Math.max(0, Math.min(15, tok.n));
+      } else if (tok.k === "o") {
+        if (tok.n < 1 || tok.n > 7) errors.push(`Channel ${letter}: octave ${tok.n} is outside 1-7`);
+        st.oct = Math.max(1, Math.min(7, tok.n));
+      } else if (tok.k === "l") {
+        if (!LENGTH_STEPS[tok.n]) errors.push(`Channel ${letter}: default length ${tok.n} is not one of 1, 2, 4, 8, 16`);
+        else st.def = { n: tok.n, dots: tok.dots || 0 };
+      } else if (tok.k === "@") {
+        if (tok.n < 0 || tok.n >= INSTRUMENTS.length) {
+          errors.push(`Channel ${letter}: there is no instrument @${tok.n} (the table runs @0 to @${INSTRUMENTS.length - 1})`);
+        } else st.inst = tok.n;
+      } else if (tok.k === "<") st.oct = Math.max(1, st.oct - 1);
+      else if (tok.k === ">") st.oct = Math.min(7, st.oct + 1);
+      else if (tok.k === "L") {
+        if (loopStep === null) loopStep = step;
+        else if (loopStep !== step) warnings.push(`Channel ${letter}: its L sits at a different step and was ignored`);
+      } else if (tok.k === "r") {
+        step += lengthSteps(tok.len, st.def, warnings, letter);
+        last = null;
+      } else if (tok.k === "^") {
+        if (last) last.len += lengthSteps(tok.len, st.def, warnings, letter);
+        else warnings.push(`Channel ${letter}: a ^ tie with no note before it`);
+        step += 0; // the tie extends the note; the cursor already sits at its end
+        if (last) { /* cursor must advance past the extension */ }
+        // Ties extend the previous note, and the cursor moves with it:
+        // handled by tracking note end below.
+        if (last) step = Math.max(step, last.step + last.len);
+      } else if (tok.k === "n") {
+        const len = lengthSteps(tok.len, st.def, warnings, letter);
+        const midi = (st.oct + 1) * 12 + tok.pc + tok.acc;
+        last = { step, len, midi, inst: st.inst, vol: st.vol };
+        notes.push(last);
+        step += len;
+      }
+      if (step > 8192) { errors.push(`Channel ${letter}: the song runs past 8192 steps`); break; }
+    }
+    if (notes.length) {
+      channels.push({
+        letter, notes,
+        steps: notes.reduce((mx, n) => Math.max(mx, n.step + n.len), 0),
+      });
     }
   }
 
-  // Compile rows to events, and sort rows the way a piano roll reads:
-  // drums in kit order, pitches high to low.
-  for (const p of patterns.values()) {
-    for (const ch of p.channels) {
-      ch.eventsByStep = Array.from({ length: meta.steps }, () => []);
-      for (const row of ch.rows) {
-        let i = 0;
-        while (i < row.cells.length) {
-          const c = row.cells[i];
-          if (c === "x") {
-            let j = i + 1;
-            while (j < row.cells.length && row.cells[j] === "-") j++;
-            ch.eventsByStep[i].push({
-              midi: row.midi,
-              drum: row.drum,
-              start: i,
-              dur: j - i,
-            });
-            i = j;
-          } else {
-            if (c === "-" && (i === 0 || row.cells[i - 1] === ".")) {
-              warnings.push(
-                `pattern ${p.name}, ${ch.name} ${row.label}: ` +
-                  `a "-" with no note before it, treated as a rest`
-              );
-            }
-            i++;
-          }
-        }
-      }
-      ch.rows.sort((a, b) =>
-        a.drum && b.drum
-          ? DRUM_ROWS.indexOf(a.drum) - DRUM_ROWS.indexOf(b.drum)
-          : (b.midi ?? 0) - (a.midi ?? 0)
-      );
-    }
+  if (tempo === null) { tempo = 120; warnings.push("No tempo anywhere; playing at 120"); }
+  if (tempo < 30 || tempo > 300) errors.push(`Tempo ${tempo} is outside 30-300`);
+  const steps = channels.reduce((mx, c) => Math.max(mx, c.steps), 0);
+  for (const c of channels) {
+    if (c.steps < steps) warnings.push(`Channel ${c.letter} ends early, at step ${c.steps} of ${steps}`);
   }
-
-  return { meta, patterns, order, warnings };
-}
-
-/* ---------- instruments ---------- */
-/*
-  Tiny procedural samples, made fresh for whatever context asks (the
-  live one, or an offline one for export). Each is a sum of partials
-  over one root note, softened by a smoothing pass so the top end is
-  muffled the way low-rate console samples were. Looped instruments
-  hold an exact number of cycles of their root, and the tail is
-  crossfaded into the head so the loop point does not click. Noise
-  comes from a seeded generator, so the kit sounds the same each load.
-*/
-
-function mulberry32(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function smooth(data, passes) {
-  const len = data.length;
-  for (let p = 0; p < passes; p++) {
-    let prev = data[len - 1];
-    for (let i = 0; i < len; i++) {
-      const cur = data[i];
-      const next = data[(i + 1) % len];
-      data[i] = (prev + 2 * cur + next) / 4;
-      prev = cur;
-    }
-  }
-}
-
-function normalize(data, peak) {
-  let max = 0;
-  for (let i = 0; i < data.length; i++) max = Math.max(max, Math.abs(data[i]));
-  if (max === 0) return;
-  const scale = peak / max;
-  for (let i = 0; i < data.length; i++) data[i] *= scale;
-}
-
-function crossfadeLoop(data, ms, sampleRate) {
-  const n = Math.min(
-    Math.round((ms / 1000) * sampleRate),
-    Math.floor(data.length / 2)
-  );
-  for (let i = 0; i < n; i++) {
-    const t = i / n;
-    const idx = data.length - n + i;
-    data[idx] = data[idx] * (1 - t) + data[i] * t;
-  }
-}
-
-function fillBuffer(ctx, seconds, fill) {
-  const len = Math.max(1, Math.round(seconds * ctx.sampleRate));
-  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-  fill(buf.getChannelData(0), ctx.sampleRate);
-  return buf;
-}
-
-// partials: [multiple of the root, amplitude, decay seconds or 0]
-function toneBuffer(ctx, opts) {
-  const f0 = 440 * Math.pow(2, (opts.rootMidi - 69) / 12);
-  const cycles = Math.max(1, Math.round(opts.seconds * f0));
-  const dur = opts.oneShot ? opts.seconds : cycles / f0;
-  const rand = mulberry32(opts.seed ?? 7);
-  return fillBuffer(ctx, dur, (data, sr) => {
-    for (let i = 0; i < data.length; i++) {
-      const t = i / sr;
-      let v = 0;
-      for (const [mult, amp, decay] of opts.partials) {
-        const a = decay ? amp * Math.exp(-t / decay) : amp;
-        v += a * Math.sin(2 * Math.PI * f0 * mult * t);
-      }
-      if (opts.noiseAmp) {
-        const breath = (rand() * 2 - 1) * opts.noiseAmp;
-        v += opts.oneShot ? breath * Math.exp(-t / 0.2) : breath;
-      }
-      if (opts.oneShot && opts.decayTau) v *= Math.exp(-t / opts.decayTau);
-      data[i] = v;
-    }
-    smooth(data, 2);
-    normalize(data, 0.85);
-    if (!opts.oneShot) crossfadeLoop(data, 12, sr);
-  });
-}
-
-function stringsBuffer(ctx) {
-  const f0 = 440; // A4, the strings buffer's root
-  const cycles = Math.round(0.5 * f0);
-  return fillBuffer(ctx, cycles / f0, (data, sr) => {
-    for (let i = 0; i < data.length; i++) {
-      const t = i / sr;
-      let v = 0;
-      for (const cents of [-7, 0, 7]) {
-        const f = f0 * Math.pow(2, cents / 1200);
-        for (let k = 1; k <= 7; k++) {
-          v += (1 / k / 3) * Math.sin(2 * Math.PI * f * k * t);
-        }
-      }
-      data[i] = v;
-    }
-    smooth(data, 5);
-    normalize(data, 0.6);
-    crossfadeLoop(data, 15, sr);
-  });
-}
-
-function makeInstruments(ctx) {
-  const noise = fillBuffer(ctx, 1, (data) => {
-    const rand = mulberry32(20261121);
-    for (let i = 0; i < data.length; i++) data[i] = rand() * 2 - 1;
-  });
+  if (!steps) errors.push("The channels hold no notes.");
   return {
-    ocarina: {
-      buffer: toneBuffer(ctx, {
-        rootMidi: 72, seconds: 0.4, seed: 11, noiseAmp: 0.015,
-        partials: [[1, 1, 0], [2, 0.25, 0], [3, 0.06, 0]],
-      }),
-      rootMidi: 72, loop: true, adsr: { a: 0.012, d: 0.06, s: 0.85, r: 0.12 },
-      vibrato: { rate: 5.4, cents: 14, delay: 0.16, fade: 0.3 },
-    },
-    flute: {
-      buffer: toneBuffer(ctx, {
-        rootMidi: 72, seconds: 0.4, seed: 23, noiseAmp: 0.03,
-        partials: [[1, 1, 0], [2, 0.4, 0], [3, 0.1, 0]],
-      }),
-      rootMidi: 72, loop: true, adsr: { a: 0.03, d: 0.08, s: 0.8, r: 0.15 },
-      vibrato: { rate: 5.8, cents: 18, delay: 0.2, fade: 0.35 },
-    },
-    strings: {
-      buffer: stringsBuffer(ctx),
-      rootMidi: 69, loop: true, adsr: { a: 0.12, d: 0.2, s: 0.7, r: 0.25 },
-    },
-    harp: {
-      buffer: toneBuffer(ctx, {
-        rootMidi: 72, seconds: 1.4, oneShot: true, decayTau: 0.45, seed: 31,
-        partials: [
-          [1, 1, 0.5], [2, 0.55, 0.3], [3, 0.3, 0.18],
-          [4, 0.16, 0.1], [5, 0.08, 0.06],
-        ],
-      }),
-      rootMidi: 72, loop: false, oneShot: true, tau: 0.26,
-      adsr: { a: 0.003, d: 0, s: 1, r: 0.05 },
-    },
-    bell: {
-      buffer: toneBuffer(ctx, {
-        rootMidi: 84, seconds: 2.0, oneShot: true, decayTau: 0.8, seed: 41,
-        partials: [
-          [1, 1, 0.9], [2.76, 0.5, 0.5], [5.4, 0.28, 0.25], [8.9, 0.12, 0.12],
-        ],
-      }),
-      rootMidi: 84, loop: false, oneShot: true, tau: 0.5,
-      adsr: { a: 0.003, d: 0, s: 1, r: 0.05 },
-    },
-    bass: {
-      buffer: toneBuffer(ctx, {
-        rootMidi: 48, seconds: 0.3, seed: 51,
-        partials: [[1, 1, 0], [2, 0.35, 0], [3, 0.18, 0], [4, 0.06, 0]],
-      }),
-      rootMidi: 48, loop: true, adsr: { a: 0.005, d: 0.08, s: 0.95, r: 0.08 },
-    },
-    pulse: {
-      buffer: toneBuffer(ctx, {
-        rootMidi: 72, seconds: 0.3, seed: 61,
-        partials: [
-          [1, 1, 0], [3, 0.33, 0], [5, 0.2, 0], [7, 0.14, 0], [9, 0.11, 0],
-        ],
-      }),
-      rootMidi: 72, loop: true, adsr: { a: 0.002, d: 0.03, s: 0.65, r: 0.04 },
-    },
-    noise,
+    ok: errors.length === 0, errors, warnings, header,
+    tempo, loopStep: loopStep ?? 0, steps, channels,
   };
+}
+
+/* ---------- canonical text ---------- */
+
+// The grid edits notes, not letters, so after a grid edit the text
+// is rewritten from the notes: one line per channel, every length
+// spelled out, octaves set absolutely when they change. What a
+// person typed by hand is left exactly as typed until then.
+const STEP_TOKENS = [[16, "1"], [12, "2."], [8, "2"], [6, "4."], [4, "4"], [3, "8."], [2, "8"], [1, "16"]];
+
+function lengthChunks(steps) {
+  const out = [];
+  let rest = steps;
+  while (rest > 0) {
+    const [size, tok] = STEP_TOKENS.find(([s]) => s <= rest);
+    out.push(tok);
+    rest -= size;
+  }
+  return out;
+}
+
+function channelToMML(letter, ch, tempo, withTempo) {
+  const parts = [letter];
+  let curOct = null, curInst = null, curVol = null;
+  let cursor = 0;
+  const emitLen = (base, steps, tie) => {
+    const chunks = lengthChunks(steps);
+    let s = base + chunks[0];
+    for (let i = 1; i < chunks.length; i++) s += tie ? `^${chunks[i]}` : ` ${base}${chunks[i]}`;
+    return s;
+  };
+  for (const n of ch.notes) {
+    if (n.step > cursor) {
+      parts.push(emitLen("r", n.step - cursor, false));
+      cursor = n.step;
+    }
+    if (n.inst !== curInst) { parts.push(`@${n.inst}`); curInst = n.inst; }
+    if (withTempo && tempo !== null) { parts.push(`t${tempo}`); tempo = null; }
+    if (n.vol !== curVol) { parts.push(`v${n.vol}`); curVol = n.vol; }
+    const oct = Math.floor(n.midi / 12) - 1;
+    if (oct !== curOct) { parts.push(`o${oct}`); curOct = oct; }
+    parts.push(emitLen(PC_NAME[n.midi % 12], n.len, true));
+    cursor = n.step + n.len;
+  }
+  return parts.join(" ");
+}
+
+function songToText(song) {
+  const lines = [...song.header];
+  while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+  song.channels.forEach((ch, i) => {
+    lines.push(channelToMML(ch.letter, ch, i === 0 ? song.tempo : null, i === 0));
+  });
+  return lines.join("\n") + "\n";
+}
+
+/* ---------- samples ---------- */
+
+// Loaded once, lazily, and decoded with a throwaway offline
+// context so the buffers can serve every render. Each entry is
+// [rootMidi, buffer]; a voice picks the nearest root and shifts.
+const sampleSets = new Map();
+let samplesPromise = null;
+
+function loadSamples() {
+  if (samplesPromise) return samplesPromise;
+  const decoder = new OfflineAudioContext(1, 1, 44100);
+  const jobs = [];
+  INSTRUMENTS.forEach((inst, idx) => {
+    if (inst.kind !== "sample") return;
+    sampleSets.set(idx, []);
+    for (const [root, file] of inst.files) {
+      jobs.push(
+        fetch(AUDIO_BASE + file)
+          .then((r) => { if (!r.ok) throw new Error(file); return r.arrayBuffer(); })
+          .then((ab) => decoder.decodeAudioData(ab))
+          .then((buf) => sampleSets.get(idx).push([root, buf]))
+          .catch(() => { /* a missing sample silences its notes, nothing more */ })
+      );
+    }
+  });
+  samplesPromise = Promise.all(jobs).then(() => {
+    for (const set of sampleSets.values()) set.sort((a, b) => a[0] - b[0]);
+  });
+  return samplesPromise;
 }
 
 /* ---------- voices ---------- */
-/*
-  One voice is two nodes for a sample instrument (a buffer source and
-  its ADSR gain), a handful for a drum hit. Voices are created per
-  note and dropped on the floor; the per-channel strips persist.
-*/
 
-function playSample(ctx, inst, out, midi, time, durSec) {
-  const src = ctx.createBufferSource();
-  src.buffer = inst.buffer;
-  src.loop = inst.loop;
-  const rate = Math.pow(2, (midi - inst.rootMidi) / 12);
-  src.playbackRate.value = rate;
-  const g = ctx.createGain();
-  src.connect(g);
-  g.connect(out);
-  const peak = 0.9;
-  if (inst.oneShot) {
-    g.gain.setValueAtTime(0, time);
-    g.gain.linearRampToValueAtTime(peak, time + 0.004);
-    g.gain.setTargetAtTime(0, time + 0.004, inst.tau);
-    src.start(time);
-    src.stop(time + Math.min(3, inst.buffer.duration / rate));
-    return;
+function dutyWave(ctx, duty) {
+  const N = 96;
+  const real = new Float32Array(N + 1), imag = new Float32Array(N + 1);
+  for (let k = 1; k <= N; k++) {
+    real[k] = (2 / (Math.PI * k)) * Math.sin(2 * Math.PI * k * duty);
+    imag[k] = (2 / (Math.PI * k)) * (1 - Math.cos(2 * Math.PI * k * duty));
   }
-  const { a, d, s, r } = inst.adsr;
-  const tOff = time + Math.max(durSec, a + d + 0.03);
-  g.gain.setValueAtTime(0, time);
-  g.gain.linearRampToValueAtTime(peak, time + a);
-  if (s < 1) g.gain.linearRampToValueAtTime(peak * s, time + a + d);
-  g.gain.setValueAtTime(peak * s, tOff);
-  g.gain.linearRampToValueAtTime(0, tOff + r);
-  if (inst.vibrato && durSec > inst.vibrato.delay) {
-    // A slow, shallow wobble that fades in once the attack is past,
-    // the way a player settles into a held note. It rides the
-    // source's detune, in cents, so it never touches the scheduler.
-    // Short notes end before it arrives and stay clean.
-    const lfo = ctx.createOscillator();
-    lfo.frequency.value = inst.vibrato.rate;
-    const depth = ctx.createGain();
-    const tIn = time + inst.vibrato.delay;
-    depth.gain.setValueAtTime(0, time);
-    depth.gain.setValueAtTime(0, tIn);
-    depth.gain.linearRampToValueAtTime(
-      inst.vibrato.cents,
-      tIn + inst.vibrato.fade
-    );
-    lfo.connect(depth);
-    depth.connect(src.detune);
-    lfo.start(time);
-    lfo.stop(tOff + r + 0.05);
-  }
-  src.start(time);
-  src.stop(tOff + r + 0.05);
+  return ctx.createPeriodicWave(real, imag);
 }
 
-function playDrum(ctx, kit, out, drum, time, durSec) {
-  const noiseSrc = () => {
-    const s = ctx.createBufferSource();
-    s.buffer = kit.noise;
-    s.loop = true;
-    return s;
-  };
-  if (drum === "kick") {
-    const osc = ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(115, time);
-    osc.frequency.exponentialRampToValueAtTime(38, time + 0.11);
+// The NES triangle is not a smooth triangle: it is a 32-step,
+// 4-bit staircase. Its wave is the DFT of that exact sequence.
+function triWave(ctx) {
+  const seq = [];
+  for (let i = 0; i < 16; i++) seq.push(15 - i);
+  for (let i = 0; i < 16; i++) seq.push(i);
+  const N = seq.length, H = 16;
+  const real = new Float32Array(H + 1), imag = new Float32Array(H + 1);
+  for (let k = 1; k <= H; k++) {
+    let re = 0, im = 0;
+    for (let n = 0; n < N; n++) {
+      const v = seq[n] / 7.5 - 1, a = (2 * Math.PI * k * n) / N;
+      re += v * Math.cos(a);
+      im += v * Math.sin(a);
+    }
+    real[k] = (2 / N) * re;
+    imag[k] = (-2 / N) * im;
+  }
+  return ctx.createPeriodicWave(real, imag);
+}
+
+// GB/NES noise is an LFSR bit-stream, not white noise: brighter
+// and more metallic, and it loops like the hardware's does.
+function noiseBuffer(ctx) {
+  const len = ctx.sampleRate * 2;
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  let lfsr = 0x7fff;
+  for (let i = 0; i < len; i++) {
+    const bit = ((lfsr ^ (lfsr >> 1)) & 1) * 2 - 1;
+    data[i] = bit * 0.7;
+    lfsr = (lfsr >> 1) | (((lfsr ^ (lfsr >> 1)) & 1) << 14);
+    if (i % 3 === 2) data[i] = data[i - 1]; // hold samples: lowers the rattle
+  }
+  return buf;
+}
+
+function makeImpulse(ctx, seconds, decay) {
+  const len = Math.floor(ctx.sampleRate * seconds);
+  const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+    }
+  }
+  return buf;
+}
+
+const freqOf = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
+
+function chipEnvelope(gain, t, dur, peak) {
+  const p = gain.gain;
+  p.setValueAtTime(0, t);
+  p.linearRampToValueAtTime(peak, t + 0.004);
+  if (dur > 0.15) {
+    // Stepped, the way the hardware envelopes step: a few flat
+    // levels on the way down, never a smooth ramp.
+    const steps = 4;
+    for (let s = 1; s <= steps; s++) {
+      p.setValueAtTime(peak * (1 - 0.07 * s), t + (dur * s) / (steps + 1));
+    }
+  }
+  p.setValueAtTime(peak * 0.72, Math.max(t + 0.004, t + dur - 0.012));
+  p.linearRampToValueAtTime(0, t + dur);
+}
+
+function scheduleChip(ctx, out, kit, n, t, dur) {
+  const inst = INSTRUMENTS[n.inst];
+  const peak = (n.vol / 15) * 0.4;
+  if (inst.kind === "noise") {
+    const src = ctx.createBufferSource();
+    src.buffer = kit.noise;
+    src.loop = true;
+    src.playbackRate.value = Math.pow(2, (n.midi - 76) / 12);
     const g = ctx.createGain();
-    g.gain.setValueAtTime(0.95, time);
-    g.gain.setTargetAtTime(0, time, 0.035);
-    osc.connect(g);
-    g.connect(out);
-    osc.start(time);
-    osc.stop(time + 0.3);
+    const p = g.gain;
+    p.setValueAtTime(peak, t);
+    p.exponentialRampToValueAtTime(0.001, t + Math.max(dur, 0.03));
+    src.connect(g).connect(out);
+    src.start(t, Math.random() * 1.5);
+    src.stop(t + dur + 0.05);
     return;
   }
-  if (drum === "snare") {
-    const src = noiseSrc();
-    const bp = ctx.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.frequency.value = 1800;
-    bp.Q.value = 0.9;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.8, time);
-    g.gain.setTargetAtTime(0, time, 0.028);
-    src.connect(bp);
-    bp.connect(g);
-    g.connect(out);
-    src.start(time);
-    src.stop(time + 0.25);
-    const osc = ctx.createOscillator();
-    osc.type = "triangle";
-    osc.frequency.value = 186;
-    const og = ctx.createGain();
-    og.gain.setValueAtTime(0.35, time);
-    og.gain.setTargetAtTime(0, time, 0.018);
-    osc.connect(og);
-    og.connect(out);
-    osc.start(time);
-    osc.stop(time + 0.12);
-    return;
-  }
-  if (drum === "hat") {
-    const src = noiseSrc();
-    const hp = ctx.createBiquadFilter();
-    hp.type = "highpass";
-    hp.frequency.value = 7500;
-    const g = ctx.createGain();
-    const open = durSec > 0.16;
-    g.gain.setValueAtTime(0.5, time);
-    g.gain.setTargetAtTime(0, time, open ? 0.05 : 0.012);
-    src.connect(hp);
-    hp.connect(g);
-    g.connect(out);
-    src.start(time);
-    src.stop(time + (open ? 0.5 : 0.15));
-    return;
-  }
-  // shaker
-  const src = noiseSrc();
-  const bp = ctx.createBiquadFilter();
-  bp.type = "bandpass";
-  bp.frequency.value = 6200;
-  bp.Q.value = 1.1;
+  const osc = ctx.createOscillator();
+  osc.setPeriodicWave(inst.kind === "tri" ? kit.tri : kit.duties[inst.duty]);
+  osc.frequency.value = freqOf(n.midi);
   const g = ctx.createGain();
-  g.gain.setValueAtTime(0, time);
-  g.gain.linearRampToValueAtTime(0.55, time + 0.018);
-  g.gain.linearRampToValueAtTime(0.12, time + 0.06);
-  g.gain.linearRampToValueAtTime(0.35, time + 0.095);
-  g.gain.linearRampToValueAtTime(0, time + 0.15);
-  src.connect(bp);
-  bp.connect(g);
-  g.connect(out);
-  src.start(time);
-  src.stop(time + 0.2);
-}
-
-function playEvent(ctx, kit, instrumentName, out, ev, time, spb) {
-  if (ev.drum) {
-    playDrum(ctx, kit, out, ev.drum, time, ev.dur * spb);
-    return;
-  }
-  const inst = kit[instrumentName];
-  if (inst) playSample(ctx, inst, out, ev.midi, time, ev.dur * spb);
-}
-
-/* ---------- strips, echo, master ---------- */
-
-function makeMaster(ctx) {
-  const g = ctx.createGain();
-  g.gain.value = 0.9;
-  const comp = ctx.createDynamicsCompressor();
-  comp.threshold.value = -18;
-  comp.ratio.value = 4;
-  comp.attack.value = 0.004;
-  comp.release.value = 0.18;
-  g.connect(comp);
-  comp.connect(ctx.destination);
-  return g;
-}
-
-function makeEcho(ctx, dest, spb) {
-  const delay = ctx.createDelay(2);
-  delay.delayTime.value = spb * 3;
-  const fb = ctx.createGain();
-  fb.gain.value = 0.38;
-  const lp = ctx.createBiquadFilter();
-  lp.type = "lowpass";
-  lp.frequency.value = 1800;
-  const wet = ctx.createGain();
-  // The return sits behind the dry signal: the echo is the room the
-  // song plays in, not a second copy of it competing up front.
-  wet.gain.value = 0.75;
-  delay.connect(lp);
-  lp.connect(fb);
-  fb.connect(delay);
-  lp.connect(wet);
-  wet.connect(dest);
-  return { input: delay, delay };
-}
-
-function makeStrip(ctx, master, echoInput) {
-  const input = ctx.createGain();
-  const vol = ctx.createGain();
-  const send = ctx.createGain();
-  input.connect(vol);
-  let pan = null;
-  if (ctx.createStereoPanner) {
-    pan = ctx.createStereoPanner();
-    vol.connect(pan);
-    pan.connect(master);
-    pan.connect(send);
+  if (inst.kind === "tri") {
+    // The hardware triangle has no volume control. Volume in the
+    // text only nudges it.
+    const p = g.gain, pk = 0.22 + 0.3 * (n.vol / 15);
+    p.setValueAtTime(0, t);
+    p.linearRampToValueAtTime(pk, t + 0.004);
+    p.setValueAtTime(pk, Math.max(t + 0.004, t + dur - 0.006));
+    p.linearRampToValueAtTime(0, t + dur);
   } else {
-    vol.connect(master);
-    vol.connect(send);
+    chipEnvelope(g, t, dur, peak);
   }
-  send.connect(echoInput);
-  return { input, vol, pan, send };
+  osc.connect(g).connect(out);
+  osc.start(t);
+  osc.stop(t + dur + 0.05);
 }
 
-function applyStrip(strip, ch) {
-  strip.vol.gain.value = ch.vol;
-  strip.send.gain.value = ch.echo * 0.9;
-  if (strip.pan) strip.pan.pan.value = ch.pan;
+function scheduleSample(ctx, outs, n, t, dur) {
+  const inst = INSTRUMENTS[n.inst];
+  const set = sampleSets.get(n.inst);
+  if (!set || !set.length) return;
+  let [root, buf] = set[0];
+  for (const cand of set) {
+    if (Math.abs(cand[0] - n.midi) < Math.abs(root - n.midi)) [root, buf] = cand;
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.playbackRate.value = Math.pow(2, (n.midi - root) / 12);
+  const g = ctx.createGain();
+  const p = g.gain, peak = (n.vol / 15) * 0.85;
+  p.setValueAtTime(0, t);
+  p.linearRampToValueAtTime(peak, t + 0.008);
+  p.setValueAtTime(peak, Math.max(t + 0.008, t + dur - 0.07));
+  p.linearRampToValueAtTime(0, t + dur + 0.02);
+  g.connect(outs.dry);
+  if (inst.verb) {
+    const send = ctx.createGain();
+    send.gain.value = inst.verb;
+    g.connect(send).connect(outs.verb);
+  }
+  if (inst.vib && dur > 0.35) {
+    // The susNV flute has no vibrato of its own; the N64 applied
+    // it in the engine, late and shallow, so here it is likewise.
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 5.2;
+    const depth = ctx.createGain();
+    depth.gain.value = 16;
+    lfo.connect(depth).connect(src.detune);
+    lfo.start(t + 0.18);
+    lfo.stop(t + dur + 0.05);
+  }
+  src.start(t);
+  src.stop(t + dur + 0.1);
 }
 
-/* ---------- the live engine ---------- */
+/* ---------- renderer ---------- */
 
-let actx = null;
-let kit = null;
-let master = null;
-let echoBus = null;
-const strips = new Map();
+// The whole loop, rendered once. Playback is then a single
+// looping buffer source: nothing is scheduled live, ever.
+async function renderSong(song) {
+  const sr = 44100;
+  const stepDur = 60 / song.tempo / 4;
+  const dur = song.steps * stepDur;
+  const ctx = new OfflineAudioContext(2, Math.ceil(dur * sr), sr);
+  const master = ctx.createGain();
+  master.gain.value = 0.9;
+  master.connect(ctx.destination);
+  const verb = ctx.createConvolver();
+  verb.buffer = makeImpulse(ctx, 1.8, 2.8);
+  const verbOut = ctx.createGain();
+  verbOut.gain.value = 0.5;
+  verb.connect(verbOut).connect(master);
+  const kit = {
+    duties: {
+      0.125: dutyWave(ctx, 0.125), 0.25: dutyWave(ctx, 0.25),
+      0.5: dutyWave(ctx, 0.5), 0.75: dutyWave(ctx, 0.75),
+    },
+    tri: triWave(ctx),
+    noise: noiseBuffer(ctx),
+  };
+  const outs = { dry: master, verb };
+  for (const ch of song.channels) {
+    for (const n of ch.notes) {
+      const t = n.step * stepDur, d = n.len * stepDur;
+      if (INSTRUMENTS[n.inst].kind === "sample") scheduleSample(ctx, outs, n, t, d);
+      else scheduleChip(ctx, master, kit, n, t, d);
+    }
+  }
+  const t0 = performance.now();
+  const buffer = await ctx.startRendering();
+  return {
+    buffer, dur, stepDur,
+    loopStart: song.loopStep * stepDur,
+    loopDur: dur - song.loopStep * stepDur,
+    renderMs: performance.now() - t0,
+  };
+}
 
-const sched = {
-  playing: false,
-  step: 0,
-  patIdx: 0,
-  nextTime: 0,
-  timer: null,
-  raf: 0,
-  drawQueue: [],
-  stepsPlayed: 0,
+/* ---------- player ---------- */
+
+// Playhead maths lives here and nowhere else: a segment is
+// {startCtxTime, rendered, song}; the loop region is the tail of
+// the buffer after the intro (loopStep), and swaps re-base the
+// segment at the boundary so the formula never changes shape.
+const player = {
+  ctx: null, src: null, seg: null, playing: false,
+  rendered: null, song: null, dirty: true, pending: null, raf: 0,
 };
 
-let compiled = null;
-
-const spb = () => 60 / compiled.meta.bpm / 4;
-
-function ensureCtx() {
-  if (actx) return;
-  const AC = window.AudioContext || window.webkitAudioContext;
-  actx = new AC({ latencyHint: "interactive" });
-  kit = makeInstruments(actx);
-  master = makeMaster(actx);
-  echoBus = makeEcho(actx, master, spb());
+function stepAt(now) {
+  const { startCtxTime, rendered, song } = player.seg;
+  const elapsed = now - startCtxTime;
+  const introDur = rendered.loopStart;
+  if (elapsed < introDur) return Math.floor(elapsed / rendered.stepDur);
+  const inLoop = (elapsed - introDur) % rendered.loopDur;
+  return song.loopStep + Math.floor(inLoop / rendered.stepDur);
 }
 
-function liveStrip(ch) {
-  if (!strips.has(ch.name)) {
-    const st = makeStrip(actx, master, echoBus.input);
-    applyStrip(st, ch);
-    strips.set(ch.name, st);
+async function startPlayback() {
+  if (!player.ctx) player.ctx = new AudioContext();
+  await player.ctx.resume();
+  await loadSamples();
+  if (player.dirty || !player.rendered) {
+    setStatus("rendering…");
+    player.rendered = await renderSong(player.song);
+    player.dirty = false;
+    player.pending = null;
+    window.__lastRender = player.rendered;
   }
-  return strips.get(ch.name);
+  stopSource();
+  const src = player.ctx.createBufferSource();
+  src.buffer = player.rendered.buffer;
+  src.loop = true;
+  src.loopStart = player.rendered.loopStart;
+  src.loopEnd = player.rendered.dur;
+  src.connect(player.ctx.destination);
+  const startCtxTime = player.ctx.currentTime + 0.08;
+  src.start(startCtxTime);
+  player.src = src;
+  player.seg = { startCtxTime, rendered: player.rendered, song: player.song };
+  player.playing = true;
+  setPlayUI(true);
+  setStatus(readyText());
+  runPlayhead();
 }
 
-function scheduleStep(patIdx, step, time) {
-  const pat = compiled.patterns.get(compiled.order[patIdx]);
-  if (!pat) return;
-  for (const ch of pat.channels) {
-    if (step === 0) applyStrip(liveStrip(ch), ch);
-    if (muted.has(ch.name)) continue;
-    const evs = ch.eventsByStep[step];
-    if (!evs || !evs.length) continue;
-    const st = liveStrip(ch);
-    for (const ev of evs) {
-      playEvent(actx, kit, ch.instrument, st.input, ev, time, spb());
-    }
-  }
-}
-
-// How far ahead of the speakers the timer schedules. It has to
-// cover the worst gap between timer callbacks on a busy main
-// thread, with room to spare: a callback that arrives after a
-// step's moment has already passed is a note played late.
-const LOOKAHEAD = 0.2;
-
-let echoSpb = 0;
-
-function tick() {
-  // If a long task starved the timer past the next step's moment,
-  // do not burst-schedule the missed steps at past times: pick the
-  // beat back up from now. One step lands late, then the grid
-  // re-locks, instead of a flam of everything that was owed.
-  if (sched.nextTime < actx.currentTime) {
-    sched.nextTime = actx.currentTime + 0.05;
-    sched.drawQueue = sched.drawQueue.filter(
-      (q) => q.time >= actx.currentTime
-    );
-  }
-  // The echo time only moves when the tempo does; writing it on
-  // every tick just re-times the delay line forty times a second.
-  const s = spb();
-  if (s !== echoSpb) {
-    echoSpb = s;
-    echoBus.delay.delayTime.setTargetAtTime(s * 3, actx.currentTime, 0.03);
-  }
-  while (sched.nextTime < actx.currentTime + LOOKAHEAD) {
-    // The same guard inside the loop: a pause midway through a
-    // tick (a GC sweeping up the last pattern's voices, say) must
-    // not let the remaining steps go out at past times either.
-    if (sched.nextTime < actx.currentTime) {
-      sched.nextTime = actx.currentTime + 0.05;
-      continue;
-    }
-    scheduleStep(sched.patIdx, sched.step, sched.nextTime);
-    sched.drawQueue.push({
-      pattern: compiled.order[sched.patIdx],
-      step: sched.step,
-      time: sched.nextTime,
-    });
-    if (sched.drawQueue.length > 64) {
-      sched.drawQueue.splice(0, sched.drawQueue.length - 64);
-    }
-    sched.step++;
-    sched.stepsPlayed++;
-    if (sched.step >= compiled.meta.steps) {
-      sched.step = 0;
-      sched.patIdx = (sched.patIdx + 1) % compiled.order.length;
-    }
-    sched.nextTime += spb();
+function stopSource() {
+  if (player.src) {
+    try { player.src.stop(); } catch { /* already stopped */ }
+    player.src.disconnect();
+    player.src = null;
   }
 }
 
-/* ---------- page wiring ---------- */
+function stopPlayback() {
+  stopSource();
+  player.pending = null;
+  player.playing = false;
+  cancelAnimationFrame(player.raf);
+  setPlayUI(false);
+  clearPlayhead();
+  setStatus(readyText());
+}
 
-const textarea = document.querySelector("[data-song-text]");
+// When the song changes under a playing loop, the new render is
+// swapped in at the next loop boundary: the old source stops and
+// the new one starts there, already inside its loop.
+function maybeSwap() {
+  if (!player.pending || !player.seg) return;
+  const now = player.ctx.currentTime;
+  const { startCtxTime, rendered } = player.seg;
+  const introDur = rendered.loopStart;
+  const cycles = Math.max(
+    0, Math.ceil((now - startCtxTime - introDur) / rendered.loopDur));
+  const boundary = startCtxTime + introDur + cycles * rendered.loopDur;
+  if (boundary - now > 0.25) return; // not close enough yet; keep checking
+  const next = player.pending;
+  player.pending = null;
+  const src = player.ctx.createBufferSource();
+  src.buffer = next.buffer;
+  src.loop = true;
+  src.loopStart = next.loopStart;
+  src.loopEnd = next.dur;
+  src.connect(player.ctx.destination);
+  src.start(boundary, next.loopStart);
+  player.src.stop(boundary);
+  player.src = src;
+  player.rendered = next;
+  player.seg = { startCtxTime: boundary - next.loopStart, rendered: next, song: player.song };
+  setStatus(readyText());
+}
+
+function runPlayhead() {
+  let lastStep = -1;
+  const tick = () => {
+    if (!player.playing) return;
+    maybeSwap();
+    const step = stepAt(player.ctx.currentTime);
+    if (step !== lastStep) {
+      lastStep = step;
+      paintPlayhead(step);
+    }
+    player.raf = requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+// A song change: if it parses, it becomes the song. While playing,
+// the re-render is prepared in the background and swapped at the
+// loop boundary; while stopped, it simply waits for the next play.
+function songChanged(parsed, { restart = false } = {}) {
+  player.song = parsed;
+  player.dirty = true;
+  if (!player.playing) return;
+  if (restart) {
+    startPlayback();
+    return;
+  }
+  renderSong(parsed).then((rendered) => {
+    if (player.song === parsed && player.playing) {
+      player.pending = rendered;
+      window.__lastRender = rendered;
+    }
+  });
+}
+
+/* ---------- page ---------- */
+
+const textEl = document.querySelector("[data-song-text]");
 const gridEl = document.querySelector("[data-grid]");
+const tabsEl = document.querySelector("[data-ptabs]");
 const statusEl = document.querySelector("[data-status]");
 const textStatusEl = document.querySelector("[data-text-status]");
-const tabsEl = document.querySelector("[data-ptabs]");
 const playBtn = document.querySelector("[data-play]");
-const tempoValue = document.querySelector("[data-tempo-value]");
-const tempoBtns = document.querySelectorAll("[data-tempo]");
-const STORE_KEY = "music-maker-song-v1";
+const tempoValueEl = document.querySelector("[data-tempo-value]");
 
-let textClean = true;
-let viewPattern = null;
-let pinned = false;
-const muted = new Set();
-let cellByStep = new Map();
-let prevCol = -1;
-let litEls = [];
-let lastDrawnKey = "";
-
-function updateStatus() {
-  statusEl.classList.remove("is-error");
-  if (!compiled) {
-    statusEl.textContent = "";
-    return;
+function setStatus(msg, isError = false) {
+  for (const el of [statusEl, textStatusEl]) {
+    if (!el) continue;
+    el.textContent = msg;
+    el.classList.toggle("is-error", isError);
   }
-  if (sched.playing) return; // the draw loop owns the line while playing
-  const w = compiled.warnings;
-  const base =
-    `${compiled.meta.title} · ${compiled.meta.bpm} bpm · ` +
-    `order ${compiled.order.join(" ")}`;
-  statusEl.textContent = w.length
-    ? `${base} · note: ${w[0]}${w.length > 1 ? ` (and ${w.length - 1} more)` : ""}`
-    : `${base} · ready`;
 }
 
-function renderTabs() {
+function readyText() {
+  const s = player.song;
+  if (!s) return "";
+  let msg = `${s.steps} steps · ${s.channels.length} channels · ${s.tempo} bpm`;
+  if (player.rendered && !player.dirty && !player.pending) {
+    msg += ` · rendered in ${Math.round(player.rendered.renderMs)} ms`;
+  }
+  if (s.warnings.length) msg += ` · ${s.warnings[0]}`;
+  return msg;
+}
+
+function showIssues(parsed) {
+  if (!parsed.ok) {
+    setStatus(parsed.errors[0], true);
+    return;
+  }
+  setStatus(readyText());
+}
+
+function setPlayUI(playing) {
+  playBtn.textContent = playing ? "stop" : "play";
+  playBtn.setAttribute("aria-pressed", String(playing));
+}
+
+function updateTempoUI() {
+  if (player.song) tempoValueEl.textContent = `${player.song.tempo} bpm`;
+}
+
+/* ----- grid ----- */
+
+const gridState = { letter: null, cellsByStep: new Map(), lastCol: -1 };
+
+const pitchName = (midi) =>
+  PC_NAME[midi % 12].replace(/^./, (c) => c.toUpperCase()) +
+  (Math.floor(midi / 12) - 1);
+
+function currentChannel() {
+  if (!player.song) return null;
+  return (
+    player.song.channels.find((c) => c.letter === gridState.letter) ||
+    player.song.channels[0]
+  );
+}
+
+function buildTabs() {
   tabsEl.innerHTML = "";
-  if (!compiled) return;
-  const names = [...compiled.patterns.keys()];
-  for (const name of names) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "music-btn";
-    b.textContent = `pattern ${name}`;
-    b.setAttribute("aria-pressed", String(name === viewPattern));
-    b.addEventListener("click", () => {
-      viewPattern = name;
-      pinned = true;
-      renderTabs();
-      renderGrid();
-    });
-    tabsEl.append(b);
+  if (!player.song || player.song.channels.length < 2) {
+    tabsEl.hidden = true;
+    return;
   }
-  if (pinned) {
-    const f = document.createElement("button");
-    f.type = "button";
-    f.className = "music-btn";
-    f.textContent = "follow playback";
-    f.addEventListener("click", () => {
-      pinned = false;
-      renderTabs();
+  tabsEl.hidden = false;
+  for (const ch of player.song.channels) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "music-btn";
+    const instName = INSTRUMENTS[ch.notes[0].inst].name;
+    btn.textContent = `${ch.letter} · ${instName}`;
+    btn.setAttribute("aria-pressed", String(ch === currentChannel()));
+    btn.addEventListener("click", () => {
+      gridState.letter = ch.letter;
+      buildTabs();
+      buildGrid();
     });
-    tabsEl.append(f);
-  }
-  tabsEl.hidden = names.length < 2 && !pinned;
-}
-
-// Built grids are kept, one per pattern, and swapped back in
-// whole. Playback crosses a pattern boundary every few seconds,
-// and rebuilding a thousand buttons there put a long task on the
-// same main thread the scheduler times from; notes went late.
-// Any edit clears the cache, so a kept grid always matches the
-// compiled song it was built from.
-const gridCache = new Map();
-
-function syncMutes(root) {
-  for (const b of root.querySelectorAll("[data-mute-for]")) {
-    const off = muted.has(b.dataset.muteFor);
-    b.textContent = off ? "muted" : "mute";
-    b.setAttribute("aria-pressed", String(off));
+    tabsEl.appendChild(btn);
   }
 }
 
-function renderGrid() {
-  clearPlayhead();
-  lastDrawnKey = "";
-  cellByStep = new Map();
-  if (!compiled || !viewPattern) {
-    gridEl.innerHTML = "";
-    return;
-  }
-  const hit = gridCache.get(viewPattern);
-  if (hit) {
-    cellByStep = hit.cells;
-    gridEl.replaceChildren(hit.root);
-    syncMutes(hit.root);
-    return;
-  }
-  const pat = compiled.patterns.get(viewPattern);
-  if (!pat) {
-    gridEl.innerHTML = "";
-    return;
-  }
-  const root = document.createElement("div");
-  const cells = new Map();
-  for (const ch of pat.channels) {
-    const head = document.createElement("div");
-    head.className = "gchan";
-    const name = document.createElement("span");
-    name.className = "gchan__name";
-    name.textContent = ch.name;
-    const inst = document.createElement("span");
-    inst.className = "gchan__inst";
-    inst.textContent = ch.instrument;
-    const mute = document.createElement("button");
-    mute.type = "button";
-    mute.className = "gchan__mute";
-    mute.textContent = muted.has(ch.name) ? "muted" : "mute";
-    mute.setAttribute("aria-pressed", String(muted.has(ch.name)));
-    mute.dataset.muteFor = ch.name;
-    mute.addEventListener("click", () => {
-      if (muted.has(ch.name)) muted.delete(ch.name);
-      else muted.add(ch.name);
-      renderGrid();
-    });
-    head.append(name, inst, mute);
-    root.append(head);
+function buildGrid() {
+  gridEl.innerHTML = "";
+  gridState.cellsByStep = new Map();
+  gridState.lastCol = -1;
+  const ch = currentChannel();
+  if (!ch) return;
+  gridState.letter = ch.letter;
+  const song = player.song;
 
-    for (const row of ch.rows) {
-      const rowEl = document.createElement("div");
-      rowEl.className = "grow";
-      const lab = document.createElement("span");
-      lab.className = "glabel";
-      lab.textContent = row.label;
-      rowEl.append(lab);
-      [...row.cells].forEach((c, s) => {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className =
-          "cell" +
-          (c === "x" ? " c-on" : c === "-" ? " c-sus" : "") +
-          (s > 0 && s % 4 === 0 ? " beat" : "");
-        b.setAttribute(
-          "aria-label",
-          `${ch.name} ${row.label} step ${s + 1}: ` +
-            (c === "x" ? "note starts" : c === "-" ? "note holds" : "rest")
-        );
-        b.disabled = !textClean || !row.editable;
-        b.addEventListener("click", () => editCell(row, s));
-        rowEl.append(b);
-        if (!cells.has(s)) cells.set(s, []);
-        cells.get(s).push(b);
-      });
-      root.append(rowEl);
+  const head = document.createElement("div");
+  head.className = "gchan";
+  const used = [...new Set(ch.notes.map((n) => n.inst))]
+    .map((i) => INSTRUMENTS[i].name).join(", ");
+  head.innerHTML =
+    `<span class="gchan__name">${ch.letter}</span>` +
+    `<span class="gchan__inst">${used}</span>`;
+  gridEl.appendChild(head);
+
+  const pitches = [...new Set(ch.notes.map((n) => n.midi))].sort((a, b) => b - a);
+  if (!pitches.length) return;
+  const rows = [pitches[0] + 1, ...pitches, pitches[pitches.length - 1] - 1]
+    .filter((m, i, a) => m >= 24 && m <= 96 && a.indexOf(m) === i);
+
+  const frag = document.createDocumentFragment();
+  for (const midi of rows) {
+    const row = document.createElement("div");
+    row.className = "grow";
+    const label = document.createElement("span");
+    label.className = "glabel";
+    label.textContent = pitchName(midi);
+    row.appendChild(label);
+    for (let step = 0; step < song.steps; step++) {
+      const cell = document.createElement("button");
+      cell.type = "button";
+      cell.className = "cell" + (step % 4 === 0 && step > 0 ? " beat" : "");
+      cell.dataset.step = step;
+      cell.dataset.midi = midi;
+      cell.setAttribute("aria-label", `${pitchName(midi)}, step ${step + 1}`);
+      const note = ch.notes.find(
+        (n) => n.midi === midi && step >= n.step && step < n.step + n.len);
+      if (note) cell.classList.add(step === note.step ? "c-on" : "c-sus");
+      if (!gridState.cellsByStep.has(step)) gridState.cellsByStep.set(step, []);
+      gridState.cellsByStep.get(step).push(cell);
+      row.appendChild(cell);
     }
+    frag.appendChild(row);
   }
-  gridCache.set(viewPattern, { root, cells });
-  cellByStep = cells;
-  gridEl.replaceChildren(root);
+  gridEl.appendChild(frag);
 }
 
-function editCell(row, step) {
-  if (!textClean || !row.editable) return;
-  const lines = textarea.value.split("\n");
-  const line = lines[row.lineIndex];
-  if (line === undefined) return;
-  const pos = row.charPos[step];
-  const cur = line[pos];
-  if (cur !== "." && cur !== "x" && cur !== "-") return;
-  const next = cur === "." ? "x" : cur === "x" ? "-" : ".";
-  lines[row.lineIndex] = line.slice(0, pos) + next + line.slice(pos + 1);
-  textarea.value = lines.join("\n");
-  compileFromText();
-}
-
-function setPlayhead(step) {
-  if (step === prevCol) return;
-  for (const el of litEls) el.classList.remove("is-now");
-  litEls = cellByStep.get(step) ?? [];
-  for (const el of litEls) el.classList.add("is-now");
-  prevCol = step;
+function paintPlayhead(step) {
+  const prev = gridState.cellsByStep.get(gridState.lastCol) || [];
+  for (const c of prev) c.classList.remove("is-now");
+  const next = gridState.cellsByStep.get(step) || [];
+  for (const c of next) c.classList.add("is-now");
+  gridState.lastCol = step;
 }
 
 function clearPlayhead() {
-  for (const el of litEls) el.classList.remove("is-now");
-  litEls = [];
-  prevCol = -1;
+  paintPlayhead(-1);
+  gridState.lastCol = -1;
 }
 
-function draw() {
-  if (!sched.playing) return;
-  const now = actx.currentTime;
-  const q = sched.drawQueue;
-  while (q.length > 1 && q[1].time <= now) q.shift();
-  if (q.length && q[0].time <= now) {
-    const cur = q[0];
-    // Everything below is per-step work, so it runs on a step
-    // change only. Running it on every frame rewrote the status
-    // text sixty times a second and churned layout for nothing.
-    const key = `${cur.pattern}:${cur.step}`;
-    if (key !== lastDrawnKey) {
-      lastDrawnKey = key;
-      if (cur.pattern !== viewPattern && !pinned) {
-        viewPattern = cur.pattern;
-        renderTabs();
-        renderGrid();
-      }
-      if (cur.pattern === viewPattern) {
-        setPlayhead(cur.step);
-        // While the text is broken, the error owns the status line;
-        // the last good compile is what is playing.
-        if (textClean) {
-          statusEl.textContent =
-            `playing · pattern ${cur.pattern} · ` +
-            `step ${cur.step + 1} of ${compiled.meta.steps}`;
-        }
-      }
-    }
-  }
-  sched.raf = requestAnimationFrame(draw);
-}
-
-function setPlaying(on) {
-  if (on && !compiled) return;
-  if (on) {
-    ensureCtx();
-    actx.resume();
-    if (sched.patIdx >= compiled.order.length) sched.patIdx = 0;
-    if (sched.step >= compiled.meta.steps) sched.step = 0;
-    sched.nextTime = Math.max(sched.nextTime, actx.currentTime + 0.06);
-    sched.timer = setInterval(tick, 25);
-    sched.raf = requestAnimationFrame(draw);
-    sched.playing = true;
+function gridEdit(ch, step, midi) {
+  const notes = ch.notes;
+  const hit = notes.find(
+    (n) => n.midi === midi && step >= n.step && step < n.step + n.len);
+  if (hit) {
+    if (step === hit.step) notes.splice(notes.indexOf(hit), 1);
+    else hit.len = step - hit.step;
   } else {
-    clearInterval(sched.timer);
-    cancelAnimationFrame(sched.raf);
-    if (actx) actx.suspend();
-    sched.playing = false;
-    clearPlayhead();
-    lastDrawnKey = "";
-  }
-  playBtn.textContent = sched.playing ? "pause" : "play";
-  playBtn.setAttribute("aria-pressed", String(sched.playing));
-  updateStatus();
-}
-
-/* ---------- compile, save, share ---------- */
-
-function saveSong() {
-  try {
-    localStorage.setItem(STORE_KEY, textarea.value);
-  } catch {
-    // Storage can refuse; the song still lives in the textarea.
-  }
-}
-
-// The tempo readout and its buttons follow the compiled song, and
-// the buttons stand down while the text has a problem: there is no
-// honest tempo to nudge until it parses again.
-function syncTempo() {
-  if (tempoValue && compiled) {
-    tempoValue.textContent = `${compiled.meta.bpm} bpm`;
-  }
-  for (const b of tempoBtns) b.disabled = !textClean || !compiled;
-}
-
-function compileFromText() {
-  gridCache.clear();
-  try {
-    compiled = parseSong(textarea.value);
-    textClean = true;
-    if (!compiled.patterns.has(viewPattern)) {
-      viewPattern = compiled.order[0];
-      pinned = false;
+    let fresh = notes.find((n) => n.midi === midi && n.step + n.len === step);
+    if (fresh) {
+      fresh.len += 2;
+    } else {
+      const before =
+        [...notes].reverse().find((n) => n.step <= step) || notes[0];
+      fresh = {
+        step, len: 2, midi,
+        inst: before ? before.inst : 1,
+        vol: before ? before.vol : 12,
+      };
+      notes.push(fresh);
     }
-    if (sched.patIdx >= compiled.order.length) sched.patIdx = 0;
-    if (sched.step >= compiled.meta.steps) sched.step = 0;
-    saveSong();
-    renderTabs();
-    renderGrid();
-    updateStatus();
-    if (textStatusEl) {
-      textStatusEl.textContent = "";
-      textStatusEl.classList.remove("is-error");
-    }
-    syncTempo();
-  } catch (err) {
-    textClean = false;
-    const msg =
-      `the song text has a problem: ${err.message} ` +
-      `The last good version keeps playing.`;
-    statusEl.textContent = msg;
-    statusEl.classList.add("is-error");
-    // The same words appear above the text itself, where the
-    // problem is and where the fix happens.
-    if (textStatusEl) {
-      textStatusEl.textContent = msg;
-      textStatusEl.classList.add("is-error");
-    }
-    renderGrid();
-    syncTempo();
-  }
-}
-
-let compileTimer = 0;
-textarea.addEventListener("input", () => {
-  // Typing by hand means the text is no longer any one preset,
-  // so no preset button stays pressed.
-  markPreset(null);
-  clearTimeout(compileTimer);
-  compileTimer = setTimeout(compileFromText, 150);
-});
-
-function encodeSong(text) {
-  const bytes = new TextEncoder().encode(text);
-  let bin = "";
-  bytes.forEach((b) => {
-    bin += String.fromCharCode(b);
-  });
-  return btoa(bin)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-function decodeSong(s) {
-  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
-  const bin = atob(b64);
-  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
-}
-
-function initialText() {
-  const m = /#song=([A-Za-z0-9_-]+)/.exec(location.hash);
-  if (m) {
-    try {
-      return decodeSong(m[1]);
-    } catch {
-      // A mangled hash falls through to the saved or demo song.
-    }
-  }
-  try {
-    const saved = localStorage.getItem(STORE_KEY);
-    if (saved) return saved;
-  } catch {
-    // No storage, no problem: the demo ships inline.
-  }
-  return DEMO_FOREST;
-}
-
-async function copyText(text, done) {
-  try {
-    await navigator.clipboard.writeText(text);
-    statusEl.textContent = done;
-  } catch {
-    textarea.select();
-    statusEl.textContent = "copy did not work here; the text is selected instead";
-  }
-}
-
-/* ---------- WAV export ---------- */
-
-function encodeWav(buffer) {
-  const nCh = Math.min(2, buffer.numberOfChannels);
-  const sr = buffer.sampleRate;
-  const len = buffer.length;
-  const bytes = 44 + len * nCh * 2;
-  const ab = new ArrayBuffer(bytes);
-  const v = new DataView(ab);
-  const wstr = (off, s) => {
-    for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i));
-  };
-  wstr(0, "RIFF");
-  v.setUint32(4, bytes - 8, true);
-  wstr(8, "WAVE");
-  wstr(12, "fmt ");
-  v.setUint32(16, 16, true);
-  v.setUint16(20, 1, true);
-  v.setUint16(22, nCh, true);
-  v.setUint32(24, sr, true);
-  v.setUint32(28, sr * nCh * 2, true);
-  v.setUint16(32, nCh * 2, true);
-  v.setUint16(34, 16, true);
-  wstr(36, "data");
-  v.setUint32(40, len * nCh * 2, true);
-  const chans = [];
-  for (let c = 0; c < nCh; c++) chans.push(buffer.getChannelData(c));
-  let off = 44;
-  for (let i = 0; i < len; i++) {
-    for (let c = 0; c < nCh; c++) {
-      const s = Math.max(-1, Math.min(1, chans[c][i]));
-      v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true);
-      off += 2;
-    }
-  }
-  return new Blob([ab], { type: "audio/wav" });
-}
-
-function download(blob, filename) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-}
-
-async function exportWav(btn) {
-  if (!compiled) return;
-  const label = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = "rendering";
-  try {
-    const loops = 2;
-    const stepDur = spb();
-    const totalSteps = compiled.meta.steps * compiled.order.length * loops;
-    const dur = totalSteps * stepDur + 1.6;
-    const sr = 44100;
-    const off = new OfflineAudioContext(2, Math.ceil(dur * sr), sr);
-    const offKit = makeInstruments(off);
-    const offMaster = makeMaster(off);
-    const offEcho = makeEcho(off, offMaster, stepDur);
-    const offStrips = new Map();
-    const stripFor = (ch) => {
-      if (!offStrips.has(ch.name)) {
-        const st = makeStrip(off, offMaster, offEcho.input);
-        applyStrip(st, ch);
-        offStrips.set(ch.name, st);
-      }
-      return offStrips.get(ch.name);
-    };
-    for (let g = 0; g < totalSteps; g++) {
-      const patName =
-        compiled.order[
-          Math.floor(g / compiled.meta.steps) % compiled.order.length
-        ];
-      const step = g % compiled.meta.steps;
-      const pat = compiled.patterns.get(patName);
-      const time = 0.05 + g * stepDur;
-      for (const ch of pat.channels) {
-        if (step === 0) applyStrip(stripFor(ch), ch);
-        const evs = ch.eventsByStep[step];
-        if (!evs || !evs.length) continue;
-        const st = stripFor(ch);
-        for (const ev of evs) {
-          playEvent(off, offKit, ch.instrument, st.input, ev, time, stepDur);
-        }
+    // A channel is one voice: anything else under the new span is
+    // cut back or removed, and the new note stops at the next one.
+    const s = fresh.step, e = fresh.step + fresh.len;
+    for (let i = notes.length - 1; i >= 0; i--) {
+      const n = notes[i];
+      if (n === fresh) continue;
+      if (n.step < e && n.step + n.len > s) {
+        if (n.step >= s) notes.splice(i, 1);
+        else n.len = s - n.step;
       }
     }
-    const buf = await off.startRendering();
-    const slug =
-      compiled.meta.title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "") || "song";
-    download(encodeWav(buf), `${slug}.wav`);
-    statusEl.textContent = `exported ${slug}.wav (two loops)`;
-  } catch (err) {
-    statusEl.textContent = `export failed: ${err.message}`;
-    statusEl.classList.add("is-error");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = label;
+    const next = notes
+      .filter((n) => n !== fresh && n.step > s)
+      .sort((a, b) => a.step - b.step)[0];
+    if (next && fresh.step + fresh.len > next.step) {
+      fresh.len = Math.max(1, next.step - fresh.step);
+    }
+    notes.sort((a, b) => a.step - b.step);
   }
+  ch.steps = notes.reduce((mx, n) => Math.max(mx, n.step + n.len), 0);
+  player.song.steps = player.song.channels
+    .reduce((mx, c) => Math.max(mx, c.steps), 0);
+  const text = songToText(player.song);
+  textEl.value = text;
+  const parsed = parseSong(text);
+  if (parsed.ok) adoptSong(parsed);
 }
 
-/* ---------- controls ---------- */
-
-playBtn.addEventListener("click", () => setPlaying(!sched.playing));
-
-document.querySelector("[data-restart]").addEventListener("click", () => {
-  sched.step = 0;
-  sched.patIdx = 0;
-  sched.drawQueue.length = 0;
-  if (sched.playing && actx) sched.nextTime = actx.currentTime + 0.06;
-  clearPlayhead();
-  updateStatus();
+gridEl.addEventListener("click", (event) => {
+  const cell = event.target.closest(".cell");
+  if (!cell) return;
+  const ch = currentChannel();
+  if (!ch) return;
+  gridEdit(ch, Number(cell.dataset.step), Number(cell.dataset.midi));
 });
 
-// The loaded preset wears the pressed state, so the songs row
-// always says which song is in the machine.
-function markPreset(name) {
-  for (const b of document.querySelectorAll("[data-demo]")) {
-    b.setAttribute("aria-pressed", String(b.dataset.demo === name));
+/* ----- song adoption ----- */
+
+function adoptSong(parsed, { restart = false } = {}) {
+  songChanged(parsed, { restart });
+  if (!gridState.letter ||
+      !parsed.channels.some((c) => c.letter === gridState.letter)) {
+    gridState.letter = parsed.channels[0]?.letter ?? null;
+  }
+  buildTabs();
+  buildGrid();
+  updateTempoUI();
+  showIssues(parsed);
+}
+
+function markSongButton(key) {
+  for (const btn of document.querySelectorAll("[data-song]")) {
+    btn.setAttribute("aria-pressed", String(btn.dataset.song === key));
   }
 }
 
-for (const btn of document.querySelectorAll("[data-demo]")) {
+function loadSong(key, { restart = false } = {}) {
+  const song = SONGS[key];
+  if (!song) return;
+  textEl.value = song.text + "\n";
+  const parsed = parseSong(textEl.value);
+  markSongButton(key);
+  if (parsed.ok) adoptSong(parsed, { restart });
+  else showIssues(parsed);
+}
+
+for (const btn of document.querySelectorAll("[data-song]")) {
   btn.addEventListener("click", () => {
-    textarea.value = PRESETS[btn.dataset.demo] ?? DEMO_FOREST;
-    sched.step = 0;
-    sched.patIdx = 0;
-    pinned = false;
-    viewPattern = null;
-    compileFromText();
-    markPreset(btn.dataset.demo);
+    loadSong(btn.dataset.song, { restart: player.playing });
   });
 }
 
-// Tempo is a text edit like any other: the buttons rewrite the
-// bpm: line and the song recompiles, so the grid, the text and
-// the playback can never disagree about the speed. While the song
-// plays, the scheduler reads the new compile within a step or two.
-function nudgeTempo(dir) {
-  if (!compiled || !textClean) return;
-  const next = clamp(compiled.meta.bpm + dir * 2, 60, 200);
-  if (next === compiled.meta.bpm) return;
-  const lines = textarea.value.split("\n");
-  const bpmAt = lines.findIndex((l) => /^bpm\s*:/i.test(l));
-  if (bpmAt >= 0) {
-    lines[bpmAt] = lines[bpmAt].replace(/[\d.]+/, String(next));
-  } else {
-    const titleAt = lines.findIndex((l) => /^title\s*:/i.test(l));
-    lines.splice(titleAt >= 0 ? titleAt + 1 : 0, 0, `bpm: ${next}`);
+/* ----- transport ----- */
+
+let starting = false;
+playBtn.addEventListener("click", async () => {
+  if (player.playing) { stopPlayback(); return; }
+  if (starting) return;
+  starting = true;
+  try {
+    await startPlayback();
+  } catch {
+    setStatus("The loop could not be rendered.", true);
   }
-  textarea.value = lines.join("\n");
-  compileFromText();
+  starting = false;
+});
+
+for (const btn of document.querySelectorAll("[data-tempo]")) {
+  btn.addEventListener("click", () => {
+    if (!player.song) return;
+    const dir = Number(btn.dataset.tempo);
+    const target = Math.max(40, Math.min(280, player.song.tempo + dir * 4));
+    const lines = textEl.value.split("\n");
+    let done = false;
+    for (let i = 0; i < lines.length && !done; i++) {
+      if (!/^\s*[A-H]\s/.test(lines[i])) continue;
+      const [body, ...comment] = lines[i].split(";");
+      if (/\bt\d+\b/.test(body)) {
+        lines[i] = [body.replace(/\bt\d+\b/, `t${target}`), ...comment].join(";");
+        done = true;
+      }
+    }
+    if (!done) {
+      for (let i = 0; i < lines.length; i++) {
+        const m = lines[i].match(/^(\s*[A-H]\s+)/);
+        if (m) {
+          lines[i] = m[1] + `t${target} ` + lines[i].slice(m[1].length);
+          break;
+        }
+      }
+    }
+    textEl.value = lines.join("\n");
+    const parsed = parseSong(textEl.value);
+    if (parsed.ok) { markSongButton(null); adoptSong(parsed); }
+  });
 }
 
-for (const b of tempoBtns) {
-  b.addEventListener("click", () => nudgeTempo(Number(b.dataset.tempo)));
-}
+/* ----- text editing ----- */
 
-document.querySelector("[data-copy]").addEventListener("click", () => {
-  copyText(textarea.value, "song text copied");
+let textTimer = 0;
+textEl.addEventListener("input", () => {
+  clearTimeout(textTimer);
+  textTimer = setTimeout(() => {
+    const parsed = parseSong(textEl.value);
+    if (!parsed.ok) { showIssues(parsed); return; }
+    markSongButton(null);
+    adoptSong(parsed);
+  }, 300);
 });
 
-document.querySelector("[data-download]").addEventListener("click", () => {
-  const slug =
-    (compiled?.meta.title || "song")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "") || "song";
-  download(new Blob([textarea.value], { type: "text/plain" }), `${slug}.txt`);
-  statusEl.textContent = "song text downloaded";
-});
+// Warm the sample cache on the first touch, so the first press of
+// play is not also the first download.
+window.addEventListener("pointerdown", () => loadSamples(), { once: true });
 
-document.querySelector("[data-share]").addEventListener("click", () => {
-  const url = `${location.origin}${location.pathname}#song=${encodeSong(textarea.value)}`;
-  history.replaceState(null, "", url);
-  copyText(url, "share link copied; the song travels inside it as text");
-});
-
-document
-  .querySelector("[data-export]")
-  .addEventListener("click", (e) => exportWav(e.currentTarget));
-
-/* ---------- go ---------- */
+/* ----- go ----- */
 
 setUpThemeToggle();
 setUpKeys();
-textarea.value = initialText();
-compileFromText();
-
-// A small handle for headless checks: proves the song compiled and,
-// while playing, that the scheduler's step counter advances.
-window.__musicMaker = {
-  state: () => ({
-    title: compiled?.meta.title ?? null,
-    patterns: compiled ? [...compiled.patterns.keys()] : [],
-    order: compiled?.order ?? [],
-    playing: sched.playing,
-    step: sched.step,
-    stepsPlayed: sched.stepsPlayed,
-    warnings: compiled?.warnings.length ?? 0,
-    textClean,
-  }),
-  play: () => setPlaying(true),
-  pause: () => setPlaying(false),
-};
+loadSong("storms");

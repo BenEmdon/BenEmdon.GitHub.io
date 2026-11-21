@@ -262,12 +262,20 @@
   font: inherit;
   font-size: var(--text-small);
   line-height: 1.5;
-  white-space: pre;
-  overflow: auto;
+  white-space: pre-wrap;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: var(--page-subtle);
   color: var(--page-color);
   border: 1px solid var(--page-rule);
   padding: var(--step-half);
+}
+
+/* Code on this page soft-wraps like everywhere else on the site:
+   it never scrolls sideways. */
+.code {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 
 .music-text:focus-visible {
