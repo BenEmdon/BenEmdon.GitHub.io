@@ -1,30 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" shape-rendering="crispEdges">
-  <title>Ben Emdon</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <title>Mochi</title>
   <!--
-    A solid capital B on a 24px grid, drawn to the header wordmark's own
-    proportions. The wordmark B is 7 cells wide by 5 tall: bars 6 cells,
-    side rows bulging to 7, a 2-cell stem and 3x1 squared counters. Here
-    each of those cells is 3px wide by 4px tall, giving a 21x20 glyph
-    centred on the canvas. One ink, no dither softening, so the counters
-    stay open and the silhouette stays bold at 16px. Pixels only ever
-    sit on the grid: nothing drifts, nothing is anti-aliased.
+    Mochi, Ben's favicon experiment: the blue dome from the pixel
+    portrait on the Mochi page, redrawn on a 16x16 grid so it holds
+    together at tab size. Six colours from the portrait's own ramp,
+    closed happy eyes, no background, so it sits on any tab colour.
+    Pixels only ever sit on the grid: nothing drifts, nothing fades.
   -->
-  <style>
-    .ink { fill: #1e5aa8; }
-
-    @media (prefers-color-scheme: dark) {
-      .ink { fill: #6ea8e1; }
-    }
-  </style>
-
-  <path
-    class="ink"
-    d="
-    M1 2h18v1H1z M1 3h18v1H1z M1 4h18v1H1z M1 5h18v1H1z M1 6h6v1H1z M16 6h6v1H16z
-    M1 7h6v1H1z M16 7h6v1H16z M1 8h6v1H1z M16 8h6v1H16z M1 9h6v1H1z M16 9h6v1H16z
-    M1 10h18v1H1z M1 11h18v1H1z M1 12h18v1H1z M1 13h18v1H1z M1 14h6v1H1z M16 14h6v1H16z
-    M1 15h6v1H1z M16 15h6v1H16z M1 16h6v1H1z M16 16h6v1H16z M1 17h6v1H1z M16 17h6v1H16z
-    M1 18h18v1H1z M1 19h18v1H1z M1 20h18v1H1z M1 21h18v1H1z
-  "
-  />
+  <path fill="#a9c3ec" d="M5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM9 2h1v1h-1zM10 2h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM8 3h1v1h-1zM9 3h1v1h-1zM10 3h1v1h-1zM11 3h1v1h-1z"/>
+  <path fill="#7f9fd8" d="M3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM10 4h1v1h-1zM11 4h1v1h-1zM12 4h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM9 5h1v1h-1zM10 5h1v1h-1zM11 5h1v1h-1zM12 5h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM9 6h1v1h-1zM10 6h1v1h-1zM11 6h1v1h-1zM12 6h1v1h-1zM13 6h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM6 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM10 7h1v1h-1zM12 7h1v1h-1zM13 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM5 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM9 8h1v1h-1zM11 8h1v1h-1zM13 8h1v1h-1zM2 9h1v1h-1zM3 9h1v1h-1zM4 9h1v1h-1zM5 9h1v1h-1zM6 9h1v1h-1zM7 9h1v1h-1zM8 9h1v1h-1zM9 9h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM12 9h1v1h-1zM13 9h1v1h-1zM2 10h1v1h-1zM3 10h1v1h-1zM4 10h1v1h-1zM5 10h1v1h-1zM7 10h1v1h-1zM8 10h1v1h-1zM10 10h1v1h-1zM11 10h1v1h-1zM12 10h1v1h-1zM13 10h1v1h-1z"/>
+  <path fill="#6486c4" d="M3 11h1v1h-1zM4 11h1v1h-1zM5 11h1v1h-1zM6 11h1v1h-1zM9 11h1v1h-1zM10 11h1v1h-1zM11 11h1v1h-1zM12 11h1v1h-1zM3 12h1v1h-1zM4 12h1v1h-1zM5 12h1v1h-1zM6 12h1v1h-1zM7 12h1v1h-1zM8 12h1v1h-1zM9 12h1v1h-1zM10 12h1v1h-1zM11 12h1v1h-1zM12 12h1v1h-1zM4 13h1v1h-1zM5 13h1v1h-1zM6 13h1v1h-1zM7 13h1v1h-1zM8 13h1v1h-1zM9 13h1v1h-1zM10 13h1v1h-1zM11 13h1v1h-1z"/>
+  <path fill="#2e4470" d="M5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM9 1h1v1h-1zM10 1h1v1h-1zM4 2h1v1h-1zM11 2h1v1h-1zM3 3h1v1h-1zM12 3h1v1h-1zM2 4h1v1h-1zM13 4h1v1h-1zM2 5h1v1h-1zM13 5h1v1h-1zM1 6h1v1h-1zM14 6h1v1h-1zM1 7h1v1h-1zM14 7h1v1h-1zM1 8h1v1h-1zM14 8h1v1h-1zM1 9h1v1h-1zM14 9h1v1h-1zM1 10h1v1h-1zM14 10h1v1h-1zM2 11h1v1h-1zM13 11h1v1h-1zM2 12h1v1h-1zM13 12h1v1h-1zM3 13h1v1h-1zM12 13h1v1h-1zM4 14h1v1h-1zM5 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM8 14h1v1h-1zM9 14h1v1h-1zM10 14h1v1h-1zM11 14h1v1h-1z"/>
+  <path fill="#141c2e" d="M5 7h1v1h-1zM11 7h1v1h-1zM4 8h1v1h-1zM6 8h1v1h-1zM10 8h1v1h-1zM12 8h1v1h-1zM6 10h1v1h-1zM9 10h1v1h-1zM7 11h1v1h-1zM8 11h1v1h-1z"/>
 </svg>
