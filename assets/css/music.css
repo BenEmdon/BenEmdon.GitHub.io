@@ -4,11 +4,55 @@
   or from the system, with no second palette to keep in sync.
 */
 
-.music-controls {
+/* The controls sit in labelled groups, so the flow reads top to
+   bottom: play, pick a song, take it away. Group labels take the
+   muted small voice the facts list uses for its keys. */
+.music-transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--step) / 2);
+  margin-block: var(--step) calc(var(--step) / 2);
+}
+
+.music-group {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--step) / 2);
+  margin-block-end: calc(var(--step) / 2);
+}
+
+.music-group__label {
+  flex: none;
+  width: 5.5rem;
+  color: var(--muted-color);
+  font-size: var(--text-small);
+}
+
+.music-group__btns {
   display: flex;
   flex-wrap: wrap;
   gap: calc(var(--step) / 2);
-  margin-block: var(--step) calc(var(--step) / 2);
+}
+
+.music-tempo {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--step) / 2);
+  margin-inline-start: auto;
+}
+
+.music-tempo__label {
+  color: var(--muted-color);
+  font-size: var(--text-small);
+}
+
+/* Fixed width, so the buttons either side never shift as the
+   number changes. */
+.music-tempo__value {
+  min-width: 7ch;
+  text-align: center;
+  font-size: var(--text-small);
 }
 
 .music-btn {
@@ -35,6 +79,22 @@
   border-color: var(--accent-color);
 }
 
+/* Play is the one primary action: wider, bold, and bordered in the
+   accent before it is ever pressed. */
+.music-btn--play {
+  font-weight: 700;
+  padding-inline: var(--step);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.music-btn--play:hover,
+.music-btn--play:focus-visible,
+.music-btn--play[aria-pressed="true"] {
+  background: var(--accent-color);
+  color: var(--inverted-color);
+}
+
 .music-btn:disabled {
   opacity: 0.55;
   cursor: default;
@@ -49,6 +109,13 @@
 
 .music-status.is-error {
   color: light-dark(#b3261e, #f2b8b5);
+}
+
+/* The same line, repeated above the song text: a problem with the
+   text is reported where the text is, not only up by the grid. It
+   keeps its step of height while empty so the text never jumps. */
+.music-status--text {
+  margin-block: 0 calc(var(--step) / 2);
 }
 
 .music-ptabs {
@@ -147,9 +214,15 @@
   margin-inline-start: 4px;
 }
 
-.cell:hover,
-.cell:focus-visible {
+.cell:hover {
   border-color: var(--accent-color);
+}
+
+/* A filled outline, not just a border tint, so a keyboard user can
+   always see which cell they are standing on, lit or not. */
+.cell:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -1px;
 }
 
 .cell.c-on {
@@ -200,4 +273,37 @@
 .music-text:focus-visible {
   outline: 2px solid var(--accent-color);
   outline-offset: -1px;
+}
+
+/* Touch targets, on the same terms the rest of the site uses:
+   controls grow to two whole steps tall on coarse pointers, and
+   the grid cells grow as far as a scrolling panel allows. */
+@media (max-width: 34rem), (pointer: coarse) {
+  .music-btn {
+    min-height: calc(var(--step) * 2);
+    padding-inline: calc(var(--step) / 2);
+  }
+
+  .music-btn--play {
+    padding-inline: var(--step);
+  }
+
+  .music-group {
+    flex-direction: column;
+    gap: calc(var(--step) / 4);
+  }
+
+  .music-group__label {
+    width: auto;
+  }
+
+  .gchan__mute {
+    min-height: calc(var(--step) * 2);
+    padding-inline: calc(var(--step) / 2);
+  }
+
+  .cell {
+    width: 22px;
+    height: 22px;
+  }
 }

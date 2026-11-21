@@ -12,7 +12,7 @@
   one feedback delay with a dark filter in its loop.
 
   Timing follows the two-clocks pattern: a 25 ms timer schedules notes
-  0.12 s ahead against the audio clock, always reading the current
+  0.2 s ahead against the audio clock, always reading the current
   compiled song, so a toggle lands in the music within a step or two.
   No assets, no WASM, no worklet, no build step.
 
@@ -86,6 +86,77 @@ function setUpThemeToggle() {
   });
 
   applyMode();
+}
+
+/* ---------- keys ---------- */
+
+// The site's interaction model, in miniature, mirroring mochi.js:
+// digit keys jump to sections and frame them, t works the theme
+// toggle, ? opens the keys legend. The scroll framing comes with
+// it, so a section the reader is inside of wears the accent frame
+// here exactly as it does on the other pages.
+function setUpKeys() {
+  const sections = document.querySelectorAll(".section");
+  const keys = document.querySelector("[data-keys]");
+  const keysToggle = document.querySelector("[data-keys-toggle]");
+  const themeToggle = document.querySelector("[data-theme-toggle]");
+  if (!sections.length || !keys || !keysToggle) return;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  let jumpingUntil = 0;
+
+  function frame(section) {
+    for (const other of sections) {
+      other.classList.toggle("is-active", other === section);
+    }
+  }
+
+  const centreLine = new IntersectionObserver(
+    (entries) => {
+      if (performance.now() < jumpingUntil) return;
+      const arrived = entries.findLast((entry) => entry.isIntersecting);
+      if (arrived) frame(arrived.target);
+    },
+    { rootMargin: "-50% 0px -50% 0px" }
+  );
+  for (const section of sections) centreLine.observe(section);
+
+  function showKeys(open) {
+    keys.hidden = !open;
+    keysToggle.setAttribute("aria-expanded", String(open));
+  }
+
+  function jump(section) {
+    section.scrollIntoView({
+      behavior: reduced.matches ? "auto" : "smooth",
+      block: "start",
+    });
+    jumpingUntil = performance.now() + (reduced.matches ? 0 : 1000);
+    frame(section);
+    history.replaceState(null, "", `#${section.querySelector("[id]").id}`);
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    const el = event.target;
+    if (el.isContentEditable || /^(input|textarea|select)$/i.test(el.tagName)) return;
+
+    const digit = Number(event.key);
+    if (Number.isInteger(digit) && digit >= 1 && digit <= sections.length) {
+      jump(sections[digit - 1]);
+    } else if (event.key === "t") {
+      themeToggle?.click();
+    } else if (event.key === "?") {
+      showKeys(keys.hidden);
+    } else if (event.key === "Escape") {
+      showKeys(false);
+    } else {
+      return;
+    }
+    event.preventDefault();
+  });
+
+  keysToggle.addEventListener("click", () => showKeys(keys.hidden));
 }
 
 /* ---------- demo songs ---------- */
@@ -993,6 +1064,7 @@ function makeInstruments(ctx) {
         partials: [[1, 1, 0], [2, 0.25, 0], [3, 0.06, 0]],
       }),
       rootMidi: 72, loop: true, adsr: { a: 0.012, d: 0.06, s: 0.85, r: 0.12 },
+      vibrato: { rate: 5.4, cents: 14, delay: 0.16, fade: 0.3 },
     },
     flute: {
       buffer: toneBuffer(ctx, {
@@ -1000,6 +1072,7 @@ function makeInstruments(ctx) {
         partials: [[1, 1, 0], [2, 0.4, 0], [3, 0.1, 0]],
       }),
       rootMidi: 72, loop: true, adsr: { a: 0.03, d: 0.08, s: 0.8, r: 0.15 },
+      vibrato: { rate: 5.8, cents: 18, delay: 0.2, fade: 0.35 },
     },
     strings: {
       buffer: stringsBuffer(ctx),
@@ -1031,7 +1104,7 @@ function makeInstruments(ctx) {
         rootMidi: 48, seconds: 0.3, seed: 51,
         partials: [[1, 1, 0], [2, 0.35, 0], [3, 0.18, 0], [4, 0.06, 0]],
       }),
-      rootMidi: 48, loop: true, adsr: { a: 0.005, d: 0.08, s: 0.9, r: 0.08 },
+      rootMidi: 48, loop: true, adsr: { a: 0.005, d: 0.08, s: 0.95, r: 0.08 },
     },
     pulse: {
       buffer: toneBuffer(ctx, {
@@ -1078,6 +1151,26 @@ function playSample(ctx, inst, out, midi, time, durSec) {
   if (s < 1) g.gain.linearRampToValueAtTime(peak * s, time + a + d);
   g.gain.setValueAtTime(peak * s, tOff);
   g.gain.linearRampToValueAtTime(0, tOff + r);
+  if (inst.vibrato && durSec > inst.vibrato.delay) {
+    // A slow, shallow wobble that fades in once the attack is past,
+    // the way a player settles into a held note. It rides the
+    // source's detune, in cents, so it never touches the scheduler.
+    // Short notes end before it arrives and stay clean.
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = inst.vibrato.rate;
+    const depth = ctx.createGain();
+    const tIn = time + inst.vibrato.delay;
+    depth.gain.setValueAtTime(0, time);
+    depth.gain.setValueAtTime(0, tIn);
+    depth.gain.linearRampToValueAtTime(
+      inst.vibrato.cents,
+      tIn + inst.vibrato.fade
+    );
+    lfo.connect(depth);
+    depth.connect(src.detune);
+    lfo.start(time);
+    lfo.stop(tOff + r + 0.05);
+  }
   src.start(time);
   src.stop(tOff + r + 0.05);
 }
@@ -1197,7 +1290,9 @@ function makeEcho(ctx, dest, spb) {
   lp.type = "lowpass";
   lp.frequency.value = 1800;
   const wet = ctx.createGain();
-  wet.gain.value = 0.9;
+  // The return sits behind the dry signal: the echo is the room the
+  // song plays in, not a second copy of it competing up front.
+  wet.gain.value = 0.75;
   delay.connect(lp);
   lp.connect(fb);
   fb.connect(delay);
@@ -1287,9 +1382,40 @@ function scheduleStep(patIdx, step, time) {
   }
 }
 
+// How far ahead of the speakers the timer schedules. It has to
+// cover the worst gap between timer callbacks on a busy main
+// thread, with room to spare: a callback that arrives after a
+// step's moment has already passed is a note played late.
+const LOOKAHEAD = 0.2;
+
+let echoSpb = 0;
+
 function tick() {
-  echoBus.delay.delayTime.value = spb() * 3;
-  while (sched.nextTime < actx.currentTime + 0.12) {
+  // If a long task starved the timer past the next step's moment,
+  // do not burst-schedule the missed steps at past times: pick the
+  // beat back up from now. One step lands late, then the grid
+  // re-locks, instead of a flam of everything that was owed.
+  if (sched.nextTime < actx.currentTime) {
+    sched.nextTime = actx.currentTime + 0.05;
+    sched.drawQueue = sched.drawQueue.filter(
+      (q) => q.time >= actx.currentTime
+    );
+  }
+  // The echo time only moves when the tempo does; writing it on
+  // every tick just re-times the delay line forty times a second.
+  const s = spb();
+  if (s !== echoSpb) {
+    echoSpb = s;
+    echoBus.delay.delayTime.setTargetAtTime(s * 3, actx.currentTime, 0.03);
+  }
+  while (sched.nextTime < actx.currentTime + LOOKAHEAD) {
+    // The same guard inside the loop: a pause midway through a
+    // tick (a GC sweeping up the last pattern's voices, say) must
+    // not let the remaining steps go out at past times either.
+    if (sched.nextTime < actx.currentTime) {
+      sched.nextTime = actx.currentTime + 0.05;
+      continue;
+    }
     scheduleStep(sched.patIdx, sched.step, sched.nextTime);
     sched.drawQueue.push({
       pattern: compiled.order[sched.patIdx],
@@ -1314,8 +1440,11 @@ function tick() {
 const textarea = document.querySelector("[data-song-text]");
 const gridEl = document.querySelector("[data-grid]");
 const statusEl = document.querySelector("[data-status]");
+const textStatusEl = document.querySelector("[data-text-status]");
 const tabsEl = document.querySelector("[data-ptabs]");
 const playBtn = document.querySelector("[data-play]");
+const tempoValue = document.querySelector("[data-tempo-value]");
+const tempoBtns = document.querySelectorAll("[data-tempo]");
 const STORE_KEY = "music-maker-song-v1";
 
 let textClean = true;
@@ -1324,6 +1453,8 @@ let pinned = false;
 const muted = new Set();
 let cellByStep = new Map();
 let prevCol = -1;
+let litEls = [];
+let lastDrawnKey = "";
 
 function updateStatus() {
   statusEl.classList.remove("is-error");
@@ -1373,13 +1504,44 @@ function renderTabs() {
   tabsEl.hidden = names.length < 2 && !pinned;
 }
 
+// Built grids are kept, one per pattern, and swapped back in
+// whole. Playback crosses a pattern boundary every few seconds,
+// and rebuilding a thousand buttons there put a long task on the
+// same main thread the scheduler times from; notes went late.
+// Any edit clears the cache, so a kept grid always matches the
+// compiled song it was built from.
+const gridCache = new Map();
+
+function syncMutes(root) {
+  for (const b of root.querySelectorAll("[data-mute-for]")) {
+    const off = muted.has(b.dataset.muteFor);
+    b.textContent = off ? "muted" : "mute";
+    b.setAttribute("aria-pressed", String(off));
+  }
+}
+
 function renderGrid() {
-  gridEl.innerHTML = "";
+  clearPlayhead();
+  lastDrawnKey = "";
   cellByStep = new Map();
-  prevCol = -1;
-  if (!compiled || !viewPattern) return;
+  if (!compiled || !viewPattern) {
+    gridEl.innerHTML = "";
+    return;
+  }
+  const hit = gridCache.get(viewPattern);
+  if (hit) {
+    cellByStep = hit.cells;
+    gridEl.replaceChildren(hit.root);
+    syncMutes(hit.root);
+    return;
+  }
   const pat = compiled.patterns.get(viewPattern);
-  if (!pat) return;
+  if (!pat) {
+    gridEl.innerHTML = "";
+    return;
+  }
+  const root = document.createElement("div");
+  const cells = new Map();
   for (const ch of pat.channels) {
     const head = document.createElement("div");
     head.className = "gchan";
@@ -1394,13 +1556,14 @@ function renderGrid() {
     mute.className = "gchan__mute";
     mute.textContent = muted.has(ch.name) ? "muted" : "mute";
     mute.setAttribute("aria-pressed", String(muted.has(ch.name)));
+    mute.dataset.muteFor = ch.name;
     mute.addEventListener("click", () => {
       if (muted.has(ch.name)) muted.delete(ch.name);
       else muted.add(ch.name);
       renderGrid();
     });
     head.append(name, inst, mute);
-    gridEl.append(head);
+    root.append(head);
 
     for (const row of ch.rows) {
       const rowEl = document.createElement("div");
@@ -1424,12 +1587,15 @@ function renderGrid() {
         b.disabled = !textClean || !row.editable;
         b.addEventListener("click", () => editCell(row, s));
         rowEl.append(b);
-        if (!cellByStep.has(s)) cellByStep.set(s, []);
-        cellByStep.get(s).push(b);
+        if (!cells.has(s)) cells.set(s, []);
+        cells.get(s).push(b);
       });
-      gridEl.append(rowEl);
+      root.append(rowEl);
     }
   }
+  gridCache.set(viewPattern, { root, cells });
+  cellByStep = cells;
+  gridEl.replaceChildren(root);
 }
 
 function editCell(row, step) {
@@ -1448,16 +1614,15 @@ function editCell(row, step) {
 
 function setPlayhead(step) {
   if (step === prevCol) return;
-  const prev = cellByStep.get(prevCol);
-  if (prev) for (const el of prev) el.classList.remove("is-now");
-  const cur = cellByStep.get(step);
-  if (cur) for (const el of cur) el.classList.add("is-now");
+  for (const el of litEls) el.classList.remove("is-now");
+  litEls = cellByStep.get(step) ?? [];
+  for (const el of litEls) el.classList.add("is-now");
   prevCol = step;
 }
 
 function clearPlayhead() {
-  const prev = cellByStep.get(prevCol);
-  if (prev) for (const el of prev) el.classList.remove("is-now");
+  for (const el of litEls) el.classList.remove("is-now");
+  litEls = [];
   prevCol = -1;
 }
 
@@ -1468,19 +1633,26 @@ function draw() {
   while (q.length > 1 && q[1].time <= now) q.shift();
   if (q.length && q[0].time <= now) {
     const cur = q[0];
-    if (cur.pattern !== viewPattern && !pinned) {
-      viewPattern = cur.pattern;
-      renderTabs();
-      renderGrid();
-    }
-    if (cur.pattern === viewPattern) {
-      setPlayhead(cur.step);
-      // While the text is broken, the error owns the status line;
-      // the last good compile is what is playing.
-      if (textClean) {
-        statusEl.textContent =
-          `playing · pattern ${cur.pattern} · ` +
-          `step ${cur.step + 1} of ${compiled.meta.steps}`;
+    // Everything below is per-step work, so it runs on a step
+    // change only. Running it on every frame rewrote the status
+    // text sixty times a second and churned layout for nothing.
+    const key = `${cur.pattern}:${cur.step}`;
+    if (key !== lastDrawnKey) {
+      lastDrawnKey = key;
+      if (cur.pattern !== viewPattern && !pinned) {
+        viewPattern = cur.pattern;
+        renderTabs();
+        renderGrid();
+      }
+      if (cur.pattern === viewPattern) {
+        setPlayhead(cur.step);
+        // While the text is broken, the error owns the status line;
+        // the last good compile is what is playing.
+        if (textClean) {
+          statusEl.textContent =
+            `playing · pattern ${cur.pattern} · ` +
+            `step ${cur.step + 1} of ${compiled.meta.steps}`;
+        }
       }
     }
   }
@@ -1504,6 +1676,7 @@ function setPlaying(on) {
     if (actx) actx.suspend();
     sched.playing = false;
     clearPlayhead();
+    lastDrawnKey = "";
   }
   playBtn.textContent = sched.playing ? "pause" : "play";
   playBtn.setAttribute("aria-pressed", String(sched.playing));
@@ -1520,7 +1693,18 @@ function saveSong() {
   }
 }
 
+// The tempo readout and its buttons follow the compiled song, and
+// the buttons stand down while the text has a problem: there is no
+// honest tempo to nudge until it parses again.
+function syncTempo() {
+  if (tempoValue && compiled) {
+    tempoValue.textContent = `${compiled.meta.bpm} bpm`;
+  }
+  for (const b of tempoBtns) b.disabled = !textClean || !compiled;
+}
+
 function compileFromText() {
+  gridCache.clear();
   try {
     compiled = parseSong(textarea.value);
     textClean = true;
@@ -1534,18 +1718,34 @@ function compileFromText() {
     renderTabs();
     renderGrid();
     updateStatus();
+    if (textStatusEl) {
+      textStatusEl.textContent = "";
+      textStatusEl.classList.remove("is-error");
+    }
+    syncTempo();
   } catch (err) {
     textClean = false;
-    statusEl.textContent =
+    const msg =
       `the song text has a problem: ${err.message} ` +
       `The last good version keeps playing.`;
+    statusEl.textContent = msg;
     statusEl.classList.add("is-error");
+    // The same words appear above the text itself, where the
+    // problem is and where the fix happens.
+    if (textStatusEl) {
+      textStatusEl.textContent = msg;
+      textStatusEl.classList.add("is-error");
+    }
     renderGrid();
+    syncTempo();
   }
 }
 
 let compileTimer = 0;
 textarea.addEventListener("input", () => {
+  // Typing by hand means the text is no longer any one preset,
+  // so no preset button stays pressed.
+  markPreset(null);
   clearTimeout(compileTimer);
   compileTimer = setTimeout(compileFromText, 150);
 });
@@ -1715,6 +1915,14 @@ document.querySelector("[data-restart]").addEventListener("click", () => {
   updateStatus();
 });
 
+// The loaded preset wears the pressed state, so the songs row
+// always says which song is in the machine.
+function markPreset(name) {
+  for (const b of document.querySelectorAll("[data-demo]")) {
+    b.setAttribute("aria-pressed", String(b.dataset.demo === name));
+  }
+}
+
 for (const btn of document.querySelectorAll("[data-demo]")) {
   btn.addEventListener("click", () => {
     textarea.value = PRESETS[btn.dataset.demo] ?? DEMO_FOREST;
@@ -1723,7 +1931,32 @@ for (const btn of document.querySelectorAll("[data-demo]")) {
     pinned = false;
     viewPattern = null;
     compileFromText();
+    markPreset(btn.dataset.demo);
   });
+}
+
+// Tempo is a text edit like any other: the buttons rewrite the
+// bpm: line and the song recompiles, so the grid, the text and
+// the playback can never disagree about the speed. While the song
+// plays, the scheduler reads the new compile within a step or two.
+function nudgeTempo(dir) {
+  if (!compiled || !textClean) return;
+  const next = clamp(compiled.meta.bpm + dir * 2, 60, 200);
+  if (next === compiled.meta.bpm) return;
+  const lines = textarea.value.split("\n");
+  const bpmAt = lines.findIndex((l) => /^bpm\s*:/i.test(l));
+  if (bpmAt >= 0) {
+    lines[bpmAt] = lines[bpmAt].replace(/[\d.]+/, String(next));
+  } else {
+    const titleAt = lines.findIndex((l) => /^title\s*:/i.test(l));
+    lines.splice(titleAt >= 0 ? titleAt + 1 : 0, 0, `bpm: ${next}`);
+  }
+  textarea.value = lines.join("\n");
+  compileFromText();
+}
+
+for (const b of tempoBtns) {
+  b.addEventListener("click", () => nudgeTempo(Number(b.dataset.tempo)));
 }
 
 document.querySelector("[data-copy]").addEventListener("click", () => {
@@ -1753,6 +1986,7 @@ document
 /* ---------- go ---------- */
 
 setUpThemeToggle();
+setUpKeys();
 textarea.value = initialText();
 compileFromText();
 

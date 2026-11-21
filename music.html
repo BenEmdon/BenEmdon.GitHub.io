@@ -88,23 +88,39 @@
           below is that same text in another form. Click cells or edit
           the text; the other view follows, even mid-song.
         </p>
-        <div class="music-controls">
-          <button class="music-btn" type="button" data-play aria-pressed="false">play</button>
+        <div class="music-transport">
+          <button class="music-btn music-btn--play" type="button" data-play aria-pressed="false">play</button>
           <button class="music-btn" type="button" data-restart>restart</button>
-          <button class="music-btn" type="button" data-demo="forest">demo: forest</button>
-          <button class="music-btn" type="button" data-demo="village">demo: village</button>
-          <button class="music-btn" type="button" data-demo="storms">Song of Storms (Zelda)</button>
-          <button class="music-btn" type="button" data-demo="lullaby">Zelda's Lullaby (Zelda)</button>
-          <button class="music-btn" type="button" data-demo="saria">Saria's Song (Zelda)</button>
-          <button class="music-btn" type="button" data-demo="pallet">Pallet Town (Pokémon)</button>
-          <button class="music-btn" type="button" data-demo="center">Pokémon Center (Pokémon)</button>
-          <button class="music-btn" type="button" data-demo="lavender">Lavender Town (Pokémon)</button>
-          <button class="music-btn" type="button" data-export>export wav</button>
-          <button class="music-btn" type="button" data-copy>copy song text</button>
-          <button class="music-btn" type="button" data-download>download .txt</button>
-          <button class="music-btn" type="button" data-share>share link</button>
+          <span class="music-tempo">
+            <span class="music-tempo__label">tempo</span>
+            <button class="music-btn" type="button" data-tempo="-1" aria-label="Slower">−</button>
+            <span class="music-tempo__value" data-tempo-value>120 bpm</span>
+            <button class="music-btn" type="button" data-tempo="1" aria-label="Faster">+</button>
+          </span>
         </div>
         <p class="music-status" data-status aria-live="polite"></p>
+        <div class="music-group">
+          <span class="music-group__label" id="songs-label">songs</span>
+          <div class="music-group__btns" role="group" aria-labelledby="songs-label">
+            <button class="music-btn" type="button" data-demo="forest" aria-pressed="false">forest (demo)</button>
+            <button class="music-btn" type="button" data-demo="village" aria-pressed="false">village (demo)</button>
+            <button class="music-btn" type="button" data-demo="storms" aria-pressed="false">Song of Storms (Zelda)</button>
+            <button class="music-btn" type="button" data-demo="lullaby" aria-pressed="false">Zelda's Lullaby (Zelda)</button>
+            <button class="music-btn" type="button" data-demo="saria" aria-pressed="false">Saria's Song (Zelda)</button>
+            <button class="music-btn" type="button" data-demo="pallet" aria-pressed="false">Pallet Town (Pokémon)</button>
+            <button class="music-btn" type="button" data-demo="center" aria-pressed="false">Pokémon Center (Pokémon)</button>
+            <button class="music-btn" type="button" data-demo="lavender" aria-pressed="false">Lavender Town (Pokémon)</button>
+          </div>
+        </div>
+        <div class="music-group">
+          <span class="music-group__label" id="take-label">take it away</span>
+          <div class="music-group__btns" role="group" aria-labelledby="take-label">
+            <button class="music-btn" type="button" data-export>export wav</button>
+            <button class="music-btn" type="button" data-copy>copy song text</button>
+            <button class="music-btn" type="button" data-download>download .txt</button>
+            <button class="music-btn" type="button" data-share>share link</button>
+          </div>
+        </div>
         <div class="music-ptabs" data-ptabs hidden></div>
         <div class="music-panel">
           <div data-grid></div>
@@ -124,8 +140,9 @@
           The whole song, exactly as the sequencer reads it. Change
           anything and it recompiles on the spot. A typo never stops the
           music: the last good version keeps playing, and the problem
-          shows above the grid.
+          shows in plain words above the text.
         </p>
+        <p class="music-status music-status--text" data-text-status aria-live="polite"></p>
         <textarea
           class="music-text"
           data-song-text
@@ -185,6 +202,15 @@ x  a note starts
           <button
             class="footer__button"
             type="button"
+            data-keys-toggle
+            aria-expanded="false"
+            aria-controls="keys"
+          >
+            <kbd>?</kbd> keys
+          </button>
+          <button
+            class="footer__button"
+            type="button"
             data-theme-toggle
           >
             <span data-theme-label>system</span>
@@ -200,6 +226,19 @@ x  a note starts
       </footer>
     </main>
 
+    <!-- Ships hidden and stays hidden without JS, since every key it
+         lists is wired up there. Mirrors the home and Mochi pages. -->
+    <div class="keys" id="keys" data-keys hidden>
+      <ul class="keys__list">
+        <li><kbd data-cap="1">1</kbd><span class="keys__label">music maker</span></li>
+        <li><kbd data-cap="2">2</kbd><span class="keys__label">song text</span></li>
+        <li><kbd data-cap="3">3</kbd><span class="keys__label">how it works</span></li>
+        <li><kbd data-cap="t">t</kbd><span class="keys__label">theme</span></li>
+        <li><kbd data-cap="?">?</kbd><span class="keys__label">this</span></li>
+      </ul>
+    </div>
+
     <script type="module" src="assets/js/music.js"></script>
+    <script type="module" src="assets/js/keycaps.js"></script>
   </body>
 </html>
