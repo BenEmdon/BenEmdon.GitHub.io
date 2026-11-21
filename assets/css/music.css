@@ -1,0 +1,317 @@
+/*
+  The music maker page. Everything here references the shared tokens
+  (assets/css/tokens.css), so the page follows the site theme, pinned
+  or from the system, with no second palette to keep in sync.
+*/
+
+/* The controls sit in labelled groups, so the flow reads top to
+   bottom: play, pick a song, take it away. Group labels take the
+   muted small voice the facts list uses for its keys. */
+.music-transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--step) / 2);
+  margin-block: var(--step) calc(var(--step) / 2);
+}
+
+.music-group {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--step) / 2);
+  margin-block-end: calc(var(--step) / 2);
+}
+
+.music-group__label {
+  flex: none;
+  width: 5.5rem;
+  color: var(--muted-color);
+  font-size: var(--text-small);
+}
+
+.music-group__btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--step) / 2);
+}
+
+.music-tempo {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--step) / 2);
+  margin-inline-start: auto;
+}
+
+.music-tempo__label {
+  color: var(--muted-color);
+  font-size: var(--text-small);
+}
+
+/* Fixed width, so the buttons either side never shift as the
+   number changes. */
+.music-tempo__value {
+  min-width: 7ch;
+  text-align: center;
+  font-size: var(--text-small);
+}
+
+.music-btn {
+  font: inherit;
+  font-size: var(--text-small);
+  line-height: var(--step);
+  padding: 0 calc(var(--step) / 2);
+  background: var(--page-subtle);
+  color: var(--page-color);
+  border: 1px solid var(--page-rule);
+  cursor: pointer;
+}
+
+.music-btn:hover,
+.music-btn:focus-visible {
+  background: var(--accent-color);
+  color: var(--inverted-color);
+  border-color: var(--accent-color);
+}
+
+.music-btn[aria-pressed="true"] {
+  background: var(--accent-color);
+  color: var(--inverted-color);
+  border-color: var(--accent-color);
+}
+
+/* Play is the one primary action: wider, bold, and bordered in the
+   accent before it is ever pressed. */
+.music-btn--play {
+  font-weight: 700;
+  padding-inline: var(--step);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.music-btn--play:hover,
+.music-btn--play:focus-visible,
+.music-btn--play[aria-pressed="true"] {
+  background: var(--accent-color);
+  color: var(--inverted-color);
+}
+
+.music-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.music-status {
+  min-height: var(--step);
+  margin-block: 0 calc(var(--step) / 2);
+  color: var(--muted-color);
+  font-size: var(--text-small);
+}
+
+.music-status.is-error {
+  color: light-dark(#b3261e, #f2b8b5);
+}
+
+/* The same line, repeated above the song text: a problem with the
+   text is reported where the text is, not only up by the grid. It
+   keeps its step of height while empty so the text never jumps. */
+.music-status--text {
+  margin-block: 0 calc(var(--step) / 2);
+}
+
+.music-ptabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--step) / 2);
+  margin-block-end: calc(var(--step) / 2);
+}
+
+.music-ptabs[hidden] {
+  display: none;
+}
+
+/* The grid panel: the same page-rule frame the portrait and the
+   meadow use. The grid itself can outgrow the text column on narrow
+   screens, so the panel scrolls sideways rather than squeezing. */
+.music-panel {
+  border: 1px solid var(--page-rule);
+  background: var(--page-subtle);
+  padding: var(--step-half);
+  overflow-x: auto;
+}
+
+.gchan {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--step) / 2);
+  margin-block-start: var(--step-half);
+  font-size: var(--text-small);
+}
+
+.gchan:first-child {
+  margin-block-start: 0;
+}
+
+.gchan__name {
+  font-weight: 700;
+}
+
+.gchan__inst {
+  color: var(--muted-color);
+}
+
+.gchan__mute {
+  font: inherit;
+  font-size: var(--text-caption);
+  margin-inline-start: auto;
+  padding: 0 0.4em;
+  background: none;
+  border: none;
+  color: var(--muted-color);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.gchan__mute:hover,
+.gchan__mute:focus-visible {
+  background: var(--accent-color);
+  color: var(--inverted-color);
+  text-decoration: none;
+}
+
+.gchan__mute[aria-pressed="true"] {
+  color: light-dark(#b3261e, #f2b8b5);
+}
+
+.grow {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  margin-block-start: 1px;
+}
+
+.glabel {
+  flex: 0 0 3.4rem;
+  padding-inline-end: 0.5rem;
+  text-align: right;
+  color: var(--muted-color);
+  font-size: var(--text-caption);
+}
+
+.cell {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  background: var(--page-background);
+  border: 1px solid var(--page-rule);
+  cursor: pointer;
+}
+
+/* One beat of space between groups of four steps, so the eye can
+   count bars the way the text counts them with its | marks. */
+.cell.beat {
+  margin-inline-start: 4px;
+}
+
+.cell:hover {
+  border-color: var(--accent-color);
+}
+
+/* A filled outline, not just a border tint, so a keyboard user can
+   always see which cell they are standing on, lit or not. */
+.cell:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -1px;
+}
+
+.cell.c-on {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.cell.c-sus {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  opacity: 0.42;
+}
+
+.cell.is-now {
+  outline: 2px solid var(--accent-pulse-color);
+  outline-offset: -1px;
+}
+
+.cell:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.cell.c-on:disabled,
+.cell.c-sus:disabled {
+  opacity: 0.55;
+}
+
+.music-hint {
+  color: var(--muted-color);
+  font-size: var(--text-small);
+}
+
+.music-text {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: var(--text-small);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--page-subtle);
+  color: var(--page-color);
+  border: 1px solid var(--page-rule);
+  padding: var(--step-half);
+}
+
+/* Code on this page soft-wraps like everywhere else on the site:
+   it never scrolls sideways. */
+.code {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.music-text:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -1px;
+}
+
+/* Touch targets, on the same terms the rest of the site uses:
+   controls grow to two whole steps tall on coarse pointers, and
+   the grid cells grow as far as a scrolling panel allows. */
+@media (max-width: 34rem), (pointer: coarse) {
+  .music-btn {
+    min-height: calc(var(--step) * 2);
+    padding-inline: calc(var(--step) / 2);
+  }
+
+  .music-btn--play {
+    padding-inline: var(--step);
+  }
+
+  .music-group {
+    flex-direction: column;
+    gap: calc(var(--step) / 4);
+  }
+
+  .music-group__label {
+    width: auto;
+  }
+
+  .gchan__mute {
+    min-height: calc(var(--step) * 2);
+    padding-inline: calc(var(--step) / 2);
+  }
+
+  .cell {
+    width: 22px;
+    height: 22px;
+  }
+}
