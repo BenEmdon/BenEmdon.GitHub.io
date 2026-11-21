@@ -7,12 +7,6 @@
 // to the canvas once this script has built the caps (.has-caps), so a JS
 // failure still leaves the plain readable legend.
 //
-// The command palette wears the same caps: its esc kbd is capped by the
-// static pass below, and palette.js hands each row's key hint to the
-// window.mochiKeycap enhancer as it renders. Row caps live in a loose set
-// (rows re-render constantly) and are pruned once their canvas leaves the
-// document, instead of the id-keyed map the legend's press flash needs.
-//
 // Pixel rule: pressing a listed key swaps its whole cap to the lit palette
 // in one whole-cell swap, holds for four 75ms ticks, and swaps back.
 // Nothing moves, nothing fades, and there are no intermediate steps, so
@@ -130,10 +124,6 @@ function resolvedTheme() {
 }
 
 const caps = new Map();
-// Caps built for elements that come and go (palette rows) live here, not
-// in the id map: several rows can wear the same key, and none needs the
-// press flash. Pruned whenever a redraw finds the canvas disconnected.
-const looseCaps = new Set();
 
 function draw(cap) {
   const pal = PALETTE[resolvedTheme()];
@@ -153,19 +143,6 @@ function draw(cap) {
 
 function drawAll() {
   caps.forEach(draw);
-  looseCaps.forEach((cap) => {
-    if (!cap.canvas.isConnected) {
-      looseCaps.delete(cap);
-      return;
-    }
-    draw(cap);
-  });
-}
-
-function pruneLoose() {
-  looseCaps.forEach((cap) => {
-    if (!cap.canvas.isConnected) looseCaps.delete(cap);
-  });
 }
 
 function flash(id) {
@@ -180,23 +157,11 @@ function flash(id) {
   }, STEP_MS * 4);
 }
 
-// Which glyphs a key wears, and on which cap. A lone glyph centres itself
-// on its cap; cmdk is the one composed pair, cmd left and K right.
+// Which glyph a key wears, centred on its cap.
 function glyphSpec(id) {
-  if (id === "cmdk") {
-    return {
-      wide: true,
-      glyphs: [
-        [GLYPHS.cmd, 3],
-        [GLYPHS.K, 13],
-      ],
-    };
-  }
   const map = GLYPHS[id];
   if (!map) return null;
-  const wide = id === "esc";
-  const capW = wide ? 21 : 11;
-  return { wide, glyphs: [[map, Math.floor((capW - map[0].length) / 2)]] };
+  return { wide: false, glyphs: [[map, Math.floor((11 - map[0].length) / 2)]] };
 }
 
 // Build one cap inside an element and return it, unregistered: the caller
@@ -226,42 +191,9 @@ panel?.querySelectorAll("kbd[data-cap]").forEach((kbd) => {
 
 if (caps.size) panel.classList.add("has-caps");
 
-// The palette's esc kbd gets the same static treatment. Its rows are
-// capped per render through the enhancer below.
-const paletteRoot = document.querySelector("[data-palette]");
-let paletteCapped = false;
-paletteRoot?.querySelectorAll("kbd[data-cap]").forEach((kbd) => {
-  const cap = buildCap(kbd, glyphSpec(kbd.dataset.cap));
-  if (!cap) return;
-  looseCaps.add(cap);
-  kbd.classList.add("is-capped");
-  draw(cap);
-  paletteCapped = true;
-});
-if (paletteCapped) paletteRoot.classList.add("has-caps");
-
-// The enhancer palette.js calls for each row's key hint as it renders.
-// Safe to call on any element: unknown keys and already-capped elements
-// are a no-op, and the palette works unchanged if this script is absent.
-window.mochiKeycap = (el, key) => {
-  if (!el || el.querySelector("canvas")) return false;
-  const cap = buildCap(el, glyphSpec(key));
-  if (!cap) return false;
-  pruneLoose();
-  looseCaps.add(cap);
-  el.classList.add("is-capped");
-  paletteRoot?.classList.add("has-caps");
-  draw(cap);
-  return true;
-};
-
 // A press lights its cap wherever the legend sits. Guards mirror main.js:
-// plain keys do not count while typing, the palette combo always counts.
+// plain keys do not count while typing.
 document.addEventListener("keydown", (event) => {
-  if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "k") {
-    flash("cmdk");
-    return;
-  }
   if (event.metaKey || event.ctrlKey || event.altKey) return;
   const el = event.target;
   if (el.isContentEditable || /^(input|textarea|select)$/i.test(el.tagName)) return;
