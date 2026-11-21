@@ -72,43 +72,45 @@ const PALETTES = {
   },
 };
 
-// The dome, row by row: [first cell, last cell] for each row that has body
-// in it. Round on top, widest low, a short taper under the base so the
-// character sits rather than floats.
+// The body, row by row: [first cell, last cell] for each row that has
+// body in it. Shaped after the avatar: a plush blob, squat and wide,
+// widest low, the dome's curve steps shrinking as they climb (2, 2, 1,
+// 1, 1...) so the top stays round without a long straight run down the
+// sides. Near the bottom the sides pinch in one cell for three rows,
+// then the base spreads wider than anything above it, the way a plush
+// squishes out where it sits.
 const PROFILE = {
-  10: [20, 27],
-  11: [18, 29],
-  12: [16, 31],
-  13: [15, 32],
-  14: [14, 33],
-  15: [13, 34],
-  16: [12, 35],
+  12: [19, 28],
+  13: [17, 30],
+  14: [15, 32],
+  15: [14, 33],
+  16: [13, 34],
   17: [12, 35],
   18: [11, 36],
-  19: [11, 36],
-  20: [10, 37],
-  21: [10, 37],
-  22: [10, 37],
-  23: [10, 37],
-  24: [10, 37],
-  25: [10, 37],
-  26: [10, 37],
-  27: [10, 37],
-  28: [10, 37],
-  29: [10, 37],
-  30: [10, 37],
-  31: [10, 37],
-  32: [10, 37],
-  33: [10, 37],
-  34: [10, 37],
-  35: [10, 37],
-  36: [10, 37],
-  37: [11, 36],
-  38: [11, 36],
-  39: [12, 35],
-  40: [12, 35],
-  41: [13, 34],
-  42: [15, 32],
+  19: [10, 37],
+  20: [9, 38],
+  21: [9, 38],
+  22: [8, 39],
+  23: [8, 39],
+  24: [7, 40],
+  25: [7, 40],
+  26: [6, 41],
+  27: [6, 41],
+  28: [6, 41],
+  29: [6, 41],
+  30: [6, 41],
+  31: [6, 41],
+  32: [6, 41],
+  33: [6, 41],
+  34: [7, 40],
+  35: [7, 40],
+  36: [7, 40],
+  37: [6, 41],
+  38: [6, 41],
+  39: [5, 42],
+  40: [5, 42],
+  41: [5, 42],
+  42: [5, 42],
 };
 
 const inBody = (x, y) => {
@@ -128,9 +130,23 @@ const BAYER_2 = [
 
 // Form shading from one light source, upper right. Each body cell gets a
 // light value from its position, the value picks a ramp shade, and the
-// Bayer jitter softens the pick at the edges of each band.
+// Bayer jitter softens the pick at the edges of each band. The slope is
+// mostly vertical, a lit cap over a body-bright middle over a shaded
+// base, with small corrections: the far left and the far right tilt the
+// value away from and toward the light, a bump over the dome's centre
+// curves the cap's edge down so it follows the dome instead of ruling a
+// straight line across it, and past row 33 the base pools darker still,
+// where the plush meets the ground. The slopes are sized so the whole
+// face sits inside the body band: no shade boundary crosses the eyes or
+// the smile.
 function bodyShade(x, y) {
-  const light = (x - 24) * 0.9 - (y - 20) * 0.8;
+  const light =
+    10 -
+    (y - 12) * 0.62 -
+    Math.max(0, 18 - x) * 0.35 +
+    Math.max(0, x - 34) * 0.3 -
+    Math.max(0, y - 33) * 0.55 +
+    Math.max(0, 7 - Math.abs(x - 26)) * 0.1;
   const jitter = (BAYER_2[y % 2][x % 2] - 1.5) * 0.5;
   const v = light + jitter;
   if (v > 7) return "hi";
@@ -148,29 +164,39 @@ const DEEPEN = {
   outline: "outline",
 };
 
+// One step lighter along the same ramp, for the fuzz below.
+const LIGHTEN = {
+  outline: "deep",
+  deep: "mid",
+  mid: "body",
+  body: "hi",
+  hi: "hi",
+};
+
 // The face. Eyes are single-cell arcs, the closed happy eyes from the
-// avatar: a peak in the middle, ends stepping down and out. The smile is
-// one gentle arc under them. Face cells are drawn over the shading and
-// never outlined.
+// avatar: a peak in the middle, ends stepping down and out. On the
+// wider body they sit a little wider apart and a little lower, where
+// the avatar's sit, and the smile under them is a wider, gentler arc
+// to match. Face cells are drawn over the shading and never outlined.
 const EYE_OPEN = [
   // left eye
-  [17, 20], [16, 21], [18, 21], [15, 22], [19, 22],
+  [17, 23], [16, 24], [18, 24], [15, 25], [19, 25],
   // right eye
-  [30, 20], [29, 21], [31, 21], [28, 22], [32, 22],
+  [31, 23], [30, 24], [32, 24], [29, 25], [33, 25],
 ];
 
 // The blink frame: each arc swaps for a flat line one row tall, on the
 // arc's own base row.
 const EYE_SHUT = [
-  [15, 22], [16, 22], [17, 22], [18, 22], [19, 22],
-  [28, 22], [29, 22], [30, 22], [31, 22], [32, 22],
+  [15, 25], [16, 25], [17, 25], [18, 25], [19, 25],
+  [29, 25], [30, 25], [31, 25], [32, 25], [33, 25],
 ];
 
 const SMILE = [
-  [19, 26], [28, 26],
-  [20, 27], [27, 27],
-  [21, 28], [26, 28],
-  [22, 29], [23, 29], [24, 29], [25, 29],
+  [18, 28], [29, 28],
+  [19, 29], [28, 29],
+  [20, 30], [27, 30],
+  [21, 31], [22, 31], [23, 31], [24, 31], [25, 31], [26, 31],
 ];
 
 // Backdrop sparkles: two four-point stars and three single dots, the
@@ -178,14 +204,14 @@ const SMILE = [
 const SPARKS = [
   [6, 11], [5, 11], [7, 11], [6, 10], [6, 12],
   [41, 15], [40, 15], [42, 15], [41, 14], [41, 16],
-  [8, 26], [42, 28], [24, 5], [5, 36],
+  [3, 24], [43, 28], [24, 5], [4, 36],
 ];
 
 // The ground shadow: two flat rows of the deeper backdrop shade, tucked
 // under the base.
 const SHADOW = [];
-for (let x = 14; x <= 33; x += 1) SHADOW.push([x, 43]);
-for (let x = 17; x <= 30; x += 1) SHADOW.push([x, 44]);
+for (let x = 9; x <= 38; x += 1) SHADOW.push([x, 43]);
+for (let x = 13; x <= 34; x += 1) SHADOW.push([x, 44]);
 
 // Build the grid of palette keys for one eye state. Painted fresh on every
 // theme change and every blink step, so a swap mid-blink lands on the
@@ -219,6 +245,46 @@ function buildGrid(eyesShut) {
       else if (edgeLeft) key = DEEPEN[key] === "outline" ? "deep" : DEEPEN[key];
       else if (edgeLit && key === "body") key = "mid";
       set(x, y, key);
+    }
+  }
+
+  // Fuzz, the anchor's one deliberate single-pixel detail: the plush is
+  // fuzzy, so a sparse seeded scatter of cells one step outside the
+  // silhouette takes the shade one ramp step lighter than the edge cell
+  // it sits beside, the way a stray hair catches the light. Never under
+  // the base, where the character sits, and never over a spark. The
+  // seed and the scan order are fixed, so every repaint grows the same
+  // fuzz in the same places.
+  const frng = mulberry32(20261122);
+  const fuzzed = [];
+  for (let y = 0; y < H; y += 1) {
+    for (let x = 0; x < W; x += 1) {
+      if (grid[y * W + x] !== "bg") continue;
+      if (inBody(x, y - 1)) continue; // the cell under the base stays clean
+      const beside =
+        grid[y * W + x - 1] !== "bg" && inBody(x - 1, y)
+          ? grid[y * W + x - 1]
+          : grid[y * W + x + 1] !== "bg" && inBody(x + 1, y)
+            ? grid[y * W + x + 1]
+            : inBody(x, y + 1)
+              ? grid[(y + 1) * W + x]
+              : null;
+      if (beside === null || beside === "bg") continue;
+      // None on the crown: a lone cell at the dome's apex reads as a
+      // sprout, not as fuzz.
+      if (inBody(x, y + 1) && y + 1 < 15) continue;
+      if (frng() >= 0.15) continue;
+      // Never in a clump: a fuzz cell keeps two cells of clear air from
+      // every other, so each one reads as a single stray hair.
+      if (
+        fuzzed.some(
+          ([fx, fy]) => Math.max(Math.abs(fx - x), Math.abs(fy - y)) < 2
+        )
+      ) {
+        continue;
+      }
+      fuzzed.push([x, y]);
+      set(x, y, LIGHTEN[beside]);
     }
   }
 
