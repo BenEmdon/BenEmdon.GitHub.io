@@ -186,10 +186,12 @@
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
       <section class="section">
-        <h2 class="section__title"><span class="prompt" aria-hidden="true">$</span> how i make pixel art</h2>
+        <h2 class="section__title"><span class="prompt" aria-hidden="true">$</span> how it works</h2>
         <p>
-          It starts as characters in a grid. Each letter is a colour, and
-          the picture is just the map, drawn one whole cell at a time.
+          Every picture here is a grid of numbers in the source code. Each
+          number picks a colour from a palette, and the map below is the
+          whole artwork: there is no image file. Edit a number, and exactly
+          one cell changes.
         </p>
         <div class="lab">
           <figure class="lab__fig">
@@ -219,8 +221,39 @@
           </figure>
         </div>
         <p>
+          The drawing itself is deliberately dumb. A canvas the size of the
+          grid, one filled rectangle per cell, and CSS scales it up with
+          image-rendering set to pixelated, so the cells stay sharp. The
+          meadow on the home page is 144 cells wide and 60 tall, drawn
+          exactly this way.
+        </p>
+        <p>
+          Night is the same numbers with a different palette. The map never
+          changes; the lookup does, and one repaint swaps every cell to its
+          night colour.
+        </p>
+        <p>
+          Motion is timers and swaps, never movement. A gust is a front
+          that advances row by row: each grass cell carries a shade step,
+          and when the front covers it, the cell swaps one shade up its
+          ladder, then back down behind the front. The clouds are a second
+          map laid over the sky cells only, stepping one whole column on a
+          seeded timer.
+        </p>
+        <p>
+          All the variation is seeded, so the same code draws the same
+          picture every time. That is what lets me check my own work: count
+          the colours in a frame against the palette, and diff two versions
+          cell by cell to prove only the cells I meant to touch have
+          changed.
+        </p>
+        <p>
+          If your system asks for reduced motion, the timers never start
+          and you get one static frame.
+        </p>
+        <p>
           Now a turn for you. Pick a colour, tap the cells, stamp a tree.
-          Nothing here drifts or fades: a cell is on, or it is not.
+          A cell is on, or it is not.
         </p>
         <div class="play">
           <div class="play__swatches" data-swatches role="group" aria-label="Pixel colours"></div>
@@ -237,7 +270,7 @@
             <button class="footer__button" type="button" data-play-clear>clear</button>
           </div>
         </div>
-        <p>That is the whole recipe. Steal it.</p>
+        <p>That is the whole machine. Steal it.</p>
       </section>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
