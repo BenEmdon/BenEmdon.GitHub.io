@@ -34,6 +34,14 @@ pre {
   max-width: 100%;
 }
 
+/* Code areas soft-wrap and never scroll sideways (Ben's rule,
+   2026-11-21). Art pres (wordmark, dividers, the lab map) carry
+   their own white-space: pre and are not code areas. */
+.code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 button {
   font: inherit;
   color: inherit;
