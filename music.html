@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Music maker · Ben Emdon</title>
+    <meta
+      name="description"
+      content="A small sequencer for 16-bit adventure music. The song is text first: one character per step, edited as a grid or as lines."
+    />
+    <!-- An experiment, kept unlisted while it is reviewed. -->
+    <meta name="robots" content="noindex" />
+
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180" />
+
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090d16" />
+
+    <!-- Same pre-paint theme script as the home page, so a saved theme
+         applies here too and never flashes the other one. -->
+    <script>
+      try {
+        const saved = localStorage.getItem("theme");
+        if (saved === "light" || saved === "dark") {
+          document.documentElement.dataset.theme = saved;
+        }
+      } catch {}
+    </script>
+
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/400.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/700.css" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=block&text=%20%E2%96%80%E2%96%84%E2%96%88%E2%96%91"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="assets/css/tokens.css?v=20261114" />
+    <link rel="stylesheet" href="assets/css/base.css" />
+    <link rel="stylesheet" href="assets/css/layout.css?v=20261114" />
+    <link rel="stylesheet" href="assets/css/components.css?v=20261114f" />
+    <link rel="stylesheet" href="assets/css/music.css" />
+
+    <script>
+      window.goatcounter = {
+        path(p) {
+          if (location.hostname !== "benemdon.github.io") return null;
+          if (navigator.doNotTrack === "1" || navigator.globalPrivacyControl) return null;
+          return p;
+        },
+      };
+    </script>
+    <script
+      data-goatcounter="https://benemdon.goatcounter.com/count"
+      async
+      src="https://gc.zgo.at/count.js"
+    ></script>
+  </head>
+
+  <body>
+    <main class="page">
+      <header>
+        <h1>
+          <span class="sr-only">Music maker</span>
+          <pre class="wordmark" aria-hidden="true">███    ███   ██    ██    ██████    █████    ██████
+████  ████   ██    ██   ██         ██    ██
+██ ████ ██   ██    ██    ██████      ██    ██
+██  ██  ██   ██    ██         ██     ██    ██
+██      ██    ██████     ██████    █████    ██████</pre>
+        </h1>
+      </header>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <section class="section">
+        <h2 class="section__title" id="music-maker"><span class="prompt" aria-hidden="true">$</span> music-maker<a class="anchor" href="#music-maker" aria-label="Link to this section">#</a></h2>
+        <p>
+          A small sequencer for 16-bit adventure music, made the way the
+          pixel art on this site is made: the song is text first. Every
+          channel is a little map, one character per step, and the grid
+          below is that same text in another form. Click cells or edit
+          the text; the other view follows, even mid-song.
+        </p>
+        <div class="music-controls">
+          <button class="music-btn" type="button" data-play aria-pressed="false">play</button>
+          <button class="music-btn" type="button" data-restart>restart</button>
+          <button class="music-btn" type="button" data-demo="forest">demo: forest</button>
+          <button class="music-btn" type="button" data-demo="village">demo: village</button>
+          <button class="music-btn" type="button" data-export>export wav</button>
+          <button class="music-btn" type="button" data-copy>copy song text</button>
+          <button class="music-btn" type="button" data-download>download .txt</button>
+          <button class="music-btn" type="button" data-share>share link</button>
+        </div>
+        <p class="music-status" data-status aria-live="polite"></p>
+        <div class="music-ptabs" data-ptabs hidden></div>
+        <div class="music-panel">
+          <div data-grid></div>
+        </div>
+        <p class="music-hint">
+          Click a cell to step it through rest, note, hold, rest. Rows
+          are pitches, high at the top, and the wide gaps fall where the
+          text puts its beat marks. Each channel has a mute of its own.
+        </p>
+      </section>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <section class="section">
+        <h2 class="section__title" id="the-text"><span class="prompt" aria-hidden="true">$</span> the-song-as-text<a class="anchor" href="#the-text" aria-label="Link to this section">#</a></h2>
+        <p>
+          The whole song, exactly as the sequencer reads it. Change
+          anything and it recompiles on the spot. A typo never stops the
+          music: the last good version keeps playing, and the problem
+          shows above the grid.
+        </p>
+        <textarea
+          class="music-text"
+          data-song-text
+          rows="26"
+          spellcheck="false"
+          aria-label="Song text"
+        ></textarea>
+        <p>
+          The alphabet is four characters:
+        </p>
+        <pre class="code">.  rest
+x  a note starts
+-  the note holds
+|  one beat (four steps)</pre>
+        <p>
+          A block in [brackets] names a channel and its instrument, and
+          can set its volume, its echo send, and its pan. Rows are
+          pitches, or drum names in a drums block. <em>:: A</em> starts
+          a pattern, and an <em>order:</em> line at the end chains the
+          patterns together. With one pattern and no order line, the
+          pattern simply loops.
+        </p>
+      </section>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <section class="section">
+        <h2 class="section__title" id="how-it-works"><span class="prompt" aria-hidden="true">$</span> how-it-works<a class="anchor" href="#how-it-works" aria-label="Link to this section">#</a></h2>
+        <p>
+          The instruments are made when the page loads: short sums of
+          sine and saw waves, softened until they sound sampled, because
+          sampled is what the 16-bit consoles played. There is no audio
+          file anywhere in this page, and nothing to download.
+        </p>
+        <p>
+          Every channel can send into one shared echo, a delay with a
+          dark filter inside its loop. That single echo, on top of the
+          sampled sound, is most of what makes this era of game music
+          feel like itself.
+        </p>
+        <p>
+          Timing runs on the audio clock, not the screen clock. A timer
+          wakes every 25 milliseconds and places notes a little ahead of
+          the speakers, reading the song as it stands at that moment.
+          That is why an edit lands in the music almost at once.
+        </p>
+        <p>
+          The idea is Ben's, from a Swift Playground he wrote as a
+          student: a grid of blocks you toggle while the music plays.
+          This is that idea at 16 bits, and taught to read text.
+        </p>
+      </section>
+
+      <footer class="footer">
+        <p><a href="index.html">&larr; back to the home page</a></p>
+        <div class="footer__controls">
+          <button
+            class="footer__button"
+            type="button"
+            data-theme-toggle
+          >
+            <span data-theme-label>system</span>
+          </button>
+          <canvas
+            class="theme-scene"
+            data-theme-scene
+            width="24"
+            height="12"
+            aria-hidden="true"
+          ></canvas>
+        </div>
+      </footer>
+    </main>
+
+    <script type="module" src="assets/js/music.js"></script>
+  </body>
+</html>
