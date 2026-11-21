@@ -422,8 +422,7 @@ setUpKeys();
 /* ---------- the pixel lab ---------- */
 
 // The demo map, the same characters the page shows in its <pre>: one
-// letter per cell, one colour per letter. The playground below runs on
-// the same idea, with a grid the visitor can repaint.
+// letter per cell, one colour per letter.
 const LAB_COLOURS = {
   light: {
     ".": "#aedcf5", S: "#ffd94a", C: "#ffffff", L: "#57a047",
@@ -452,95 +451,10 @@ const DEMO_MAP = [
   ".gGGgGGgGGgGGgGGgGGgGGg.",
 ];
 
-const STAMPS = {
-  tree: [
-    ".LLL.",
-    "LLLLL",
-    "LLLLL",
-    ".LLL.",
-    "..T..",
-    "..T..",
-    "..T..",
-  ],
-  cloud: [
-    ".CCCCCC.",
-    "CCCCCCCC",
-    ".CCCCCC.",
-  ],
-};
-
-const SWATCHES = [
-  ["S", "sun"], ["C", "cloud"], ["L", "leaves"], ["g", "grass"],
-  ["G", "deep grass"], ["h", "hill"], ["T", "trunk"], ["F", "flower"],
-  ["K", "ink"], [".", "sky"],
-];
-
 function setUpPixelLab() {
   const labCanvas = document.querySelector("[data-lab-canvas]");
-  const playCanvas = document.querySelector("[data-play-canvas]");
-  if (!labCanvas || !playCanvas) return;
+  if (!labCanvas) return;
   const labCtx = labCanvas.getContext("2d");
-  const playCtx = playCanvas.getContext("2d");
-  const PW = 24;
-  const PH = 14;
-
-  const blankGrid = () => {
-    const grid = [];
-    for (let y = 0; y < PH; y += 1) {
-      const row = new Array(PW).fill(".");
-      if (y === 11) row.fill("g");
-      if (y === 12) row.forEach((_, x) => { row[x] = x % 3 === 1 ? "g" : "G"; });
-      if (y === 13) row.fill("G");
-      grid.push(row);
-    }
-    return grid;
-  };
-
-  function stamp(grid, art, left, top) {
-    art.forEach((row, dy) => {
-      [...row].forEach((ch, dx) => {
-        if (ch === ".") return;
-        const x = left + dx;
-        const y = top + dy;
-        if (x >= 0 && x < PW && y >= 0 && y < PH) grid[y][x] = ch;
-      });
-    });
-  }
-
-  const starterGrid = () => {
-    const grid = blankGrid();
-    stamp(grid, ["SS", "SS"], 2, 1);
-    stamp(grid, STAMPS.cloud, 14, 1);
-    stamp(grid, STAMPS.tree, 3, 4);
-    grid[10][9] = "F";
-    grid[10][17] = "F";
-    grid[10][21] = "F";
-    return grid;
-  };
-
-  let grid = starterGrid();
-  let picked = "L";
-
-  const swatchBox = document.querySelector("[data-swatches]");
-  const swatchButtons = SWATCHES.map(([ch, name]) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "play__swatch";
-    btn.dataset.char = ch;
-    btn.setAttribute("aria-label", `Paint with ${name}`);
-    btn.addEventListener("click", () => {
-      picked = ch;
-      swatchButtons.forEach((b) => b.classList.toggle("is-picked", b === btn));
-    });
-    if (ch === picked) btn.classList.add("is-picked");
-    swatchBox?.appendChild(btn);
-    return btn;
-  });
-
-  function drawCell(ctx, x, y, ch) {
-    ctx.fillStyle = LAB_COLOURS[resolvedTheme()][ch] || "#000000";
-    ctx.fillRect(x, y, 1, 1);
-  }
 
   function repaint() {
     const colours = LAB_COLOURS[resolvedTheme()];
@@ -550,45 +464,7 @@ function setUpPixelLab() {
         labCtx.fillRect(x, y, 1, 1);
       });
     });
-    grid.forEach((row, y) => row.forEach((ch, x) => drawCell(playCtx, x, y, ch)));
-    swatchButtons.forEach((btn) => {
-      btn.style.background = colours[btn.dataset.char];
-    });
   }
-
-  let painting = false;
-  function paintAt(event) {
-    const rect = playCanvas.getBoundingClientRect();
-    const x = Math.floor(((event.clientX - rect.left) / rect.width) * PW);
-    const y = Math.floor(((event.clientY - rect.top) / rect.height) * PH);
-    if (x < 0 || x >= PW || y < 0 || y >= PH) return;
-    if (grid[y][x] === picked) return;
-    grid[y][x] = picked;
-    drawCell(playCtx, x, y, picked);
-  }
-  playCanvas.addEventListener("pointerdown", (event) => {
-    painting = true;
-    playCanvas.setPointerCapture(event.pointerId);
-    paintAt(event);
-  });
-  playCanvas.addEventListener("pointermove", (event) => {
-    if (painting) paintAt(event);
-  });
-  playCanvas.addEventListener("pointerup", () => { painting = false; });
-  playCanvas.addEventListener("pointercancel", () => { painting = false; });
-
-  document.querySelector("[data-stamp='tree']")?.addEventListener("click", () => {
-    stamp(grid, STAMPS.tree, 10, 4);
-    repaint();
-  });
-  document.querySelector("[data-stamp='cloud']")?.addEventListener("click", () => {
-    stamp(grid, STAMPS.cloud, 5, 1);
-    repaint();
-  });
-  document.querySelector("[data-play-clear]")?.addEventListener("click", () => {
-    grid = blankGrid();
-    repaint();
-  });
 
   new MutationObserver(repaint).observe(document.documentElement, {
     attributes: true,
@@ -600,3 +476,209 @@ function setUpPixelLab() {
 }
 
 setUpPixelLab();
+
+/* ---------- the process, step by step ---------- */
+
+// The same demo map, built again the way the bigger pieces get built.
+// Each step is a whole frame: a grid of colour keys, resolved through a
+// palette, swapped in on a timer. Nothing moves between frames and
+// nothing fades; cells change colour in place, on the tick, and that is
+// the whole animation.
+
+// Step one has no colour at all: one flat ink shade per map character,
+// so the shapes have to read before the palette arrives.
+const NUMBER_SHADES = {
+  light: {
+    ".": "#e8eff7", C: "#d3e0ee", h: "#b9cadd", g: "#9db4cc",
+    G: "#7f99b8", L: "#5f7ea3", T: "#41597d", S: "#22304a",
+  },
+  dark: {
+    ".": "#0a1626", C: "#16283f", h: "#1f3a56", g: "#2a4a6b",
+    G: "#35597e", L: "#40688f", T: "#4d77a3", S: "#dcebfb",
+  },
+};
+
+// The lab colours plus the shades the later steps need, all as data.
+// Shadow steps lean cooler, lit steps warmer, the way the ramps on the
+// portrait do. " " is a cell that has not landed yet: the box's own
+// paper colour, so an unbuilt plane is just the page showing through.
+const PROCESS_COLOURS = {
+  light: {
+    ...LAB_COLOURS.light,
+    "L+": "#74b95c", // lit leaves
+    "L-": "#3e7c37", // shadow leaves
+    "C-": "#cfe3f2", // the cloud's underside
+    "h+": "#bce0ac", // the hill's lit rim
+    "h-": "#8fbc7d", // the hill's base
+    ".d": "#9fd0ef", // sky, one shade over, for the dither step
+    "S!": "#ffab2e", // the one accent, lit at the end
+    " ": "#f3f5fa",
+  },
+  dark: {
+    ...LAB_COLOURS.dark,
+    "L+": "#3d8147",
+    "L-": "#245c30",
+    "C-": "#223c5e",
+    "h+": "#2f6373",
+    "h-": "#1a3d49",
+    ".d": "#1a3355",
+    "S!": "#f2f7ff",
+    " ": "#121826",
+  },
+};
+
+const PROCESS_CAPTIONS = [
+  "The grid of numbers. The picture is text before it is pixels, and that is on purpose.",
+  "The palette lookup. Each number swaps for the colour the palette gives it.",
+  "Clusters and ramps. Lit faces and shadow faces land, two or three shades to a thing.",
+  "Layers, back to front. Sky first, then the ground, then the tree.",
+  "Dither, as seasoning. A few sky cells swap to the shade next door.",
+  "The light story. One accent lights last, and everything else stays quiet.",
+];
+
+const PROCESS_W = 24;
+const PROCESS_H = 12;
+const DEMO_KEYS = DEMO_MAP.map((row) => [...row]);
+
+// Step three: shade the flat scene from one light source, the upper
+// left, where the sun sits. A cell on a shape's top edge takes the lit
+// shade; a cell with open sky below or to its right takes the shadow
+// shade; the rest keep their flat colour. The tree also drops a cast
+// shadow on the grass to its lower right.
+function shadedKeys() {
+  const grid = DEMO_KEYS.map((row) => row.slice());
+  const at = (x, y) => DEMO_KEYS[y]?.[x];
+  for (let y = 0; y < PROCESS_H; y += 1) {
+    for (let x = 0; x < PROCESS_W; x += 1) {
+      const ch = at(x, y);
+      if (ch === "L") {
+        if (at(x, y - 1) !== "L") grid[y][x] = "L+";
+        else if (at(x, y + 1) !== "L" || at(x + 1, y) !== "L") grid[y][x] = "L-";
+      } else if (ch === "C") {
+        if (at(x, y + 1) !== "C") grid[y][x] = "C-";
+      } else if (ch === "h") {
+        if (at(x, y - 1) !== "h") grid[y][x] = "h+";
+        else if (at(x, y + 1) !== "h") grid[y][x] = "h-";
+      }
+    }
+  }
+  for (let x = 4; x <= 8; x += 1) {
+    if (grid[10][x] === "g") grid[10][x] = "G";
+  }
+  return grid;
+}
+
+// Step five: a sparse, seeded scatter of sky cells swap to the shade
+// next door. Sky only, and only up high, away from the subjects.
+function ditheredKeys(base) {
+  const grid = base.map((row) => row.slice());
+  const rng = mulberry32(20261121);
+  const sky = [];
+  for (let y = 0; y < 5; y += 1) {
+    for (let x = 0; x < PROCESS_W; x += 1) {
+      if (grid[y][x] === ".") sky.push([x, y]);
+    }
+  }
+  for (let n = 0; n < 10 && sky.length; n += 1) {
+    const [x, y] = sky.splice(Math.floor(rng() * sky.length), 1)[0];
+    grid[y][x] = ".d";
+  }
+  return grid;
+}
+
+// Step six: the sun swaps to the accent. Nothing else changes.
+function litKeys(base) {
+  return base.map((row) => row.map((key) => (key === "S" ? "S!" : key)));
+}
+
+// Which plane each map character belongs to, back to front: sky, then
+// ground, then the tree. Step four lands one plane per sub-tick by
+// holding the later planes at paper.
+const planeOf = (ch) =>
+  ch === "L" || ch === "T" ? 2 : ch === "h" || ch === "g" || ch === "G" ? 1 : 0;
+
+function layeredKeys(shaded, planes) {
+  return shaded.map((row, y) =>
+    row.map((key, x) => (planeOf(DEMO_KEYS[y][x]) <= planes ? key : " "))
+  );
+}
+
+function setUpProcess() {
+  const canvas = document.querySelector("[data-process-canvas]");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const caption = document.querySelector("[data-process-caption]");
+  const stepLabel = document.querySelector("[data-process-step]");
+  const meta = document.querySelector("[data-process-meta]");
+  const list = document.querySelector("[data-process-list]");
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  const shaded = shadedKeys();
+  const dithered = ditheredKeys(shaded);
+  // One entry per tick. The layers step takes three ticks at a faster
+  // beat while its caption stays put; the finished frame holds longest,
+  // then the build starts over.
+  const frames = [
+    { grid: DEMO_KEYS, shades: NUMBER_SHADES, step: 0, ms: 1700 },
+    { grid: DEMO_KEYS, shades: PROCESS_COLOURS, step: 1, ms: 1700 },
+    { grid: shaded, shades: PROCESS_COLOURS, step: 2, ms: 1700 },
+    { grid: layeredKeys(shaded, 0), shades: PROCESS_COLOURS, step: 3, ms: 550 },
+    { grid: layeredKeys(shaded, 1), shades: PROCESS_COLOURS, step: 3, ms: 550 },
+    { grid: shaded, shades: PROCESS_COLOURS, step: 3, ms: 1150 },
+    { grid: dithered, shades: PROCESS_COLOURS, step: 4, ms: 1700 },
+    { grid: litKeys(dithered), shades: PROCESS_COLOURS, step: 5, ms: 7000 },
+  ];
+
+  let current = frames.length - 1;
+
+  function paint() {
+    const frame = frames[current];
+    const colours = frame.shades[resolvedTheme()];
+    frame.grid.forEach((row, y) => {
+      row.forEach((key, x) => {
+        ctx.fillStyle = colours[key];
+        ctx.fillRect(x, y, 1, 1);
+      });
+    });
+  }
+
+  function show(index) {
+    current = index;
+    paint();
+    if (caption) caption.textContent = PROCESS_CAPTIONS[frames[index].step];
+    if (stepLabel) {
+      stepLabel.textContent = `step ${frames[index].step + 1} of ${PROCESS_CAPTIONS.length}`;
+    }
+  }
+
+  // A theme swap repaints the current frame in the other palette, the
+  // way every other picture on this page handles it.
+  new MutationObserver(paint).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme"],
+  });
+  systemDark.addEventListener("change", paint);
+
+  if (reduced.matches) {
+    // One static frame, the finished one, and the steps as a plain list.
+    show(frames.length - 1);
+    if (meta) meta.style.display = "none";
+    if (list) list.classList.remove("sr-only");
+    return;
+  }
+
+  let index = 0;
+  function tick() {
+    if (document.hidden) {
+      setTimeout(tick, 1000);
+      return;
+    }
+    show(index);
+    const hold = frames[index].ms;
+    index = (index + 1) % frames.length;
+    setTimeout(tick, hold);
+  }
+  tick();
+}
+
+setUpProcess();

@@ -72,8 +72,8 @@
         text-align: center;
       }
 
-      /* The pixel lab: the map and its rendering side by side, then a
-         small grid to play in. Same page-rule frame as the portrait. */
+      /* The pixel lab: the map and its rendering side by side, then the
+         same map built again in steps. Same page-rule frame as the portrait. */
       .lab {
         display: flex;
         flex-wrap: wrap;
@@ -106,48 +106,42 @@
         image-rendering: pixelated;
       }
 
-      .play {
+      .process {
         border: 1px solid var(--page-rule);
         background: var(--page-subtle);
         padding: var(--step);
         margin-block: var(--step);
       }
 
-      .play canvas {
+      .process canvas {
         width: min(336px, 100%);
         height: auto;
         margin-inline: auto;
         image-rendering: pixelated;
-        touch-action: none;
-        cursor: crosshair;
       }
 
-      .play__swatches {
+      .process__meta {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
-        margin-block-end: var(--step);
-      }
-
-      .play__swatch {
-        width: 24px;
-        height: 24px;
-        padding: 0;
-        border: 1px solid var(--page-rule);
-        cursor: pointer;
-      }
-
-      .play__swatch.is-picked {
-        outline: 2px solid var(--accent-color);
-        outline-offset: 1px;
-      }
-
-      .play__tools {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
+        gap: 6px var(--step);
+        justify-content: space-between;
         margin-block-start: var(--step);
       }
+
+      .process__caption,
+      .process__step {
+        margin: 0;
+        color: var(--muted-color);
+        font-size: var(--text-small);
+      }
+
+      .process__list {
+        margin-block: var(--step) 0;
+        padding-inline-start: 1.5em;
+        color: var(--muted-color);
+        font-size: var(--text-small);
+      }
+
     </style>
     <script>
       window.goatcounter = {
@@ -205,7 +199,10 @@
           Every picture here is a grid of numbers in the source code. Each
           number picks a colour from a palette, and the map below is the
           whole artwork: there is no image file. Edit a number, and exactly
-          one cell changes.
+          one cell changes. It starts as text because text is the material
+          I have at hand. That is a good way to draw, it turns out: a
+          picture held in lines can be read, counted, checked, and rebuilt
+          from the same lines every time.
         </p>
         <div class="lab">
           <figure class="lab__fig">
@@ -266,23 +263,31 @@
           and you get one static frame.
         </p>
         <p>
-          Now a turn for you. Pick a colour, tap the cells, stamp a tree.
-          A cell is on, or it is not.
+          Now the same map again, built the way the bigger pieces get
+          built. It starts as text, because text is the material I draw
+          with, and it goes in steps: each step swaps whole cells, and
+          nothing moves.
         </p>
-        <div class="play">
-          <div class="play__swatches" data-swatches role="group" aria-label="Pixel colours"></div>
+        <div class="process">
           <canvas
-            data-play-canvas
+            data-process-canvas
             width="24"
-            height="14"
+            height="12"
             role="img"
-            aria-label="A small pixel playground. Choose a colour above, then tap cells to paint."
+            aria-label="The demo scene built in six steps: the grid of numbers, the palette lookup, clusters and ramps, layers back to front, dither, and the light. It ends as the same sun, cloud, tree, and hill scene."
           ></canvas>
-          <div class="play__tools">
-            <button class="footer__button" type="button" data-stamp="tree">stamp a tree</button>
-            <button class="footer__button" type="button" data-stamp="cloud">stamp a cloud</button>
-            <button class="footer__button" type="button" data-play-clear>clear</button>
+          <div class="process__meta" data-process-meta>
+            <p class="process__caption" data-process-caption></p>
+            <p class="process__step" data-process-step></p>
           </div>
+          <ol class="process__list sr-only" data-process-list>
+            <li>The grid of numbers. The picture is text before it is pixels, and that is on purpose.</li>
+            <li>The palette lookup. Each number swaps for the colour the palette gives it.</li>
+            <li>Clusters and ramps. Lit faces and shadow faces land, two or three shades to a thing.</li>
+            <li>Layers, back to front. Sky first, then the ground, then the tree.</li>
+            <li>Dither, as seasoning. A few sky cells swap to the shade next door.</li>
+            <li>The light story. One accent lights last, and everything else stays quiet.</li>
+          </ol>
         </div>
         <p>That is the whole machine. Steal it.</p>
         <p>
