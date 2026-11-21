@@ -19,12 +19,20 @@
   and the car catches it: crossing the band, its top cells swap to
   the lamp shade for as long as it is inside.
 
-  The car is an original silhouette, no livery but one teal accent,
-  the scene's one saturated colour, rationed the HLD way. Its
-  passage leaves a short trail of lit cells on the racing line that
-  step down shade by shade behind it and go out. It slows at the
-  apex: holds are longer mid-corner, shorter on the straights, all
-  seeded. Whole-cell swaps only; nothing drifts, nothing fades.
+  The car is an original open-wheel silhouette, eighteen cells
+  wide and eight tall, drawn with a dark outline (sel-out) so it
+  holds its shape against the lit pools: rear wing with an
+  endplate, a halo over the cockpit, wheels with lit rims, a plain
+  roundel on the sidepod, and the driver's helmet wearing the
+  scene's one saturated colour, rationed the HLD way. Crossing the
+  bright band it does not wash out: the body steps up one shade
+  inside its outline and only the top surfaces catch the lamp
+  outright. Its passage leaves a short trail of lit cells on the
+  racing line that step down shade by shade behind it and go out,
+  and on some steps a few spark cells kick off the diffuser,
+  bright, then ember red, then gone. It slows at the apex: holds
+  are longer mid-corner, shorter on the straights, all seeded.
+  Whole-cell swaps only; nothing drifts, nothing fades.
   Reduced motion gets one static frame, the car parked mid-corner
   inside the bright band, no trail, no timers.
 
@@ -75,7 +83,7 @@
       "#7d94bd", // stars (= sky at dusk, hidden)
       "#5d6f96", // skyline, washed toward the dusk sky
       "#fdf3d0", // lamps and lit windows, just on and warm
-      "#46587a", // grandstand body
+      "#46587a", // grandstand body, and the car's body in shadow
       "#67799e", // stand roof, catching the last light
       "#b06055", // crowd, muted red
       "#cbb27a", // crowd, muted gold
@@ -95,7 +103,7 @@
       "#cfe0f2", // stars
       "#101d31", // skyline, washed almost to the sky
       "#eef4fc", // lamps and lit windows, pale
-      "#0a141f", // grandstand body, a silhouette
+      "#0a141f", // grandstand body, a silhouette; the car's body too
       "#22385a", // stand roof, one step up
       "#a34a44", // crowd, muted red
       "#c2a15a", // crowd, muted gold
@@ -368,28 +376,40 @@
 
   /* ---------- the car ---------- */
 
-  // An original open-wheel silhouette, fourteen cells wide, six
-  // tall, facing right: rear wing at the back, a fin and the driver's
-  // helmet in accent along the spine, the nose dropping toward the
-  // front wing, and two wheels standing two rows tall under the
-  // floor. K is the body, A the accent. Unlit, the body wears the
-  // mast shade, a silhouette against the lit track. Inside the
-  // bright band the body steps up to the roof shade and the wing's
-  // top row catches the lamp outright: lit metal, not a white slug.
+  // An original open-wheel silhouette, eighteen cells wide, eight
+  // tall, facing right, drawn to be read at a glance. The marks:
+  //   K  the dark outline and everything structural: wing endplate,
+  //      halo, wheels, floor, diffuser, front wing. The mast shade,
+  //      the darkest tint, so the car keeps a sel-out edge against
+  //      the lit pools instead of dissolving into them.
+  //   B  body fill. In shadow it wears the stand shade, a dark mass
+  //      against the track; inside the bright band it steps up to
+  //      the roof shade, modelled light inside a dark outline.
+  //   T  top surfaces: the rear wing's plane, the engine cover, the
+  //      nose. In shadow they read as body; in the band they catch
+  //      the lamp outright. Lit faces, not a washed-out body.
+  //   A  the accent, on the driver's helmet only: the scene's one
+  //      saturated colour, placed where the eye goes first.
+  //   R  wheel rims, lamp-lit, one bright cell-pair per wheel.
+  //   O  a plain roundel block on the sidepod, kerb white, no
+  //      letters, no digits.
+  //   D  the rear light, one kerb-red cell under the wing.
   const CAR = [
-    "KKK...........",
-    "K.K..AA.......",
-    ".KKKKKKKK.....",
-    ".KKKKKKKKKKK..",
-    "KKK.KKKK.KKK..",
-    "KKK.......KKK.",
+    "KTTTT.............",
+    "K.KK.TTT..........",
+    "K.KBBBBBBKKKKB....",
+    ".D.BBBBBBAAKB.....",
+    "..KBBBOOOBBBBBT...",
+    "KKKKBBOOOBBBKKKKK.",
+    "KRRKKBBBBBBBKRRKKK",
+    "KKKK.KKKKKK.KKKKKK",
   ];
-  const CAR_W = 14;
+  const CAR_W = 18;
   const BAND = { from: 52, to: 68 }; // the bright band's columns
 
   function drawCar(px, lit) {
-    const cx = Math.max(0, Math.min(W - 1, px + 7));
-    const top = centreY(cx) - 3;
+    const cx = Math.max(0, Math.min(W - 1, px + 9));
+    const top = centreY(cx) - 4;
     const pal = PALETTES[resolvedTheme()];
     CAR.forEach((row, dy) => {
       [...row].forEach((ch, dx) => {
@@ -398,10 +418,13 @@
         const y = top + dy;
         if (!inside(x, y)) return;
         let slot;
-        if (ch === "A") slot = S.ACCENT;
-        else if (lit && dy === 0) slot = S.LAMP;
-        else if (lit) slot = S.ROOF;
-        else slot = S.MAST;
+        if (ch === "K") slot = S.MAST;
+        else if (ch === "B") slot = lit ? S.ROOF : S.STAND;
+        else if (ch === "T") slot = lit ? S.LAMP : S.STAND;
+        else if (ch === "A") slot = S.ACCENT;
+        else if (ch === "R") slot = S.LAMP;
+        else if (ch === "O") slot = S.KERB_W;
+        else slot = S.KERB_R; // "D", the rear light
         ctx.fillStyle = pal[slot];
         ctx.fillRect(x, y, 1, 1);
       });
@@ -436,8 +459,8 @@
   // before stepping: one tick on the straights, two or three through
   // the corner. Off the right edge it rests, then starts again.
   const carRng = mulberry32(20261134);
-  const car = { x: -16, hold: 6, countdown: 6 };
-  const trail = []; // {x, y, ttl}
+  const car = { x: -20, hold: 6, countdown: 6 };
+  const trail = []; // {x, y, ttl, spark}
 
   function holdFor(x) {
     const apex = Math.abs(x - 60) <= 22;
@@ -448,17 +471,34 @@
   function stepCar() {
     // Leave the trail: three lit cells on the racing line at the
     // rear wheel's row, stepping down behind the car.
-    const cx = Math.max(0, Math.min(W - 1, car.x + 7));
-    const wy = centreY(cx) + 1;
+    const cx = Math.max(0, Math.min(W - 1, car.x + 9));
+    const wy = centreY(cx) + 2;
     for (let k = 1; k <= 3; k += 1) {
       const x = car.x - k;
       if (x >= 0 && x < W && onTrack(x, wy)) {
-        trail.push({ x, y: wy, ttl: 3 });
+        trail.push({ x, y: wy, ttl: 3, spark: false });
+      }
+    }
+    // Sparks off the diffuser on some steps: two or three cells
+    // kicked back and down from the rear, bright for one tick,
+    // ember red for the next, then out. Stepped swaps, in palette.
+    if (car.x > 2 && car.x < W && carRng() < 0.55) {
+      const cells = [
+        [car.x - 1, wy + 1],
+        [car.x - 2, wy],
+        [car.x - 3, wy + 1],
+      ];
+      const n = 2 + Math.floor(carRng() * 2);
+      for (let k = 0; k < n; k += 1) {
+        const [x, y] = cells[k];
+        if (x >= 0 && x < W && onTrack(x, y)) {
+          trail.push({ x, y, ttl: 2, spark: true });
+        }
       }
     }
     car.x += 2;
     if (car.x > W + 4) {
-      car.x = -16;
+      car.x = -20;
       car.countdown = 26; // the gap between runs
     } else {
       car.countdown = holdFor(car.x);
@@ -473,13 +513,17 @@
     }
     const pal = PALETTES[resolvedTheme()];
     for (const t of trail) {
-      if (t.ttl === 3) ctx.fillStyle = pal[S.TRAIL];
+      if (t.spark) {
+        if (t.ttl === 2) ctx.fillStyle = pal[S.LAMP];
+        else if (t.ttl === 1) ctx.fillStyle = pal[S.KERB_R];
+        else continue;
+      } else if (t.ttl === 3) ctx.fillStyle = pal[S.TRAIL];
       else if (t.ttl === 2) ctx.fillStyle = pal[S.GLOW];
       else continue;
       ctx.fillRect(t.x, t.y, 1, 1);
     }
     if (car.x > -CAR_W && car.x < W) {
-      const cx = car.x + 7;
+      const cx = car.x + 9;
       drawCar(car.x, cx >= BAND.from && cx <= BAND.to);
     }
   }
