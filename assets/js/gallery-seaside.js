@@ -8,10 +8,10 @@
   ground has thickness.
 
   Far off, a headland reaches in from the left and a small
-  island sits right of centre, both in a single haze slot
-  washed close to the sky colour, Hyper Light Drifter's way,
-  so the sea has somewhere to go and the sky stays quiet
-  around them. In the middle distance the shore works: two
+  island sits right of centre, both washed toward the sky
+  colour, Hyper Light Drifter's way, each with a shaded face
+  under its lit crest, so the sea has somewhere to go and
+  the sky stays quiet around them. In the middle distance the shore works: two
   palms with cast shadows, a small boat stepping across open
   water, a tide that steps the shoreline in and out, and a
   waterline where foam and wet sand interlock in speckled
@@ -73,13 +73,13 @@ const FROND_DARK = 15; // the shade half: undersides, near crowns, dune grass
 const PALETTES = {
   light: [
     "#5f9fd8", "#c9e7f7", "#ffc93f", "#ffe89a",
-    "#f6fbff", "#aacadb", "#2b67ad", "#4a8ac6",
+    "#f6fbff", "#93b7d0", "#2b67ad", "#4a8ac6",
     "#a5cfee", "#eed9a4", "#dbba7d", "#c09a58",
     "#7d5a36", "#59391f", "#3f9153", "#27663a",
   ],
   dark: [
     "#0c1a30", "#1e3a56", "#e8eef7", "#ffb347",
-    "#33507a", "#12283f", "#122e4a", "#1c4266",
+    "#33507a", "#0f2237", "#122e4a", "#1c4266",
     "#2e5a84", "#8a7a56", "#6f6046", "#57492f",
     "#4a3823", "#2c2013", "#1f4d2e", "#13331f",
   ],
@@ -224,23 +224,50 @@ function drawBirds() {
 
 /* ----- the far country ----- */
 
-// One haze slot for everything distant, the meadow's ridge
-// trick, pushed further than v1 dared: the day hex sits close
-// to the low sky, so the far country is nearly washed away and
-// only the near planes carry full contrast. The headland's
-// crest is a slope plus two sines, rounded to whole cells, so
-// its steps lengthen and shorten gradually the way the
-// meadow's crests do. It is drawn over the sea, and its foot
-// is flecked with foam, which is what separates it from the
-// water after dark, when both go deep.
+// The far country is washed toward the sky, the meadow's
+// ridge trick, pushed further than v1 dared, so only the near
+// planes carry full contrast. But washed is not flat (pass 3):
+// in one flat tone the headland and the island read as grey
+// blobs floating on the water, so each landmass is two tones
+// now, a lit crest in the haze slot and a shaded face under
+// it in a shared slot, the sea's own mid blue by day and the
+// zenith's deep blue after dark, so the budget holds. The
+// headland's crest is a slope plus two sines, rounded to
+// whole cells, its steps lengthening and shortening gradually
+// the way the meadow's crests do, with the wobble kept small
+// so the line reads as a crest and not a dome. It is drawn
+// over the sea, and its foot carries a dark waterline with
+// foam flecked over it, which is what grounds it: a pale mass
+// with a pale foot floats; a pale mass with a dark foot sits.
 const headCrest = (x) =>
-  Math.round(14 + x * 0.16 - 2.2 * Math.sin(x / 11 + 0.6) - 0.8 * Math.sin(x / 5));
+  Math.round(
+    13.6 +
+      Math.max(0, x - 6) * 0.19 -
+      1.3 * Math.sin(x / 11 + 0.6) -
+      0.45 * Math.sin(x / 5)
+  );
 const headBase = (x) =>
   Math.max(headCrest(x) + 2, Math.round(26 - Math.max(0, x - 24) * 0.5));
 
-function buildHeadland() {
+// The far country's shaded face, one shared slot per theme.
+const farFace = (dark) => (dark ? SKY_TOP : SEA_MID);
+
+function buildHeadland(dark) {
+  const face = farFace(dark);
   for (let x = 0; x <= 38; x += 1) {
-    for (let y = headCrest(x); y <= headBase(x); y += 1) set(x, y, HAZE);
+    const top = headCrest(x);
+    const base = headBase(x);
+    for (let y = top; y <= base; y += 1) set(x, y, HAZE);
+    // The shaded face: the lower part of every column, growing
+    // toward the tip, away from the light at upper left.
+    const start = top + Math.round((base - top) * (0.45 + 0.35 * (x / 38)));
+    for (let y = start; y <= base; y += 1) set(x, y, face);
+    // By day the column's lowest row goes to the sea's deep
+    // blue, a cliff-base shadow inside the silhouette: the
+    // face shares its blue with the sea's mid band, and
+    // without a dark foot the two merge where they meet.
+    // After dark the face is already the darkest thing here.
+    if (!dark) set(x, base, SEA_DEEP);
   }
   // Two tiny trees on the crest, dark silhouettes the way the
   // island wears its palm: they are what tells the eye this
@@ -256,28 +283,44 @@ function buildHeadland() {
   };
   tree(10);
   tree(24);
-  // The waterline: foam flecks over a broken dark line, the
-  // shadow the land throws on its own water. A pale mass with
-  // a pale foot floats; a pale mass with a dark foot sits.
+  // The waterline: a dark line first, the shadow the land
+  // throws on its own water, with foam flecked over it in
+  // pairs, so the flecks cluster instead of dotting.
   for (let x = 3; x <= 37; x += 1) {
-    const h = hash(x, 71);
-    if (h < 0.3) set(x, headBase(x) + 1, SEA_DEEP);
-    else if (h < 0.75) set(x, headBase(x) + 1, CLOUD);
+    set(x, headBase(x) + 1, SEA_DEEP);
+    if (hash(x >> 1, 71) < 0.45) set(x, headBase(x) + 1, CLOUD);
   }
 }
 
-// A small island right of centre: a low, lopsided bump in the
-// same haze, two humps, higher at its left, trailing off to
-// the right, one tiny palm standing on it as a dark silhouette.
-function buildIsland() {
+// A small island right of centre: the same two tones over a
+// peakier profile than the old smooth dome, a high left
+// shoulder where its palm stands, a saddle, a lower second
+// hump, and a tail that steps down into the water at the
+// right. One tiny palm stands on it as a dark silhouette.
+const ISLAND_PROFILE = [
+  [80, 20], [82, 18], [84, 16], [86, 15], [88, 15], [90, 15],
+  [92, 17], [94, 16], [96, 17], [98, 19], [100, 21],
+];
+function islandTop(x) {
+  for (let i = 0; i < ISLAND_PROFILE.length - 1; i += 1) {
+    const [x0, y0] = ISLAND_PROFILE[i];
+    const [x1, y1] = ISLAND_PROFILE[i + 1];
+    if (x >= x0 && x <= x1) {
+      return Math.round(y0 + ((y1 - y0) * (x - x0)) / (x1 - x0));
+    }
+  }
+  return 21;
+}
+
+function buildIsland(dark) {
+  const face = farFace(dark);
   for (let x = 80; x <= 100; x += 1) {
-    const top = Math.round(
-      17.5 -
-        1.8 * Math.sin(((x - 80) / 20) * Math.PI) -
-        0.7 * Math.sin(((x - 80) / 6) * Math.PI) -
-        (x - 80) * 0.04
-    );
+    const top = islandTop(x);
     for (let y = top; y <= 21; y += 1) set(x, y, HAZE);
+    // The shaded face: the lower half, deeper on the right
+    // slope, away from the light.
+    const start = top + Math.ceil((21 - top) * (x < 90 ? 0.5 : 0.3));
+    for (let y = start; y <= 21; y += 1) set(x, y, face);
   }
   // The palm: two trunk cells reaching down to the island's
   // surface, a five-cell crown, two droop tips.
@@ -287,13 +330,12 @@ function buildIsland() {
     [87, 12], [88, 11], [89, 11], [90, 11], [91, 11], [92, 11], [93, 12],
     [86, 13], [94, 13],
   ]) set(fx, fy, FROND_DARK);
-  // Its waterline: a broken dark line with foam over it, the
-  // same grounding the headland gets. Pale flecks alone under
-  // a pale dome read as rain (pass 2).
+  // Its waterline: a dark line with foam flecked over it,
+  // the same grounding the headland gets. Pale flecks alone
+  // under a pale dome read as rain (pass 2).
   for (let x = 81; x <= 99; x += 1) {
-    const h = hash(x, 97);
-    if (h < 0.35) set(x, 22, SEA_DEEP);
-    else if (h < 0.7) set(x, 22, CLOUD);
+    set(x, 22, SEA_DEEP);
+    if (hash(x >> 1, 97) < 0.4) set(x, 22, CLOUD);
   }
 }
 
@@ -661,8 +703,8 @@ function buildScene(state, dark) {
   drawBirds();
   const shore = buildSea(state, dark);
   buildSand(shore);
-  buildHeadland();
-  buildIsland();
+  buildHeadland(dark);
+  buildIsland(dark);
   drawBoat(state, dark);
   drawPalm(27, 39, 20, 26, 0.85, 1); // the big mid palm, leaning left
   drawPalm(63, 38, 69, 28, 0.62, -1); // the smaller one, leaning right
