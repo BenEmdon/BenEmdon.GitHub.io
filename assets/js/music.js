@@ -715,6 +715,7 @@ function scheduleSample(ctx, outs, n, t, dur) {
   src.buffer = buf;
   src.playbackRate.value = Math.pow(2, (n.midi - root) / 12);
   const g = ctx.createGain();
+  src.connect(g);
   const p = g.gain, peak = (n.vol / 15) * 0.85;
   p.setValueAtTime(0, t);
   p.linearRampToValueAtTime(peak, t + 0.008);
