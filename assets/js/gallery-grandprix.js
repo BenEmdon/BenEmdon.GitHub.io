@@ -14,27 +14,29 @@
   (deliberate details, the way stars are), and the track sweeping
   through the frame as a curved band, high at the edges, dipping to
   its apex at the bottom centre. Kerbs step along both edges in red
-  and white clusters. The floodlights pool on the asphalt in three
-  places; the middle pool is a bright band across the whole track,
-  and the car catches it: crossing the band, its top cells swap to
-  the lamp shade for as long as it is inside.
+  and white clusters. The whole circuit is lit, the way a real
+  night race is lit: the asphalt reads bright in every column,
+  kerbs vivid the whole way round, light spilling onto the apron
+  and the run-off. There is no dark pass on the track; the night
+  lives in the sky, the skyline, and the far ground, and the
+  grandstand sits dimmer than the track but lit.
 
   The car is an original open-wheel silhouette, eighteen cells
   wide and eight tall, drawn with a dark outline (sel-out) so it
-  holds its shape against the lit pools: rear wing with an
+  holds its shape against the bright asphalt: rear wing with an
   endplate, a halo over the cockpit, wheels with lit rims, a plain
   roundel on the sidepod, and the driver's helmet wearing the
-  scene's one saturated colour, rationed the HLD way. Crossing the
-  bright band it does not wash out: the body steps up one shade
-  inside its outline and only the top surfaces catch the lamp
-  outright. Its passage leaves a short trail of lit cells on the
-  racing line that step down shade by shade behind it and go out,
-  and on some steps a few spark cells kick off the diffuser,
-  bright, then ember red, then gone. It slows at the apex: holds
-  are longer mid-corner, shorter on the straights, all seeded.
-  Whole-cell swaps only; nothing drifts, nothing fades.
+  scene's one saturated colour, rationed the HLD way. It pops by
+  contrast: a dark body mass on the lit surface, its top surfaces
+  catching the lamps everywhere, not just in one band. Its
+  passage leaves a short trail of lit cells on the racing line
+  that step down shade by shade behind it and go out, and on some
+  steps a few spark cells kick off the diffuser, bright, then
+  ember red, then gone. It slows at the apex: holds are longer
+  mid-corner, shorter on the straights, all seeded. Whole-cell
+  swaps only; nothing drifts, nothing fades.
   Reduced motion gets one static frame, the car parked mid-corner
-  inside the bright band, no trail, no timers.
+  on the lit track, no trail, no timers.
 
   Themes: the dark theme is the night itself, deep blue, lamps pale.
   The light theme is the same corner at dusk: sky still lit,
@@ -53,9 +55,9 @@
 
   // Slot order is fixed; each theme fills the same slots with its own
   // hexes. The budget is 16 unique hexes per theme, held by sharing:
-  // at dusk the stars wear the sky hex and the trail wears the lamp
-  // hex; at night the ground wears the racing line's hex and the
-  // trail wears the stars'.
+  // in both themes the trail's second step wears the track hex; at
+  // dusk the stars wear the sky hex and the trail wears the lamp
+  // hex; at night the trail wears the stars' hex.
   const S = {
     SKY: 0,
     STAR: 1,
@@ -83,16 +85,16 @@
       "#7d94bd", // stars (= sky at dusk, hidden)
       "#5d6f96", // skyline, washed toward the dusk sky
       "#fdf3d0", // lamps and lit windows, just on and warm
-      "#46587a", // grandstand body, and the car's body in shadow
+      "#46587a", // grandstand body, and the car's body
       "#67799e", // stand roof, catching the last light
       "#b06055", // crowd, muted red
       "#cbb27a", // crowd, muted gold
       "#93a9c4", // crowd, pale blue-grey
       "#232f47", // towers and the car, the darkest tint
-      "#5a6c8c", // asphalt
-      "#42536f", // racing line and tyre marks
+      "#93aac6", // asphalt, floodlit across the whole frame
+      "#7186a8", // racing line and tyre marks, lit a step down
       "#47604f", // foreground ground, dusky green
-      "#93aac6", // floodlit pool on the asphalt
+      "#93aac6", // the trail's second step (= asphalt at dusk)
       "#c0453e", // kerb red
       "#eef1ec", // kerb white, tinted
       "#1fae9c", // the car's accent, the one saturated colour
@@ -103,17 +105,17 @@
       "#cfe0f2", // stars
       "#101d31", // skyline, washed almost to the sky
       "#eef4fc", // lamps and lit windows, pale
-      "#0a141f", // grandstand body, a silhouette; the car's body too
-      "#22385a", // stand roof, one step up
+      "#1a2f47", // grandstand body, dim but lit; the car's body too
+      "#2c4a73", // stand roof, one step up
       "#a34a44", // crowd, muted red
       "#c2a15a", // crowd, muted gold
       "#7e93ad", // crowd, pale blue-grey
       "#060d18", // towers and the car, the darkest tint
-      "#2e4059", // asphalt
-      "#1d2c42", // racing line and tyre marks
-      "#1d2c42", // foreground ground (= racing line by night)
-      "#5f7fa8", // floodlit pool on the asphalt
-      "#b03a34", // kerb red
+      "#7d97bd", // asphalt, floodlit across the whole frame
+      "#5f7fa8", // racing line and tyre marks, lit a step down
+      "#263850", // foreground ground, night blue with spill nearby
+      "#7d97bd", // the trail's second step (= asphalt by night)
+      "#c23b34", // kerb red, vivid under the lamps
       "#dfe7ef", // kerb white, tinted
       "#37c4b1", // the car's accent, the one saturated colour
       "#cfe0f2", // trail (= stars by night)
@@ -241,7 +243,7 @@
 
   /* ----- the track ----- */
 
-  // A 2x2 Bayer pattern for the pool edges, the portrait's way:
+  // A 2x2 Bayer pattern for the spill edges, the portrait's way:
   // neighbouring ramp shades mixing in small clusters, never speckle
   // across the whole surface.
   const BAYER_2 = [
@@ -305,42 +307,40 @@
     }
   }
 
-  // The floodlight pools: two ellipses under the side towers and one
-  // bright band across the whole track mid-corner. Cores are flat
-  // GLOW; the rim mixes TRACK and GLOW through the Bayer pattern,
-  // dither only between neighbouring shades, only here.
-  function paintPools() {
-    const rimRng = mulberry32(20261135);
-    const pools = [
-      { x: 28, y: 27, rx: 17, ry: 4 },
-      { x: 94, y: 27, rx: 17, ry: 4 },
-    ];
+  // Light spill: the circuit's light does not stop at the kerbs.
+  // One full row of the racing-line shade on the ground just past
+  // each kerb, then Bayer flecks of it one row further out, so the
+  // apron and the run-off read as lit ground falling off into the
+  // night, stepped, never a fade. Only lands on ground, so the
+  // stand and the skyline keep their cells.
+  function paintSpill() {
+    const fleckRng = mulberry32(20261135);
     for (let x = 0; x < W; x += 1) {
-      for (let y = trackTop(x); y <= trackBot(x); y += 1) {
-        const cell = grid[at(x, y)];
-        if (cell !== S.TRACK && cell !== S.TRACK_DARK) continue;
-        let lit = 0;
-        for (const p of pools) {
-          const d = ((x - p.x) / p.rx) ** 2 + ((y - p.y) / p.ry) ** 2;
-          if (d < 0.45) lit = 2;
-          else if (d < 1 && lit === 0) lit = 1;
-        }
-        if (x >= 54 && x <= 66) lit = 2;
-        else if (x >= 52 && x <= 68 && lit === 0) lit = 3; // band flecks
-        if (lit === 2) grid[at(x, y)] = S.GLOW;
-        else if (
-          lit === 1 &&
-          BAYER_2[y % 2][x % 2] >= 3 &&
-          rimRng() >= 0.25
-        ) {
-          grid[at(x, y)] = S.GLOW;
-        } else if (
-          lit === 3 &&
-          BAYER_2[y % 2][x % 2] >= 3 &&
-          rimRng() < 0.5
-        ) {
-          grid[at(x, y)] = S.GLOW;
-        }
+      const far = trackTop(x) - 2;
+      if (far >= 0 && grid[at(x, far)] === S.GROUND) {
+        grid[at(x, far)] = S.TRACK_DARK;
+      }
+      const farOut = trackTop(x) - 3;
+      if (
+        farOut >= 0 &&
+        grid[at(x, farOut)] === S.GROUND &&
+        BAYER_2[farOut % 2][x % 2] >= 3 &&
+        fleckRng() >= 0.25
+      ) {
+        grid[at(x, farOut)] = S.TRACK_DARK;
+      }
+      const near = trackBot(x) + 3;
+      if (near < H && grid[at(x, near)] === S.GROUND) {
+        grid[at(x, near)] = S.TRACK_DARK;
+      }
+      const nearOut = trackBot(x) + 4;
+      if (
+        nearOut < H &&
+        grid[at(x, nearOut)] === S.GROUND &&
+        BAYER_2[nearOut % 2][x % 2] >= 3 &&
+        fleckRng() >= 0.25
+      ) {
+        grid[at(x, nearOut)] = S.TRACK_DARK;
       }
     }
   }
@@ -370,8 +370,8 @@
     paintTower(110, 3, 32);
     paintStand();
     paintTrack();
-    paintPools();
     paintKerbs();
+    paintSpill();
   }
 
   /* ---------- the car ---------- */
@@ -381,13 +381,12 @@
   //   K  the dark outline and everything structural: wing endplate,
   //      halo, wheels, floor, diffuser, front wing. The mast shade,
   //      the darkest tint, so the car keeps a sel-out edge against
-  //      the lit pools instead of dissolving into them.
-  //   B  body fill. In shadow it wears the stand shade, a dark mass
-  //      against the track; inside the bright band it steps up to
-  //      the roof shade, modelled light inside a dark outline.
+  //      the bright asphalt instead of dissolving into it.
+  //   B  body fill: the stand shade everywhere, a dark mass against
+  //      the lit track, modelled inside its dark outline.
   //   T  top surfaces: the rear wing's plane, the engine cover, the
-  //      nose. In shadow they read as body; in the band they catch
-  //      the lamp outright. Lit faces, not a washed-out body.
+  //      nose. The whole circuit is lit, so they catch the lamp
+  //      everywhere. Lit faces, not a washed-out body.
   //   A  the accent, on the driver's helmet only: the scene's one
   //      saturated colour, placed where the eye goes first.
   //   R  wheel rims, lamp-lit, one bright cell-pair per wheel.
@@ -405,9 +404,8 @@
     "KKKK.KKKKKK.KKKKKK",
   ];
   const CAR_W = 18;
-  const BAND = { from: 52, to: 68 }; // the bright band's columns
 
-  function drawCar(px, lit) {
+  function drawCar(px) {
     const cx = Math.max(0, Math.min(W - 1, px + 9));
     const top = centreY(cx) - 4;
     const pal = PALETTES[resolvedTheme()];
@@ -419,8 +417,8 @@
         if (!inside(x, y)) return;
         let slot;
         if (ch === "K") slot = S.MAST;
-        else if (ch === "B") slot = lit ? S.ROOF : S.STAND;
-        else if (ch === "T") slot = lit ? S.LAMP : S.STAND;
+        else if (ch === "B") slot = S.STAND;
+        else if (ch === "T") slot = S.LAMP;
         else if (ch === "A") slot = S.ACCENT;
         else if (ch === "R") slot = S.LAMP;
         else if (ch === "O") slot = S.KERB_W;
@@ -508,7 +506,7 @@
   function frame() {
     ctx.drawImage(still, 0, 0);
     if (reduced.matches) {
-      drawCar(50, true); // parked mid-corner, inside the bright band
+      drawCar(50); // parked mid-corner on the lit track
       return;
     }
     const pal = PALETTES[resolvedTheme()];
@@ -523,8 +521,7 @@
       ctx.fillRect(t.x, t.y, 1, 1);
     }
     if (car.x > -CAR_W && car.x < W) {
-      const cx = car.x + 9;
-      drawCar(car.x, cx >= BAND.from && cx <= BAND.to);
+      drawCar(car.x);
     }
   }
 
