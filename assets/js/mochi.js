@@ -15,6 +15,8 @@
   on both.
 */
 
+import { createThemeScene } from "./theme-scene.js";
+
 /* ---------- theme ---------- */
 
 const THEME_KEY = "theme";
@@ -297,7 +299,18 @@ function setUpThemeToggle() {
   const toggle = document.querySelector("[data-theme-toggle]");
   if (!toggle) return;
   const label = toggle.querySelector("[data-theme-label]");
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
   let mode = storedMode();
+
+  const resolvedDark = () =>
+    mode === "dark" || (mode === "system" && systemDark.matches);
+
+  // The same little landscape the home page footer wears, drawn by the
+  // same module: day in light, night in dark, swapped cell by cell.
+  const sceneCanvas = document.querySelector("[data-theme-scene]");
+  const themeScene = sceneCanvas
+    ? createThemeScene(sceneCanvas, { dark: resolvedDark() })
+    : null;
 
   function applyMode() {
     if (mode === "system") {
@@ -312,7 +325,13 @@ function setUpThemeToggle() {
       `Theme: ${mode === "system" ? `system (${resolved})` : mode}. ` +
         `Switch to ${nextMode(mode)}.`
     );
+    themeScene?.setDark(resolvedDark(), reduced.matches);
   }
+
+  // Only in system mode does the OS still get a vote.
+  systemDark.addEventListener("change", () => {
+    if (mode === "system") applyMode();
+  });
 
   toggle.addEventListener("click", () => {
     mode = nextMode(mode);
@@ -329,3 +348,185 @@ function setUpThemeToggle() {
 
 setUpPortrait();
 setUpThemeToggle();
+
+/* ---------- the pixel lab ---------- */
+
+// The demo map, the same characters the page shows in its <pre>: one
+// letter per cell, one colour per letter. The playground below runs on
+// the same idea, with a grid the visitor can repaint.
+const LAB_COLOURS = {
+  light: {
+    ".": "#aedcf5", S: "#ffd94a", C: "#ffffff", L: "#57a047",
+    g: "#7cc463", G: "#4e9b47", h: "#a8d29a", T: "#7a4a21",
+    F: "#ef6aa5", K: "#22304a",
+  },
+  dark: {
+    ".": "#10233c", S: "#dfe9f5", C: "#2c4a73", L: "#2f6b3a",
+    g: "#35704a", G: "#26543a", h: "#23505e", T: "#503318",
+    F: "#d9578a", K: "#05080f",
+  },
+};
+
+const DEMO_MAP = [
+  "........................",
+  "..SS....CCCCCC..........",
+  "..SS...CCCCCCCC.........",
+  "........CCCCCC..........",
+  "........................",
+  "...LLL..................",
+  "..LLLLL..........hhh....",
+  "..LLLLL........hhhhh....",
+  "...LLL........hhhhhhh...",
+  "....T........hhhhhhhh...",
+  "..gggggggggggggggggggg..",
+  ".gGGgGGgGGgGGgGGgGGgGGg.",
+];
+
+const STAMPS = {
+  tree: [
+    ".LLL.",
+    "LLLLL",
+    "LLLLL",
+    ".LLL.",
+    "..T..",
+    "..T..",
+    "..T..",
+  ],
+  cloud: [
+    ".CCCCCC.",
+    "CCCCCCCC",
+    ".CCCCCC.",
+  ],
+};
+
+const SWATCHES = [
+  ["S", "sun"], ["C", "cloud"], ["L", "leaves"], ["g", "grass"],
+  ["G", "deep grass"], ["h", "hill"], ["T", "trunk"], ["F", "flower"],
+  ["K", "ink"], [".", "sky"],
+];
+
+function setUpPixelLab() {
+  const labCanvas = document.querySelector("[data-lab-canvas]");
+  const playCanvas = document.querySelector("[data-play-canvas]");
+  if (!labCanvas || !playCanvas) return;
+  const labCtx = labCanvas.getContext("2d");
+  const playCtx = playCanvas.getContext("2d");
+  const PW = 24;
+  const PH = 14;
+
+  const blankGrid = () => {
+    const grid = [];
+    for (let y = 0; y < PH; y += 1) {
+      const row = new Array(PW).fill(".");
+      if (y === 11) row.fill("g");
+      if (y === 12) row.forEach((_, x) => { row[x] = x % 3 === 1 ? "g" : "G"; });
+      if (y === 13) row.fill("G");
+      grid.push(row);
+    }
+    return grid;
+  };
+
+  function stamp(grid, art, left, top) {
+    art.forEach((row, dy) => {
+      [...row].forEach((ch, dx) => {
+        if (ch === ".") return;
+        const x = left + dx;
+        const y = top + dy;
+        if (x >= 0 && x < PW && y >= 0 && y < PH) grid[y][x] = ch;
+      });
+    });
+  }
+
+  const starterGrid = () => {
+    const grid = blankGrid();
+    stamp(grid, ["SS", "SS"], 2, 1);
+    stamp(grid, STAMPS.cloud, 14, 1);
+    stamp(grid, STAMPS.tree, 3, 4);
+    grid[10][9] = "F";
+    grid[10][17] = "F";
+    grid[10][21] = "F";
+    return grid;
+  };
+
+  let grid = starterGrid();
+  let picked = "L";
+
+  const swatchBox = document.querySelector("[data-swatches]");
+  const swatchButtons = SWATCHES.map(([ch, name]) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "play__swatch";
+    btn.dataset.char = ch;
+    btn.setAttribute("aria-label", `Paint with ${name}`);
+    btn.addEventListener("click", () => {
+      picked = ch;
+      swatchButtons.forEach((b) => b.classList.toggle("is-picked", b === btn));
+    });
+    if (ch === picked) btn.classList.add("is-picked");
+    swatchBox?.appendChild(btn);
+    return btn;
+  });
+
+  function drawCell(ctx, x, y, ch) {
+    ctx.fillStyle = LAB_COLOURS[resolvedTheme()][ch] || "#000000";
+    ctx.fillRect(x, y, 1, 1);
+  }
+
+  function repaint() {
+    const colours = LAB_COLOURS[resolvedTheme()];
+    DEMO_MAP.forEach((row, y) => {
+      [...row].forEach((ch, x) => {
+        labCtx.fillStyle = colours[ch];
+        labCtx.fillRect(x, y, 1, 1);
+      });
+    });
+    grid.forEach((row, y) => row.forEach((ch, x) => drawCell(playCtx, x, y, ch)));
+    swatchButtons.forEach((btn) => {
+      btn.style.background = colours[btn.dataset.char];
+    });
+  }
+
+  let painting = false;
+  function paintAt(event) {
+    const rect = playCanvas.getBoundingClientRect();
+    const x = Math.floor(((event.clientX - rect.left) / rect.width) * PW);
+    const y = Math.floor(((event.clientY - rect.top) / rect.height) * PH);
+    if (x < 0 || x >= PW || y < 0 || y >= PH) return;
+    if (grid[y][x] === picked) return;
+    grid[y][x] = picked;
+    drawCell(playCtx, x, y, picked);
+  }
+  playCanvas.addEventListener("pointerdown", (event) => {
+    painting = true;
+    playCanvas.setPointerCapture(event.pointerId);
+    paintAt(event);
+  });
+  playCanvas.addEventListener("pointermove", (event) => {
+    if (painting) paintAt(event);
+  });
+  playCanvas.addEventListener("pointerup", () => { painting = false; });
+  playCanvas.addEventListener("pointercancel", () => { painting = false; });
+
+  document.querySelector("[data-stamp='tree']")?.addEventListener("click", () => {
+    stamp(grid, STAMPS.tree, 10, 4);
+    repaint();
+  });
+  document.querySelector("[data-stamp='cloud']")?.addEventListener("click", () => {
+    stamp(grid, STAMPS.cloud, 5, 1);
+    repaint();
+  });
+  document.querySelector("[data-play-clear]")?.addEventListener("click", () => {
+    grid = blankGrid();
+    repaint();
+  });
+
+  new MutationObserver(repaint).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme"],
+  });
+  systemDark.addEventListener("change", repaint);
+
+  repaint();
+}
+
+setUpPixelLab();
