@@ -259,7 +259,10 @@ for (let y = 0; y < H; y += 1) {
 // merged silhouette at rest is cell-for-cell the old sky. The third
 // number each cloud carries is its step interval in milliseconds,
 // the base its holds are seeded around; the highest cloud steps
-// slowest, parallax by patience.
+// slowest, parallax by patience. Ben's speed call, 2026-11-20: the
+// first intervals (6s, 9s, 14s) read as barely moving, so the holds
+// are roughly a third of that now, and the off-edge gap before a
+// cloud steps back in is 8 to 20 seconds instead of 24 to 60.
 const cloudShapes = [];
 const cloudMasks = [];
 
@@ -274,18 +277,18 @@ function cloud(cx, cy, interval, parts) {
   cloudShapes.push({ cx, cy, interval, cells: [], minDx: W, maxDx: -1 });
 }
 
-cloud(100, 10, 6000, [
+cloud(100, 10, 2000, [
   [0, 0, 16, 4],
   [-12, 1, 11, 3.2],
   [12, 1, 12, 3.2],
   [0, 2, 18, 2.8],
 ]);
-cloud(70, 8, 9000, [
+cloud(70, 8, 3200, [
   [0, 0, 10, 3],
   [-8, 1, 7, 2.4],
   [8, 1, 8, 2.4],
 ]);
-cloud(20, 4, 14000, [
+cloud(20, 4, 5000, [
   [0, 0, 7, 2.2],
   [-6, 1, 5, 1.8],
   [6, 1, 5, 1.8],
@@ -1297,7 +1300,7 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
     paint(ctx, frame, revealed, fx);
     if (cloud.x + cloud.shape.minDx >= W) {
       cloud.gap = true;
-      schedule(24000 + trng() * 36000, () => stepCloud(cloud));
+      schedule(8000 + trng() * 12000, () => stepCloud(cloud));
       return;
     }
     scheduleCloud(cloud);
