@@ -530,7 +530,7 @@ const PROCESS_COLOURS = {
 const PROCESS_CAPTIONS = [
   "The grid of numbers. The picture is text before it is pixels, and that is on purpose.",
   "The palette lookup. Each number swaps for the colour the palette gives it.",
-  "Clusters and ramps. Lit faces and shadow faces land, two or three shades to a thing.",
+  "Clusters and ramps. Lit and shadow faces land, two or three shades to a thing.",
   "Layers, back to front. Sky first, then the ground, then the tree.",
   "Dither, as seasoning. A few sky cells swap to the shade next door.",
   "The light story. One accent lights last, and everything else stays quiet.",

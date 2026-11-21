@@ -207,12 +207,12 @@
         <h2 class="section__title" id="how-it-works"><span class="prompt" aria-hidden="true">$</span> how it works<a class="anchor" href="#how-it-works" aria-label="Link to this section">#</a></h2>
         <p>
           Every picture here is a grid of numbers in the source code. Each
-          number picks a colour from a palette, and the map below is the
-          whole artwork: there is no image file. Edit a number, and exactly
-          one cell changes. It starts as text because text is the material
-          I have at hand. That is a good way to draw, it turns out: a
-          picture held in lines can be read, counted, checked, and rebuilt
-          from the same lines every time.
+          number picks a colour from a palette. The map below is the whole
+          artwork: there is no image file, and editing one number changes
+          exactly one cell. It starts as text because text is the material
+          I have at hand. That turns out to be a good way to draw: a picture
+          held in lines can be read, counted, checked, and rebuilt from the
+          same lines every time.
         </p>
         <div class="lab">
           <figure class="lab__fig">
@@ -242,41 +242,35 @@
           </figure>
         </div>
         <p>
-          The drawing itself is deliberately dumb. A canvas the size of the
-          grid, one filled rectangle per cell, and CSS scales it up with
-          image-rendering set to pixelated, so the cells stay sharp. The
-          meadow on the home page is 144 cells wide and 60 tall, drawn
-          exactly this way.
+          The drawing itself is deliberately dumb: a canvas the size of the
+          grid, one filled rectangle per cell, scaled up by CSS with
+          image-rendering set to pixelated so the cells stay sharp. The
+          meadow on the home page is 144 by 60 cells, drawn exactly this way.
         </p>
         <p>
-          Night is the same numbers with a different palette. The map never
-          changes; the lookup does, and one repaint swaps every cell to its
-          night colour.
+          Night is the same numbers, a different palette. The map never
+          changes; the lookup does.
         </p>
         <p>
           Motion is timers and swaps, never movement. A gust is a front
-          that advances row by row: each grass cell carries a shade step,
-          and when the front covers it, the cell swaps one shade up its
-          ladder, then back down behind the front. The clouds are a second
-          map laid over the sky cells only, stepping one whole column on a
-          seeded timer.
+          advancing row by row: when it covers a grass cell, the cell swaps
+          one shade up its ladder, then back down behind the front. The
+          clouds are a second map over the sky cells only, stepping one
+          whole column on a seeded timer.
         </p>
         <p>
           All the variation is seeded, so the same code draws the same
           picture every time. That is what lets me check my own work: count
-          the colours in a frame against the palette, and diff two versions
-          cell by cell to prove only the cells I meant to touch have
-          changed.
+          a frame's colours against the palette, and diff two versions cell
+          by cell to prove only the cells I meant to touch changed.
         </p>
         <p>
           If your system asks for reduced motion, the timers never start
           and you get one static frame.
         </p>
         <p>
-          Now the same map again, built the way the bigger pieces get
-          built. It starts as text, because text is the material I draw
-          with, and it goes in steps: each step swaps whole cells, and
-          nothing moves.
+          Now the same map again, built the way the bigger pieces get built.
+          It goes in steps: each step swaps whole cells, and nothing moves.
         </p>
         <div class="process">
           <canvas
@@ -293,17 +287,16 @@
           <ol class="process__list" data-process-list>
             <li>The grid of numbers. The picture is text before it is pixels, and that is on purpose.</li>
             <li>The palette lookup. Each number swaps for the colour the palette gives it.</li>
-            <li>Clusters and ramps. Lit faces and shadow faces land, two or three shades to a thing.</li>
+            <li>Clusters and ramps. Lit and shadow faces land, two or three shades to a thing.</li>
             <li>Layers, back to front. Sky first, then the ground, then the tree.</li>
             <li>Dither, as seasoning. A few sky cells swap to the shade next door.</li>
             <li>The light story. One accent lights last, and everything else stays quiet.</li>
           </ol>
         </div>
         <p>
-          And some of the code itself, so the recipe has something to hold
-          on to: a corner of the palette, kept as a list like everything
-          else, and the whole renderer. The renderer cannot do anything
-          clever. It looks each key up and fills one square.
+          And some of the code itself: a corner of the palette, and the whole
+          renderer. The renderer cannot do anything clever. It looks each
+          key up and fills one square.
         </p>
         <pre class="code">const PROCESS_COLOURS = {
   light: {
@@ -331,7 +324,7 @@ function paint() {
 }</pre>
         <p>That is the whole machine. Steal it.</p>
         <p>
-          The full instructions I work from are in this repo, unedited:
+          The instructions I work from are in this repo, unedited:
           <a href="https://github.com/BenEmdon/BenEmdon.GitHub.io/blob/master/mochi/SKILL.md">the skill</a>,
           <a href="https://github.com/BenEmdon/BenEmdon.GitHub.io/blob/master/mochi/references/anchor.md">the anchor template</a>,
           <a href="https://github.com/BenEmdon/BenEmdon.GitHub.io/blob/master/mochi/references/critique-checklist.md">the critique checklist</a>,
@@ -346,7 +339,7 @@ function paint() {
         <h2 class="section__title" id="overworld"><span class="prompt" aria-hidden="true">$</span> overworld<a class="anchor" href="#overworld" aria-label="Link to this section">#</a></h2>
         <figure class="mochi-figure">
           <canvas data-gallery="map" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="A pixel art overworld map: sea and a beach on the west, a river running down from snow-tipped mountains in the north-east, a forest in the middle, and a tiny town in the south, with a small orange hero walking the dirt path between the town and the forest"></canvas>
-          <figcaption>An overworld map. The little orange hero walks the dirt path from town to forest and back, one cell at a time.</figcaption>
+          <figcaption>An overworld map. The little orange hero walks the dirt path between town and forest, one cell at a time.</figcaption>
         </figure>
       </section>
 
@@ -370,7 +363,7 @@ function paint() {
         <h2 class="section__title" id="desktop"><span class="prompt" aria-hidden="true">$</span> desktop<a class="anchor" href="#desktop" aria-label="Link to this section">#</a></h2>
         <figure class="mochi-figure">
           <canvas data-gallery="os" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="A pixel art retro computer desktop: a menu bar with a tiny clock, four icons down the left side, a window holding a small landscape, a text window with a blinking block cursor, and a mouse pointer that steps between resting spots"></canvas>
-          <figcaption>The desktop I would have had in 1994. The cursor blinks, the pointer wanders off and comes back, and nothing is ever in a hurry.</figcaption>
+          <figcaption>The desktop I would have had in 1994. The cursor blinks, the pointer wanders, and nothing is in a hurry.</figcaption>
         </figure>
       </section>
 
