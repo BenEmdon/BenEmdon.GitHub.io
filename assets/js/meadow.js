@@ -12,16 +12,48 @@
   crosses is moonlight, cooler and quieter on the same ladder.
 
   The pixel rule holds throughout: nothing moves, drifts, or fades. The
-  reveal opens whole blocks on a 75ms tick. The light that crosses the
-  field afterwards is only ground pixels stepping one shade brighter in
-  place as a front passes, then one shade back; the front is an order,
-  not a thing travelling. Reduced motion gets the finished scene in one
-  cut and no light at all.
+  reveal opens whole blocks on a 75ms tick. The weather that crosses
+  the field afterwards is only ground pixels stepping one shade in
+  place: a gust is a band of cells one rung brighter while the band
+  covers them, then one rung back as it leaves, and a cloud shadow is
+  a soft patch one rung darker on its own slower crossing. Both roll
+  down the field, from the horizon toward the viewer: the gust's front
+  reaches the far rows first and the near rows last, widening and
+  gathering a little speed as it comes, the way wind arriving across
+  a real field reads. Between gusts the field rests, fully still,
+  for a breath of at most about a second; the bands are orders, not
+  things travelling.
+
+  The clouds are the one part of the scene not baked into it. Each
+  cloud is kept as its own cell map and composited over the sky, and
+  on a slow timetable of its own it steps a single column to the
+  right, holds still for seconds, then steps again: the site's
+  stepped order applied to the sky, the way the wordmark types a
+  column per tick. Nothing slides and nothing fades; between steps
+  the sky is as still as the field. Reduced motion gets the finished
+  scene in one cut, no weather at all, and the clouds parked where
+  they have always hung.
 
   The scene is built once, deterministically: one seeded random source
   places the grass and flowers and scrambles the reveal, so every load
   is the same meadow. Painting is a single canvas of 144 x 60 cells;
-  frames are drawn only while revealing or while the light crosses.
+  frames are drawn only while revealing, while the light crosses, on
+  a cloud's step, or when the tower's lamp steps at night.
+
+  Vista (ported onto this architecture, 2026-11-20): the same field,
+  given distance. A far ridge stands behind the hills in a shade mixed
+  toward the sky, the way haze flattens far country, and a small tower
+  stands on it, built with what detail its size allows: an antenna
+  spike, a crown with an overhang, band rows and a window in a deeper
+  shade, a flared base. By day it is a plain silhouette; after dark
+  the lamp in its window burns Sheikah orange without ever going out,
+  and blinks up to a brighter rung every few seconds, the stone around
+  the window holding a warm ember shade, a lamp with a heartbeat.
+  The palettes are the meadow's own, vibrant and unwashed: the ridge
+  and tower shades are mixed from them, so nothing else in the scene
+  shifts. The new pieces sit off the light ladders, like the distant
+  copse: the weather belongs to the near field and leaves them alone,
+  and the clouds pass behind them like everything else that is not sky.
 */
 
 /* ---------- anchor ---------- */
@@ -29,9 +61,16 @@
 const W = 144;
 const H = 60;
 
-// Sixteen colours, each earning its place. Ramps hue-shift the way pixel
+// Nineteen colours, each earning its place. Ramps hue-shift the way pixel
 // artists build them: sky cools upward and warms at the horizon, meadow
-// shadows lean blue-green while the highlights lean yellow.
+// shadows lean blue-green while the highlights lean yellow. Slots 0-15
+// are the meadow's own palette exactly, vibrant as Ben likes it. Three
+// vista slots close the list, mixed from those colours rather than
+// invented: the far ridge, the hill stepped toward sky low, the way
+// haze flattens distance; the tower's silhouette, the ridge stepped
+// halfway back toward sky mid; and the tower's one detail shade, the
+// silhouette stepped toward sky zenith, for its crown underside, its
+// band rows, and its window.
 const PALETTE = [
   "#2e62a7", // 0  sky zenith
   "#5e8ec5", // 1  sky mid
@@ -49,6 +88,9 @@ const PALETTE = [
   "#6e4a2c", // 13 trunk
   "#4c331e", // 14 trunk shade
   "#f2cf6b", // 15 flower
+  "#a2c0c0", // 16 far ridge, the hill pulled toward the sky
+  "#80a7c2", // 17 tower silhouette, the ridge stepped deeper toward sky mid
+  "#5f8bb7", // 18 tower detail, the silhouette stepped toward sky zenith
 ];
 
 // The night palette: indices 0-15 re-light the day colour in the same
@@ -58,7 +100,13 @@ const PALETTE = [
 // and the canopy's lit rim (slots 7-9, the same cells the day rim uses)
 // stays the brightest thing in the field after the sky. Three extra
 // slots exist only at night: the moon's lit rim, the moon's face, and
-// starlight. Nineteen colours in all.
+// starlight. Four vista slots close the list, also night-only: the
+// far ridge (the day ridge's cells are remapped to it in nightBase),
+// mixed from the night hill halfway toward the horizon glow, and the
+// tower light's three-rung ladder: a deep ember for the stone around
+// the tower's window, the Sheikah orange the lamp in the window
+// burns at without ever going out, and one warm pale rung above
+// that for its blink. Twenty-three colours in all.
 const NIGHT_PALETTE = [
   "#060d21", // 0  sky zenith, deep blue
   "#0c1a38", // 1  sky mid
@@ -79,10 +127,14 @@ const NIGHT_PALETTE = [
   "#e6eefb", // 16 moon rim
   "#7f97bd", // 17 moon face
   "#cfe0f7", // 18 star
+  "#1a3448", // 19 far ridge, the hill pulled toward the horizon glow
+  "#8a4a16", // 20 tower light, ember: the warm shade in the stone flanking the window
+  "#ff9e2c", // 21 tower light, lit: Sheikah orange, the window lamp's steady burn
+  "#ffd08a", // 22 tower light, bright: the blink above the burn
 ];
 
-// Shade ladders, brightest first. The light sweep steps a ground pixel
-// one rung up and later one rung back; it never invents a colour.
+// Shade ladders, brightest first. The weather steps a ground pixel one
+// rung up or down and later one rung back; it never invents a colour.
 const MEADOW_LADDER = [7, 8, 9, 10, 11];
 const HILL_LADDER = [7, 6, 8];
 const LADDERS = [MEADOW_LADDER, HILL_LADDER];
@@ -122,6 +174,17 @@ function setGround(x, y, ladder, r) {
   base[at(x, y)] = LADDERS[ladder][r];
   rung[at(x, y)] = r;
   ladderOf[at(x, y)] = ladder;
+}
+
+// A subject drawn over the ground: the fence, the trunk and branches,
+// the canopy. Its colour is final, and the cell leaves the weather's
+// bookkeeping (rung -1, the copse's and the silhouette grass's own
+// trick), so a gust or a shadow passes behind the subject and never
+// repaints its wood or its leaves in ladder colours.
+function setStill(x, y, colour) {
+  if (!inside(x, y)) return;
+  base[at(x, y)] = colour;
+  rung[at(x, y)] = -1;
 }
 
 // Filled ellipse with stepped edges; the only curve the scene knows.
@@ -185,39 +248,72 @@ for (let y = 0; y < H; y += 1) {
 // Flat clusters built from overlapping ellipses, shaded underneath:
 // any cloud cell with open sky two rows below takes the shade, so the
 // shade hugs the underside the way a shadow would.
-const cloudMask = new Uint8Array(W * H);
+//
+// Each cloud is baked as its own cell map rather than painted into
+// the scene, so paint() can composite it over the sky at whatever
+// column the timetable has stepped it to. The bake reads the merged
+// mask of all three clouds for the shade rule, exactly as the scene
+// was always drawn, and each cell is claimed by the first cloud whose
+// own shape covers it: the big cloud and the middle one overlap by a
+// few cells, and the shared cells ride with the big one, so the
+// merged silhouette at rest is cell-for-cell the old sky. The third
+// number each cloud carries is its step interval in milliseconds,
+// the base its holds are seeded around; the highest cloud steps
+// slowest, parallax by patience. Ben's speed call, 2026-11-20: the
+// first intervals (6s, 9s, 14s) read as barely moving, so the holds
+// are roughly a third of that now, and the off-edge gap before a
+// cloud steps back in is 8 to 20 seconds instead of 24 to 60.
+const cloudShapes = [];
+const cloudMasks = [];
 
-function cloud(cx, cy, parts) {
+function cloud(cx, cy, interval, parts) {
+  const mask = new Uint8Array(W * H);
   for (const [ox, oy, rx, ry] of parts) {
     stamp(cx + ox, cy + oy, rx, ry, (x, y) => {
-      if (inside(x, y)) cloudMask[at(x, y)] = 1;
+      if (inside(x, y)) mask[at(x, y)] = 1;
     });
   }
+  cloudMasks.push(mask);
+  cloudShapes.push({ cx, cy, interval, cells: [], minDx: W, maxDx: -1 });
 }
 
-cloud(100, 10, [
+cloud(100, 10, 2000, [
   [0, 0, 16, 4],
   [-12, 1, 11, 3.2],
   [12, 1, 12, 3.2],
   [0, 2, 18, 2.8],
 ]);
-cloud(70, 8, [
+cloud(70, 8, 3200, [
   [0, 0, 10, 3],
   [-8, 1, 7, 2.4],
   [8, 1, 8, 2.4],
 ]);
-cloud(20, 4, [
+cloud(20, 4, 5000, [
   [0, 0, 7, 2.2],
   [-6, 1, 5, 1.8],
   [6, 1, 5, 1.8],
 ]);
 
-for (let y = 0; y < H; y += 1) {
-  for (let x = 0; x < W; x += 1) {
-    if (!cloudMask[at(x, y)]) continue;
-    const openBelow = !inside(x, y + 2) || !cloudMask[at(x, y + 2)];
-    set(x, y, openBelow ? 5 : 4);
+{
+  const merged = new Uint8Array(W * H);
+  for (const mask of cloudMasks) {
+    for (let i = 0; i < W * H; i += 1) if (mask[i]) merged[i] = 1;
   }
+  const claimed = new Uint8Array(W * H);
+  cloudShapes.forEach((shape, s) => {
+    for (let y = 0; y < H; y += 1) {
+      for (let x = 0; x < W; x += 1) {
+        const i = at(x, y);
+        if (!cloudMasks[s][i] || claimed[i]) continue;
+        claimed[i] = 1;
+        const openBelow = !inside(x, y + 2) || !merged[at(x, y + 2)];
+        const dx = x - shape.cx;
+        shape.cells.push({ dx, dy: y - shape.cy, colour: openBelow ? 5 : 4 });
+        if (dx < shape.minDx) shape.minDx = dx;
+        if (dx > shape.maxDx) shape.maxDx = dx;
+      }
+    }
+  });
 }
 
 // Two birds, three cells each: a cluster, not a speck.
@@ -228,6 +324,71 @@ for (const [bx, by] of [
   set(bx, by + 1, 12);
   set(bx + 1, by, 12);
   set(bx + 2, by + 1, 12);
+}
+
+/* ----- far ridge and tower ----- */
+
+// Distance, drawn the cheap way the research prescribes: one more
+// silhouette behind the hills, in a colour mixed toward the sky, so
+// the eye stacks pale ridge, greener hill, near field and calls it
+// vast. The ridge crest is a gentler wave than the hill crest below
+// it, so the pale band between the two varies in depth. The fill runs
+// to the bottom of the frame; the hills and meadow, drawn after,
+// overwrite it from their own lines down. Off the ladders, like the
+// copse: the weather belongs to the near field. A pass after the
+// scene is built clears the weather rung on any cell still wearing
+// a vista colour, and paint() keeps the clouds behind these cells.
+const farCrest = (x) =>
+  Math.round(28.5 - 1.8 * Math.sin(x / 47 + 0.8) - 1.0 * Math.sin(x / 19 + 2.2));
+
+for (let x = 0; x < W; x += 1) {
+  for (let y = farCrest(x); y < H; y += 1) set(x, y, 16);
+}
+
+// One landmark on the ridge, the tower from the research: thin enough
+// to be mostly silhouette, tall enough to pull the eye from anywhere
+// in the frame, and built with what architecture its size allows.
+// An antenna spike at the very top; below it a plain silhouette
+// cell; a crown five cells wide with an overhang, its underside in
+// the tower's one detail shade; a shaft three cells wide, its flat
+// runs broken by two band rows in the detail shade and a two-cell
+// window high under the crown; and a base that flares back to the
+// crown's width for its last two rows, sunk into the crest so it
+// sits in the ground rather than on it. By day it is a plain
+// silhouette in the ridge's deeper shade, the window just a deeper
+// slit. After dark the night scene remaps its body to sky low and
+// its detail to sky mid, and the window becomes the lamp: it burns
+// on a ladder of orange shades, the shaft cells flanking it warmed
+// to the ember rung (see nightBase and the glow in paint() below).
+// The light used to sit at the tower's tip, under the spike; Ben
+// read that as a beacon on top of the tower, so in v4 it moved
+// down into the window, where a lamp inside a tower belongs.
+// Clear of the clouds, the birds, the moon, and the stars, and on
+// the right, balancing the tree.
+const TOWER_X = 118;
+const TOWER_TOP_Y = 15; // the antenna spike
+const TOWER_LIGHT_Y = 16; // one cell below the spike, plain silhouette in both themes
+const TOWER_WINDOW_Y = TOWER_LIGHT_Y + 4; // the window, two cells tall: the lamp after dark
+const towerBaseY = farCrest(TOWER_X) + 2;
+set(TOWER_X, TOWER_TOP_Y, 17);
+set(TOWER_X, TOWER_LIGHT_Y, 17);
+// The crown and its shaded underside.
+for (let tx = TOWER_X - 2; tx <= TOWER_X + 2; tx += 1) set(tx, TOWER_LIGHT_Y + 1, 17);
+for (let tx = TOWER_X - 1; tx <= TOWER_X + 1; tx += 1) set(tx, TOWER_LIGHT_Y + 2, 18);
+// The shaft, three cells wide.
+for (let y = TOWER_LIGHT_Y + 3; y <= towerBaseY; y += 1) {
+  for (let tx = TOWER_X - 1; tx <= TOWER_X + 1; tx += 1) set(tx, y, 17);
+}
+// Two band rows across the shaft, and the window, two cells tall
+// in the detail shade, sitting on the upper band row like a sill.
+for (const by of [TOWER_LIGHT_Y + 6, TOWER_LIGHT_Y + 10]) {
+  for (let tx = TOWER_X - 1; tx <= TOWER_X + 1; tx += 1) set(tx, by, 18);
+}
+set(TOWER_X, TOWER_WINDOW_Y, 18);
+set(TOWER_X, TOWER_WINDOW_Y + 1, 18);
+// The base flare, the crown's width again.
+for (let y = towerBaseY - 1; y <= towerBaseY; y += 1) {
+  for (let tx = TOWER_X - 2; tx <= TOWER_X + 2; tx += 1) set(tx, y, 17);
 }
 
 /* ----- hills ----- */
@@ -265,9 +426,16 @@ for (let x = 0; x < W; x += 1) {
   }
 }
 
-// One tiny lived detail: a distant copse standing on the hill crest.
-// Paler than the real tree, as distance makes things, and off the ladder
-// so the light sweep, which belongs to the near field, leaves it alone.
+// One tiny lived detail: a distant tree standing on the hill crest.
+// It began as a copse, two flat stamps that read as a bush; now it is
+// drawn the way the real tree is, at a tenth of the size: a lobed
+// canopy built into a mask, shaded in clipped stamps, deep at the
+// lower right and lit at the upper left, over a trunk that stands
+// clear of the ground on both sides. Paler than the real tree, as
+// distance makes things: its ramp is the canopy's own shifted one
+// step paler (deep 11, body 10, lit 9, rim 8, one highlight in 7),
+// and it stays off the ladder so the weather, which belongs to the
+// near field, leaves it alone.
 {
   const copseX = 76;
   const copseBase = crest(copseX);
@@ -276,10 +444,53 @@ for (let x = 0; x < W; x += 1) {
     set(x, y, colour);
     rung[at(x, y)] = -1;
   };
-  stamp(copseX, copseBase - 3, 4, 2.6, copseSet(10));
-  stamp(copseX, copseBase - 1, 3, 1, copseSet(11));
-  copseSet(11)(copseX, copseBase - 1);
-  copseSet(11)(copseX, copseBase);
+
+  const copseMask = new Uint8Array(W * H);
+  const mark = (x, y) => {
+    if (inside(x, y)) copseMask[at(x, y)] = 1;
+  };
+  stamp(copseX, copseBase - 6, 4.2, 2.8, mark); // the main lobe
+  stamp(copseX - 3, copseBase - 4.5, 2.3, 2, mark); // a lower lobe, left
+  stamp(copseX + 3, copseBase - 7.5, 2.4, 1.9, mark); // a higher lobe, right
+
+  const copseStamp = (cx, cy, rx, ry, colour) => {
+    stamp(cx, cy, rx, ry, (x, y) => {
+      if (inside(x, y) && copseMask[at(x, y)]) copseSet(colour)(x, y);
+    });
+  };
+
+  for (let i = 0; i < W * H; i += 1) {
+    if (copseMask[i]) {
+      base[i] = 11;
+      rung[i] = -1;
+    }
+  }
+  copseStamp(copseX, copseBase - 6, 4, 2.3, 10);
+  copseStamp(copseX - 2, copseBase - 7, 2.6, 1.6, 9);
+
+  // Rim light on the top edge, the main tree's own move at this scale:
+  // the lit green where the sky opens above, giving up to the merely
+  // lit shade toward the right, where the light gives up. Only the
+  // canopy's upper rows take it: a top-edge cell low on a side lobe is
+  // a knob, not a rim, and lit it reads as a stray bright cell.
+  for (let y = 0; y < H; y += 1) {
+    for (let x = 0; x < W; x += 1) {
+      if (!copseMask[at(x, y)] || y >= copseBase - 5) continue;
+      const openAbove = !inside(x, y - 1) || !copseMask[at(x, y - 1)];
+      if (openAbove) copseSet(x <= copseX + 2 ? 8 : 9)(x, y);
+    }
+  }
+  copseStamp(copseX - 2.5, copseBase - 8.2, 1.4, 0.7, 7);
+
+  // The trunk, drawn last so it tucks into the canopy's underside and
+  // stands against the horizon: three cells of the trunk's lit side,
+  // a shaded root flare at its foot.
+  copseSet(13)(copseX, copseBase - 3);
+  copseSet(13)(copseX, copseBase - 2);
+  copseSet(13)(copseX, copseBase - 1);
+  copseSet(13)(copseX, copseBase);
+  copseSet(13)(copseX - 1, copseBase);
+  copseSet(14)(copseX + 1, copseBase);
 }
 
 // Sunlit and shadowed ground, as stepped patches one rung off the base
@@ -300,7 +511,7 @@ patch(52, 53, 15, 2.4, 4); // the tree's shadow, falling right
 // A foreground silhouette band closes the bottom of the scene, the way
 // a dark near bank frames a view: a wavy top edge at the meadow's
 // deepest rung, and the last two rows in canopy deep, off the ladder
-// entirely so the light sweep never lifts them. They are the frame,
+// entirely so the weather never lifts them. They are the frame,
 // not the field.
 const fgTop = (x) => Math.round(56.5 - 1.2 * Math.sin(x / 19 + 1) - 0.8 * Math.sin(x / 7.3));
 
@@ -320,7 +531,7 @@ for (let x = 0; x < W; x += 1) {
 // Tufts are clusters: three small shapes, repeated and varied, never a
 // lone cell. They take a rung one step off the ground they stand on, so
 // they read as grass catching or losing the light, and because they keep
-// a rung they join the light sweep like any other ground.
+// a rung they join the weather like any other ground.
 const TUFTS = [
   [
     [1, 0],
@@ -385,7 +596,7 @@ for (let n = 0; n < 30; n += 1) {
 }
 
 // Flowers: a handful of three-cell clusters low in the field, in the one
-// warm accent and in cloud white. Above the grass, so the sweep passes
+// warm accent and in cloud white. Above the grass, so the weather passes
 // under them and they stay lit. Their positions are recorded (no light
 // of their own, just bookkeeping) so the night scene can put most of
 // them to sleep.
@@ -408,13 +619,13 @@ for (let n = 0; n < 10; n += 1) {
 const fenceY = (x) => Math.round(45.5 - (x - 96) * 0.045);
 
 for (let x = 96; x <= 142; x += 1) {
-  set(x, fenceY(x) - 3, 14);
-  set(x, fenceY(x) - 1, 14);
+  setStill(x, fenceY(x) - 3, 14);
+  setStill(x, fenceY(x) - 1, 14);
 }
 for (const px of [98, 107, 116, 125, 134, 141]) {
   for (let y = fenceY(px) - 4; y <= fenceY(px); y += 1) {
-    set(px, y, 13);
-    set(px + 1, y, 14);
+    setStill(px, y, 13);
+    setStill(px + 1, y, 14);
   }
 }
 
@@ -429,12 +640,12 @@ for (let y = 29; y <= 54; y += 1) {
   const cx = trunkBaseX - Math.round((54 - y) * 0.04);
   const half = y >= 44 ? 2 : 1;
   for (let x = cx - half; x <= cx + half; x += 1) {
-    set(x, y, x === cx + half ? 14 : 13);
+    setStill(x, y, x === cx + half ? 14 : 13);
   }
 }
 // Root flares.
-set(trunkBaseX - 3, 54, 13);
-set(trunkBaseX + 3, 54, 14);
+setStill(trunkBaseX - 3, 54, 13);
+setStill(trunkBaseX + 3, 54, 14);
 
 // Branches, stepped diagonals stamped two cells wide; the canopy covers
 // their tops.
@@ -443,8 +654,8 @@ function branch(x0, y0, x1, y1) {
   for (let i = 0; i <= steps; i += 1) {
     const x = Math.round(x0 + ((x1 - x0) * i) / steps);
     const y = Math.round(y0 + ((y1 - y0) * i) / steps);
-    set(x, y, 13);
-    set(x, y + 1, 14);
+    setStill(x, y, 13);
+    setStill(x, y + 1, 14);
   }
 }
 branch(37, 34, 26, 26);
@@ -483,11 +694,16 @@ for (const [cx, cy, rx, ry] of [
 
 function canopyStamp(cx, cy, rx, ry, colour) {
   stamp(cx, cy, rx, ry, (x, y) => {
-    if (inside(x, y) && canopyMask[at(x, y)]) set(x, y, colour);
+    if (inside(x, y) && canopyMask[at(x, y)]) setStill(x, y, colour);
   });
 }
 
-for (let i = 0; i < W * H; i += 1) if (canopyMask[i]) base[i] = 12;
+for (let i = 0; i < W * H; i += 1) {
+  if (canopyMask[i]) {
+    base[i] = 12;
+    rung[i] = -1;
+  }
+}
 canopyStamp(42, 20, 16, 7, 11);
 canopyStamp(30, 23, 12, 4.5, 11);
 canopyStamp(36, 17, 14, 6, 10);
@@ -506,8 +722,8 @@ for (let y = 0; y < H; y += 1) {
     if (!canopyMask[at(x, y)]) continue;
     const openAbove = !inside(x, y - 1) || !canopyMask[at(x, y - 1)];
     const openLeft = !inside(x - 1, y) || !canopyMask[at(x - 1, y)];
-    if (openAbove) set(x, y, x < 45 ? 8 : 9);
-    else if (openLeft && y < 22) set(x, y, 8);
+    if (openAbove) setStill(x, y, x < 45 ? 8 : 9);
+    else if (openLeft && y < 22) setStill(x, y, 8);
   }
 }
 for (const [hx, hy] of [
@@ -529,14 +745,54 @@ for (let i = 0; i < W * H; i += 1) {
   if (base[i] === 12 || base[i] === 13 || base[i] === 14) rung[i] = -1;
 }
 
+// The vista pieces get the same protection, and one more besides.
+// The ridge and the tower were drawn over sky, so their cells should
+// already be rung-free; this pass makes it certain for any cell still
+// wearing a vista colour (16, 17, 18) after the hills and meadow have
+// overwritten the ridge's lower fill. The same cells are recorded in
+// vistaMask: the night palette reads the ridge at slot 19 and the
+// tower's body at slots 2 and 1, all values the clouds' sky test in
+// paint() would otherwise mistake for sky, so the composite checks
+// the mask and the clouds pass behind the ridge and tower too.
+const vistaMask = new Uint8Array(W * H);
+for (let i = 0; i < W * H; i += 1) {
+  if (base[i] === 16 || base[i] === 17 || base[i] === 18) {
+    rung[i] = -1;
+    vistaMask[i] = 1;
+  }
+}
+
 /* ----- the night scene ----- */
 
 // The same geometry, re-lit. nightBase starts as a copy of the day
 // cells; most of the night is then just the night palette reading the
-// same indices. Only three things are drawn differently: the flowers
-// sleep, a moon hangs in the calm top-right of the sky, and a sparse
-// set of star clusters lights in the sky the clouds leave empty.
+// same indices. A few things are drawn differently: the vista pieces
+// change slots, the flowers sleep, a moon hangs in the calm top-right
+// of the sky, and a sparse set of star clusters lights in the sky the
+// clouds leave empty.
 const nightBase = Uint8Array.from(base);
+
+// The vista pieces change slots after dark. The far ridge's day
+// colour (16) is the moon rim's slot in the night palette, so ridge
+// cells are remapped to the night ridge (19); the tower's silhouette
+// (17) becomes the deep sky-low blue (2), a darker shape against the
+// horizon glow, and its detail shade (18) becomes sky mid (1), one
+// step darker again, so the crown underside and bands stay faintly
+// readable on the night body; and the tower's window cells are
+// stored at the lamp's burning rung (21). paint() steps them
+// through the glow ladder from there, so this stored value is the
+// light at rest and under reduced motion. The cell under the spike
+// that held the lamp in v3 is plain body now and remaps with the
+// rest of the silhouette. Nothing else in the day scene uses slots
+// 16, 17, or 18, and this runs before the moon and stars are drawn
+// in their own night slots, so nothing else is caught by it.
+for (let i = 0; i < W * H; i += 1) {
+  if (nightBase[i] === 16) nightBase[i] = 19;
+  else if (nightBase[i] === 17) nightBase[i] = 2;
+  else if (nightBase[i] === 18) nightBase[i] = 1;
+}
+nightBase[at(TOWER_X, TOWER_WINDOW_Y)] = 21;
+nightBase[at(TOWER_X, TOWER_WINDOW_Y + 1)] = 21;
 
 // All but the first two flower clusters fold back into the field's
 // deepest shade. The two that stay keep their slots, paled by the
@@ -585,9 +841,12 @@ for (const i of moonCells) {
 }
 
 // Stars, sparse and clustered, placed only where every cell of the
-// cluster lands on open sky: a cluster that would touch a cloud, the
-// canopy, or the moon is skipped whole rather than clipped. Their own
-// seed, so the day scene's rolls are untouched.
+// cluster lands on open sky: a cluster that would touch the canopy
+// or the moon is skipped whole rather than clipped. The clouds are
+// not part of this scene (paint() composites them over it), so a
+// cluster may sit where a cloud hangs at rest; the cloud covers it
+// until it steps away, which is the correct order of things. Their
+// own seed, so the day scene's rolls are untouched.
 const nrng = mulberry32(20261120);
 const STAR_SHAPES = {
   triple: [
@@ -635,6 +894,39 @@ const NIGHT_RGB = NIGHT_PALETTE.map(toRgb);
 let scene = base;
 let RGB = DAY_RGB;
 
+// Where the clouds are right now: an origin column per cloud, and a
+// gap flag for a cloud that has stepped off the right edge and is
+// waiting out its empty-sky pause before stepping in from the left.
+// The wiring's timetable moves these; paint() only reads them. Every
+// cloud starts at its baked column, which is the sky the scene has
+// always had.
+const cloudState = cloudShapes.map((shape) => ({ shape, x: shape.cx, gap: false }));
+
+// The tower light's state at night: a rung on its ladder (slots
+// 20-22), stepped by the wiring's timetable and read here. The lamp
+// lives in the tower's window: the two window cells show the rung,
+// burning at the middle one and never going out; the timetable only
+// steps them up to the bright rung for the blink and back down. It
+// starts at the burning rung, and reduced motion parks it there.
+// The shaft cells flanking the window hold the ember rung after
+// dark, light leaking into the stone around the lamp; they do not
+// step with the blink, so the window alone carries it. (In v3 the
+// lamp sat at the tower's tip and haloed the sky around it; Ben
+// read that as light coming from the top of the tower, so the halo
+// is gone and the warmth moved into the stone.)
+const GLOW_RUNGS = [20, 21, 22];
+let glowRung = 1;
+const towerLamp = new Set([
+  at(TOWER_X, TOWER_WINDOW_Y),
+  at(TOWER_X, TOWER_WINDOW_Y + 1),
+]);
+const towerFlanks = new Set([
+  at(TOWER_X - 1, TOWER_WINDOW_Y),
+  at(TOWER_X + 1, TOWER_WINDOW_Y),
+  at(TOWER_X - 1, TOWER_WINDOW_Y + 1),
+  at(TOWER_X + 1, TOWER_WINDOW_Y + 1),
+]);
+
 // Reveal blocks of 6 x 6 cells, scrambled once with the same seed, so
 // the scene arrives in the same order on every load. An unopened block
 // shows a pale mist: horizon colour dithered with the band above it.
@@ -654,7 +946,36 @@ function coverColour(x, y) {
   return BAYER_4[y % 4][x % 4] < 4 ? 2 : 3;
 }
 
-function paint(ctx, frame, revealed, front) {
+// Weather geometry. A gust is a band whose front is a row of the
+// field: it starts above the horizon side of the ground and advances
+// toward the viewer, so the far rows light first and the near rows
+// last. The front is not a ruler: a wobble, a sum of sines over the
+// columns, holds it a row or two early here and late there, so it
+// rolls rather than descends, and each gust rolls the wobble at its
+// own phase, so no two fronts trace the same line.
+// A cloud shadow is a soft ellipse of shade whose rim breaks up on a
+// fixed Bayer threshold, so the edge reads as soft shade rather than
+// a hard outline, and the broken texture is each cell's own,
+// identical on every pass.
+const gustWobble = (x) => 1.5 * Math.sin(x / 16 + 0.7) + 0.8 * Math.sin(x / 6.3 + 2.0);
+const GUST_FRINGE = 1.4; // rows of broken edge at the band's front and tail
+// The hill takes the gust as a dither, not a solid step: the share of
+// hill cells that step rises from none at the band's edges toward
+// HILL_GUST_COVER at its heart, over HILL_GUST_RAMP rows of band depth.
+const HILL_GUST_COVER = 0.7;
+const HILL_GUST_RAMP = 3;
+
+function shadowCovers(shadow, x, y) {
+  const dx = (x - shadow.cx) / shadow.rx;
+  const dy = (y - shadow.cy) / shadow.ry;
+  const q = dx * dx + dy * dy;
+  if (q >= 1) return false;
+  const c = 1 - Math.sqrt(q); // 1 at the centre, 0 at the rim
+  if (c >= 0.6) return true;
+  return (BAYER_4[y % 4][x % 4] + 0.5) / 16 < (c / 0.6) * 0.75;
+}
+
+function paint(ctx, frame, revealed, fx) {
   const px = frame.data;
   for (let y = 0; y < H; y += 1) {
     for (let x = 0; x < W; x += 1) {
@@ -665,17 +986,89 @@ function paint(ctx, frame, revealed, front) {
         colour = coverColour(x, y);
       } else {
         colour = scene[i];
-        // The light: ground within the band behind the front steps one
-        // rung brighter. Everything else keeps its colour exactly.
-        if (rung[i] >= 0 && front !== null) {
-          const d = front - x;
-          if (d >= 0 && d <= 7) {
-            colour = LADDERS[ladderOf[i]][Math.max(0, rung[i] - 1)];
+        // The weather: ground inside a gust's band steps one rung
+        // brighter, ground inside a cloud shadow steps one rung
+        // darker, and the two compose where they overlap. Everything
+        // else keeps its colour exactly.
+        if (rung[i] >= 0 && fx !== null) {
+          let r = rung[i];
+          if (fx.gust !== null) {
+            // How far the front has rolled past this cell's row, in
+            // the column's own wobbled frame. Inside the band the
+            // cell steps one rung brighter; the band's front and tail
+            // break up on the same fixed Bayer threshold the shadow's
+            // rim uses, so it arrives ragged, not ruled.
+            const d = fx.gust.row + gustWobble(x + fx.gust.phase) - y;
+            if (d >= 0 && d <= fx.gust.depth) {
+              const edge = Math.min(d, fx.gust.depth - d);
+              const bayer = (BAYER_4[y % 4][x % 4] + 0.5) / 16;
+              if (ladderOf[i] === 0) {
+                // The near field takes the full step.
+                if (edge >= GUST_FRINGE || bayer < edge / GUST_FRINGE) {
+                  r -= 1;
+                }
+              } else if (bayer < Math.min(HILL_GUST_COVER, edge / HILL_GUST_RAMP)) {
+                // The hill's one-rung step is a far bigger jump
+                // (#a9c198 to #bcd26c), and a solid band of it read
+                // as a searchlight, so the hill steps only in part:
+                // a Bayer share of its cells, rising toward the
+                // band's heart. At page scale the mix reads as a
+                // half-step of light rolling over the ridge, the
+                // same weather as the field's, quieter with distance.
+                r -= 1;
+              }
+            }
           }
+          if (fx.shadow !== null && shadowCovers(fx.shadow, x, y)) r += 1;
+          if (r !== rung[i]) {
+            const ladder = LADDERS[ladderOf[i]];
+            colour = ladder[Math.min(ladder.length - 1, Math.max(0, r))];
+          }
+        }
+        // The tower light, after dark only: the window cells show
+        // the ladder rung the timetable has reached, and the shaft
+        // cells flanking the window hold the ember rung, the stone
+        // warmed by the lamp inside. The lamp's cells are off the
+        // weather's ladders, so this never fights a gust or a
+        // shadow for a cell. Whole-cell swaps, like everything
+        // else here.
+        if (scene === nightBase) {
+          if (towerLamp.has(i)) colour = GLOW_RUNGS[glowRung];
+          else if (towerFlanks.has(i)) colour = GLOW_RUNGS[0];
         }
       }
       const o = i * 4;
       const [r, g, b] = RGB[colour];
+      px[o] = r;
+      px[o + 1] = g;
+      px[o + 2] = b;
+      px[o + 3] = 255;
+    }
+  }
+  // The clouds ride over the sky and under everything else: a cell a
+  // cloud covers takes the cloud's colour only when what lies beneath
+  // it belongs to the sky, the day bands by day and at night also the
+  // moon and the stars, which a passing cloud duly eclipses for a
+  // while. The canopy, the birds, the ground, and the vista pieces
+  // (whose night slots fall inside the sky test's ranges, so
+  // vistaMask speaks for them) are subjects, not sky, so the clouds
+  // pass behind them. An unopened reveal block covers its clouds
+  // the way it covers everything else.
+  for (const cloud of cloudState) {
+    if (cloud.gap) continue;
+    for (const cell of cloud.shape.cells) {
+      const x = cloud.x + cell.dx;
+      const y = cloud.shape.cy + cell.dy;
+      if (!inside(x, y)) continue;
+      const i = at(x, y);
+      const block = Math.floor(y / BLOCK) * BW + Math.floor(x / BLOCK);
+      if (blockRank[block] >= revealed) continue;
+      const under = scene[i];
+      const sky =
+        !vistaMask[i] && (under <= 3 || (scene === nightBase && under >= 16));
+      if (!sky) continue;
+      const o = i * 4;
+      const [r, g, b] = RGB[cell.colour];
       px[o] = r;
       px[o + 1] = g;
       px[o + 2] = b;
@@ -689,8 +1082,19 @@ function paint(ctx, frame, revealed, front) {
 
 const REVEAL_STEPS = 14;
 const STEP_MS = 75; // the site's --motion-step
-const SWEEP_TICK_MS = 120;
-const REST_MS = 6500;
+const WEATHER_TICK_MS = 120;
+const REST_MS = 2500; // the pause before the first gust
+const GUST_START_ROW = 28; // above the field's horizon edge (rows 36-44)
+// The shadow's size grows as it comes forward, perspective doing the
+// same work the gust's widening band does: far away it is a small,
+// tight patch; near the viewer it sprawls.
+const SHADOW_START_ROW = 24;
+const SHADOW_STEP = 0.3; // rows per tick: the shadow rolls slower than the gusts
+
+function shadowSize(cy) {
+  const t = Math.min(1, Math.max(0, (cy - SHADOW_START_ROW) / (H - SHADOW_START_ROW)));
+  return { rx: 30 + 24 * t, ry: 4 + 5 * t };
+}
 
 for (const figure of document.querySelectorAll("[data-meadow]")) {
   const canvas = figure.querySelector("[data-meadow-canvas]");
@@ -700,7 +1104,10 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   let revealed = reduced.matches ? BW * BH : 0;
-  let front = null;
+  // The weather in flight: a gust band by its front row and depth, a
+  // cloud shadow by its centre and size. Either may be null, and most
+  // of the time both are: stillness is the field's default state.
+  const fx = { gust: null, shadow: null };
   let onScreen = false;
   let started = false;
 
@@ -710,7 +1117,7 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
   // locally, since that list lives inside main.js. The resolved theme
   // is the pinned [data-theme] when one is set, and the OS preference
   // in system mode, where the attribute is removed. A swap re-renders
-  // the current state (same reveal, same light front) in the other
+  // the current state (same reveal, same weather) in the other
   // palette; nothing restarts.
   const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
   const resolvedTheme = () =>
@@ -724,7 +1131,7 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
     theme = next;
     scene = theme === "dark" ? nightBase : base;
     RGB = theme === "dark" ? NIGHT_RGB : DAY_RGB;
-    paint(ctx, frame, revealed, front);
+    paint(ctx, frame, revealed, fx);
   }
 
   new MutationObserver(applyTheme).observe(document.documentElement, {
@@ -736,11 +1143,19 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
   // differently.
   systemDark.addEventListener("change", applyTheme);
 
+  // Reduced motion holds the tower light at its burning rung,
+  // steady and unblinking: the glow timetable below never starts,
+  // so the rung set here is the one every paint reads.
+  if (reduced.matches) glowRung = 1;
+
   applyTheme();
 
-  // The light's timetable: sleep, cross, sleep. Timeouts rather than an
-  // interval, so at rest the scene costs nothing at all, and a wake that
-  // finds the figure off-screen or the tab hidden simply sleeps again.
+  // The weather's timetable: cross, rest, cross. Timeouts rather than
+  // an interval for the rests, so at rest the scene costs nothing at
+  // all, and a wake that finds the figure off-screen or the tab hidden
+  // simply sleeps again. One interval runs only while a gust or a
+  // shadow is actually crossing, and the weather waits, mid-field,
+  // while the tab is hidden or the figure is off-screen.
   function schedule(delay, fn) {
     setTimeout(() => {
       if (!onScreen || document.hidden) {
@@ -751,20 +1166,144 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
     }, delay);
   }
 
-  function cross() {
-    front = -10;
-    const timer = setInterval(() => {
-      if (!onScreen || document.hidden) return; // the front waits, mid-field
-      front += 2;
-      if (front > W + 8) {
-        clearInterval(timer);
-        front = null;
-        paint(ctx, frame, revealed, front);
-        schedule(REST_MS, cross);
-        return;
+  // The timetable's own seed, so the scene's rolls stay untouched and
+  // every load breathes to the same loose rhythm: the short rests
+  // vary, gust widths vary, and the field is rarely still for long.
+  const trng = mulberry32(20261121);
+  let ticker = null;
+
+  function startTicker() {
+    if (ticker !== null) return;
+    ticker = setInterval(tick, WEATHER_TICK_MS);
+  }
+
+  function tick() {
+    if (!onScreen || document.hidden) return; // the weather waits
+    if (fx.gust !== null) {
+      // The front gathers a little speed and the band widens as both
+      // come toward the viewer: nearer weather reads faster and
+      // broader, the cheapest perspective there is.
+      const t = Math.min(
+        1,
+        Math.max(0, (fx.gust.row - GUST_START_ROW) / (H - GUST_START_ROW))
+      );
+      fx.gust.row += 0.42 + 0.3 * t;
+      fx.gust.depth = (3 + 3.8 * t) * fx.gust.depthScale;
+      if (fx.gust.row - fx.gust.depth > H + 2) {
+        fx.gust = null;
+        // A quarter of gusts are followed closely by another.
+        scheduleNextGust();
       }
-      paint(ctx, frame, revealed, front);
-    }, SWEEP_TICK_MS);
+    }
+    if (fx.shadow !== null) {
+      fx.shadow.cy += SHADOW_STEP;
+      const size = shadowSize(fx.shadow.cy);
+      fx.shadow.rx = size.rx;
+      fx.shadow.ry = size.ry;
+      if (fx.shadow.cy - fx.shadow.ry > H) {
+        fx.shadow = null;
+        scheduleNextShadow();
+      }
+    }
+    paint(ctx, frame, revealed, fx);
+    if (fx.gust === null && fx.shadow === null) {
+      clearInterval(ticker);
+      ticker = null;
+    }
+  }
+
+  function startGust() {
+    if (fx.gust !== null) return;
+    // The band starts narrow at the horizon; tick() widens it as the
+    // front rolls down the field. Each gust rolls the wobble at its
+    // own phase and carries its own depth scale, both from the
+    // timetable's rolls, so no two gusts trace the same front.
+    const depthScale = 0.85 + trng() * 0.35;
+    fx.gust = {
+      row: GUST_START_ROW,
+      depth: 3 * depthScale,
+      phase: trng() * 60,
+      depthScale,
+    };
+    startTicker();
+  }
+
+  function scheduleNextGust() {
+    // Ben's cadence call, 2026-11-20: the long rests (9-21s) made the
+    // weather feel absent. Gusts now follow each other closely, at
+    // most about a second of still field between one ending and the
+    // next starting, never two at once.
+    const rest = 200 + trng() * 800;
+    schedule(rest, startGust);
+  }
+
+  function startShadow() {
+    if (fx.shadow !== null) return;
+    // The patch enters over the horizon at a seeded column and rolls
+    // down the field, growing as it comes. Its clock is its own.
+    const size = shadowSize(SHADOW_START_ROW);
+    fx.shadow = {
+      cx: 30 + Math.floor(trng() * 85),
+      cy: SHADOW_START_ROW,
+      rx: size.rx,
+      ry: size.ry,
+    };
+    startTicker();
+  }
+
+  function scheduleNextShadow() {
+    schedule(38000 + trng() * 34000, startShadow);
+  }
+
+  // The tower light's own timetable, turning on the same schedule
+  // helper so it also waits while off-screen or hidden: the lamp
+  // burns at its middle rung for a few seconds, steps up to bright
+  // for one second, and steps back down to the burn. It never goes
+  // out; the blink is a heartbeat on a lamp that stays lit. Only
+  // the night scene reads the rung, so by day the cycle turns
+  // nothing visible, and a theme swap mid-blink lands on whatever
+  // rung the cycle has reached and steps on from there.
+  const GLOW_CYCLE = [
+    [1, 2500], // the steady burn
+    [2, 1000], // the blink, bright
+  ];
+  let glowStep = 0;
+  function glowAdvance() {
+    const [rungNow, dwell] = GLOW_CYCLE[glowStep];
+    glowStep = (glowStep + 1) % GLOW_CYCLE.length;
+    glowRung = rungNow;
+    if (theme === "dark") paint(ctx, frame, revealed, fx);
+    schedule(dwell, glowAdvance);
+  }
+
+  // The clouds' timetable: sparse timeout chains on the same schedule
+  // helper as the weather, so a step that comes due while the figure
+  // is off-screen or the tab is hidden simply waits, and between
+  // steps the sky costs nothing at all, no interval, no repaint. A
+  // step is one whole column: the cloud's map is redrawn one column
+  // over in a single paint, then the cloud holds for seconds again,
+  // each hold seeded around the cloud's own interval. A cloud that
+  // steps off the right edge waits out a long seeded gap, so the sky
+  // is sometimes short a cloud, then steps in from the left a column
+  // at a time.
+  function scheduleCloud(cloud) {
+    const base = cloud.shape.interval;
+    schedule(base * (0.75 + trng() * 0.5), () => stepCloud(cloud));
+  }
+
+  function stepCloud(cloud) {
+    if (cloud.gap) {
+      cloud.gap = false;
+      cloud.x = -cloud.shape.maxDx - 1;
+    }
+    cloud.x += 1;
+    paint(ctx, frame, revealed, fx);
+    if (cloud.x + cloud.shape.minDx >= W) {
+      cloud.gap = true;
+      schedule(8000 + trng() * 12000, () => stepCloud(cloud));
+      return;
+    }
+    scheduleCloud(cloud);
   }
 
   function reveal() {
@@ -772,17 +1311,27 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
     started = true;
     if (reduced.matches) {
       revealed = BW * BH;
-      paint(ctx, frame, revealed, front);
-      return; // no sweep: the finished scene, held still
+      paint(ctx, frame, revealed, fx);
+      return; // no weather: the finished scene, held still
     }
     let step = 0;
     const timer = setInterval(() => {
       step += 1;
       revealed = Math.round((BW * BH * step) / REVEAL_STEPS);
-      paint(ctx, frame, revealed, front);
+      paint(ctx, frame, revealed, fx);
       if (step >= REVEAL_STEPS) {
         clearInterval(timer);
-        schedule(REST_MS, cross);
+        schedule(REST_MS, startGust);
+        // The first shadow comes later, on its own schedule, so the
+        // two systems are never in step.
+        schedule(20000 + trng() * 12000, startShadow);
+        // The tower's lamp starts its slow burn-and-blink once the
+        // scene has arrived, on its own chain like the clouds.
+        schedule(3000, glowAdvance);
+        // The clouds start their slow stepping once the scene has
+        // arrived, each on its own chain. Reduced motion returned
+        // above and never reaches this, so its sky stays parked.
+        for (const cloud of cloudState) scheduleCloud(cloud);
       }
     }, STEP_MS);
   }

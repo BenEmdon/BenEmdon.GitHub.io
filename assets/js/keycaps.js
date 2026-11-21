@@ -41,6 +41,26 @@ const GLYPHS = {
     "#.###.#",
     ".#...#.",
   ],
+  // Return: down the right side, left along the bottom, head at the tip.
+  "↵": [
+    ".....#.",
+    ".....#.",
+    ".....#.",
+    ".....#.",
+    ".##..#.",
+    "######.",
+    ".##....",
+  ],
+  // Three 4-wide block letters with 1-cell gaps, on a wide cap.
+  esc: [
+    "####..###..###",
+    "#....#....#...",
+    "#....#....#...",
+    "###...##..#...",
+    "#.......#.#...",
+    "#.......#.#...",
+    "####.###...###",
+  ],
 };
 
 // Resting shades plus the lit swaps. Lit reuses accent as the face and
@@ -137,42 +157,43 @@ function flash(id) {
   }, STEP_MS * 4);
 }
 
-const panel = document.querySelector("[data-keys]");
+// Which glyph a key wears, centred on its cap.
+function glyphSpec(id) {
+  const map = GLYPHS[id];
+  if (!map) return null;
+  return { wide: false, glyphs: [[map, Math.floor((11 - map[0].length) / 2)]] };
+}
 
-panel?.querySelectorAll("kbd[data-cap]").forEach((kbd) => {
-  const id = kbd.dataset.cap;
-  const wide = id === "cmdk";
-  const glyphs = wide
-    ? [
-        [GLYPHS.cmd, 3],
-        [GLYPHS.K, 13],
-      ]
-    : [[GLYPHS[id], 3]];
-  if (glyphs.some(([map]) => !map)) return;
-
-  const grid = capGrid(glyphs, wide);
+// Build one cap inside an element and return it, unregistered: the caller
+// decides whether it belongs to the id map or the loose set. The element's
+// text stays in the DOM; CSS hands the visual to the canvas.
+function buildCap(el, spec) {
+  if (!spec || spec.glyphs.some(([map]) => !map)) return null;
+  const grid = capGrid(spec.glyphs, spec.wide);
   const canvas = document.createElement("canvas");
   canvas.width = grid[0].length * CELL_PX;
   canvas.height = grid.length * CELL_PX;
   canvas.style.width = `${grid[0].length * CELL_CSS}px`;
   canvas.style.height = `${grid.length * CELL_CSS}px`;
   canvas.setAttribute("aria-hidden", "true");
-  kbd.prepend(canvas);
+  el.prepend(canvas);
+  return { canvas, ctx: canvas.getContext("2d"), grid, lit: false, timer: 0 };
+}
 
-  const cap = { canvas, ctx: canvas.getContext("2d"), grid, lit: false, timer: 0 };
-  caps.set(id, cap);
+const panel = document.querySelector("[data-keys]");
+
+panel?.querySelectorAll("kbd[data-cap]").forEach((kbd) => {
+  const cap = buildCap(kbd, glyphSpec(kbd.dataset.cap));
+  if (!cap) return;
+  caps.set(kbd.dataset.cap, cap);
   draw(cap);
 });
 
 if (caps.size) panel.classList.add("has-caps");
 
 // A press lights its cap wherever the legend sits. Guards mirror main.js:
-// plain keys do not count while typing, the palette combo always counts.
+// plain keys do not count while typing.
 document.addEventListener("keydown", (event) => {
-  if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "k") {
-    flash("cmdk");
-    return;
-  }
   if (event.metaKey || event.ctrlKey || event.altKey) return;
   const el = event.target;
   if (el.isContentEditable || /^(input|textarea|select)$/i.test(el.tagName)) return;

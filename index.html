@@ -79,7 +79,6 @@
     <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="assets/css/layout.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/components.css?v=20261114f" />
-    <link rel="stylesheet" href="assets/css/palette.css" />
 
     <!-- Visit counting: GoatCounter. No cookies, no fingerprinting, no
          persistent identifier, nothing personal stored, so there is nothing
@@ -212,9 +211,9 @@
       <section class="section">
         <h2 class="section__title" id="thinking"><span class="prompt" aria-hidden="true">$</span> thinking<a class="anchor" href="#thinking" aria-label="Link to this section">#</a></h2>
         <ul class="entry__list">
-          <li>How version control should evolve beyond Git's current architecture.</li>
-          <li>What blob-storage-backed databases make possible.</li>
-          <li>Where AI code review earns enough trust to approve a change.</li>
+          <li>How should version control evolve beyond Git's current architecture?</li>
+          <li>What do blob-storage-backed databases make possible?</li>
+          <li>Where does AI code review earn enough trust to approve a change?</li>
         </ul>
       </section>
 
@@ -328,7 +327,7 @@
         class="meadow"
         data-meadow
         role="img"
-        aria-label="A pixel-art meadow: one tree on a grass field under a big sky, with distant hills, clouds, and a fence."
+        aria-label="A pixel-art meadow: one tree on a grass field under a big sky, with a hazy far ridge and a tiny distant tower whose light glows after dark, nearer hills, clouds, and a fence."
       >
         <canvas class="meadow__canvas" data-meadow-canvas width="144" height="60" aria-hidden="true"></canvas>
       </figure>
@@ -377,32 +376,9 @@
             height="12"
             aria-hidden="true"
           ></canvas>
-          <button class="footer__button" type="button" data-palette-open>
-            <kbd>⌘ K</kbd> palette
-          </button>
         </div>
       </footer>
 
-      <!-- Experiment: working terminal prompt. A real input, not theatre.
-           It runs a tiny command set and answers in place. -->
-      <div class="term-prompt" data-term>
-        <form class="term-prompt__form" data-term-form>
-          <span class="term-prompt__sigil" aria-hidden="true">$</span>
-          <label class="sr-only" for="term-input">Terminal prompt. Try help, hiring, work, or theme.</label>
-          <input
-            class="term-prompt__input"
-            id="term-input"
-            data-term-input
-            type="text"
-            placeholder="try: help / hiring / work / theme"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-          />
-          <span class="term-prompt__enter" aria-hidden="true">↵</span>
-        </form>
-        <p class="term-prompt__out" data-term-out aria-live="polite"></p>
-      </div>
     </main>
 
     <!-- Ships hidden and stays hidden without JS, since every key it lists is
@@ -416,41 +392,7 @@
         <li><kbd data-cap="5">5</kbd><span class="keys__label">elsewhere</span></li>
         <li><kbd data-cap="t">t</kbd><span class="keys__label">theme</span></li>
         <li><kbd data-cap="?">?</kbd><span class="keys__label">this</span></li>
-        <li><kbd data-cap="cmdk">⌘K</kbd><span class="keys__label">palette</span></li>
-        <li><kbd data-cap="/">/</kbd><span class="keys__label">palette</span></li>
       </ul>
-    </div>
-
-    <!-- Experiment: command palette. Ships hidden, JS fills the list.
-         Cmd+K, Ctrl+K, or / opens it. Esc closes it. -->
-    <div class="palette" data-palette hidden role="dialog" aria-modal="true" aria-label="Command palette">
-      <div class="palette__scrim" data-palette-close></div>
-      <div class="palette__box">
-        <div class="palette__pixels" data-palette-pixels aria-hidden="true"></div>
-        <div class="palette__head">
-          <span class="palette__head-prompt" aria-hidden="true">$</span>
-          <span>palette</span>
-          <span class="palette__head-hint">esc close · ↑↓ move · ↵ run</span>
-        </div>
-        <div class="palette__inputrow">
-          <span aria-hidden="true">&gt;</span>
-          <input
-            data-palette-input
-            type="text"
-            placeholder="type a command or search…"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-            aria-label="Search commands"
-          />
-          <kbd aria-hidden="true">esc</kbd>
-        </div>
-        <ul class="palette__list" data-palette-list role="listbox" aria-label="Commands"></ul>
-        <div class="palette__foot">
-          <span data-palette-count></span>
-          <span class="palette__foot-note">pixels light in place · 75ms steps</span>
-        </div>
-      </div>
     </div>
 
     <!-- The boot screen. Ships hidden and empty: without JS it never appears,
@@ -472,7 +414,6 @@
     </div>
 
     <script type="module" src="assets/js/main.js"></script>
-    <script type="module" src="assets/js/palette.js"></script>
     <script type="module" src="assets/js/meadow.js"></script>
     <script type="module" src="assets/js/keycaps.js"></script>
   </body>
