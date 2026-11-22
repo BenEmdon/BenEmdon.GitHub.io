@@ -30,6 +30,7 @@
   home in town.
 */
 
+import { registerTask } from "./boot.js?v=20261122o";
 const W = 120;
 const H = 45;
 
@@ -615,8 +616,11 @@ function buildMap() {
 }
 
 function setUpOverworld() {
+  // The scene's first paint is loader work: the task
+  // registers here and completes on that paint, below.
+  const sceneTask = registerTask("painting overworld", { timeout: 12000 });
   const canvas = document.querySelector('[data-gallery="map"]');
-  if (!canvas) return;
+  if (!canvas) { sceneTask.complete(); return; }
   const ctx = canvas.getContext("2d");
   canvas.width = W;
   canvas.height = H;
@@ -653,6 +657,7 @@ function setUpOverworld() {
   }
 
   paint();
+  sceneTask.complete();
 
   new MutationObserver(paint).observe(document.documentElement, {
     attributes: true,

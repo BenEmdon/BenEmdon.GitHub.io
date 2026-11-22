@@ -2,7 +2,7 @@ import { attach } from "./dither.js";
 import { animateWordmark } from "./wordmark.js";
 import { createThemeScene } from "./theme-scene.js";
 import { announceBootTask, whenBootTask } from "./boot-tasks.js";
-import { runBoot } from "./boot.js?v=20261122n";
+import { runBoot } from "./boot.js?v=20261122o";
 
 const THEME_KEY = "theme";
 // The cycle the scene control walks. "system" is where everyone starts, and it is
@@ -460,11 +460,42 @@ function setUp() {
     () => performance.now() - bootT0
   );
 
+  // The profile photo: it decodes async (decoding="async" on
+  // the img), so the text paints without waiting for it, and
+  // its arrival is a boot line of its own. The figure is the
+  // resource timing entry's duration where the browser
+  // recorded one, and the time from the page's zero where
+  // it did not; either way it is the load's real measure,
+  // never an estimate.
+  const photoImg = document.querySelector(".dither__photo");
+  const photoTask = new Promise((resolve) => {
+    if (!photoImg) {
+      resolve(performance.now() - bootT0);
+      return;
+    }
+    const done = () => {
+      const entry = performance.getEntriesByName(
+        photoImg.currentSrc || photoImg.src
+      )[0];
+      resolve(entry ? entry.duration : performance.now() - bootT0);
+    };
+    if (photoImg.complete && photoImg.naturalWidth > 0) done();
+    else {
+      photoImg.addEventListener("load", done, { once: true });
+      photoImg.addEventListener("error", done, { once: true });
+    }
+  });
+
   runBoot(
     [
       {
         label: "building pixel scene",
         promise: sceneTask,
+        format: (ms) => `${Math.round(ms)} ms`,
+      },
+      {
+        label: "loading profile photo",
+        promise: photoTask,
         format: (ms) => `${Math.round(ms)} ms`,
       },
       {
@@ -484,6 +515,19 @@ function setUp() {
         label: "syncing clock",
         promise: clockTask,
         format: (r) => r.value,
+      },
+      // Two lines for work nobody loads: the fonts and the
+      // wordmark arrive with the page itself, so their lines
+      // say so instead of wearing an invented figure.
+      {
+        label: "self-hosted fonts",
+        promise: Promise.resolve(),
+        format: () => "loaded statically",
+      },
+      {
+        label: "wordmark",
+        promise: Promise.resolve(),
+        format: () => "loaded statically",
       },
     ],
     { t0: bootT0 }

@@ -29,6 +29,7 @@
   [data-gallery="underwater"] and does nothing if there is none.
 */
 
+import { registerTask } from "./boot.js?v=20261122o";
 const W = 120;
 const H = 45;
 
@@ -504,10 +505,13 @@ function buildScene(state, dark) {
 /* ---------- wiring ---------- */
 
 function setUpUnderwater() {
+  // The scene's first paint is loader work: the task
+  // registers here and completes on that paint, below.
+  const sceneTask = registerTask("painting underwater", { timeout: 12000 });
   const canvas = document.querySelector('[data-gallery="underwater"]');
-  if (!canvas) return;
+  if (!canvas) { sceneTask.complete(); return; }
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+  if (!ctx) { sceneTask.complete(); return; }
   canvas.width = W;
   canvas.height = H;
 
@@ -537,6 +541,7 @@ function setUpUnderwater() {
   }
 
   paint();
+  sceneTask.complete();
 
   new MutationObserver(paint).observe(document.documentElement, {
     attributes: true,

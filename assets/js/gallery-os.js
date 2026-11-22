@@ -22,6 +22,7 @@
   with the cursor solid and the pointer parked.
 */
 
+import { registerTask } from "./boot.js?v=20261122o";
 const W = 120;
 const H = 45;
 
@@ -380,8 +381,11 @@ const resolvedTheme = () =>
   (systemDark.matches ? "dark" : "light");
 
 function setUpDesktop(canvas) {
+  // The scene's first paint is loader work: the task
+  // registers here and completes on that paint, below.
+  const sceneTask = registerTask("painting desktop", { timeout: 12000 });
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+  if (!ctx) { sceneTask.complete(); return; }
 
   let cursorOn = true;
   let visible = false;
@@ -417,6 +421,7 @@ function setUpDesktop(canvas) {
   }
 
   paint();
+  sceneTask.complete();
 
   new MutationObserver(paint).observe(document.documentElement, {
     attributes: true,

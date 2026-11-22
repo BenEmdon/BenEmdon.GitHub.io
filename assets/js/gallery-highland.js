@@ -47,9 +47,13 @@
   no timers.
 */
 
+import { registerTask } from "./boot.js?v=20261122o";
 (() => {
+  // The scene's first paint is loader work: the task
+  // registers here and completes on that paint, below.
+  const sceneTask = registerTask("painting highland", { timeout: 12000 });
   const canvas = document.querySelector('[data-gallery="highland"]');
-  if (!canvas) return;
+  if (!canvas) { sceneTask.complete(); return; }
   const ctx = canvas.getContext("2d");
 
   const W = 120;
@@ -573,6 +577,7 @@
   buildGrid();
   buildLadders();
   paintStill();
+  sceneTask.complete();
   frame();
 
   // A theme swap re-points the slots at the other palette and repaints.

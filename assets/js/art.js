@@ -20,7 +20,7 @@
 
 import { createThemeScene } from "./theme-scene.js";
 import { animateWordmark, setUpStaticWordmark } from "./wordmark.js";
-import { runBoot } from "./boot.js?v=20261122n";
+import { runBoot } from "./boot.js?v=20261122o";
 
 /* ---------- theme ---------- */
 
@@ -648,14 +648,28 @@ setUpKeys();
 runBoot(
   [
     {
+      // The gallery modules register their own per-scene
+      // tasks with the loader where they paint (the
+      // gallery-*.js modules), so this aggregate entry is
+      // for the boot screen only: runBoot does not register
+      // the same work a second time.
       label: "painting gallery scenes",
       promise: galleryTask,
+      selfReports: true,
       format: (ms) => `${Math.round(ms)} ms`,
     },
     {
       label: "syncing clock",
       promise: clockTask,
       format: (r) => r.value,
+    },
+    // A line for work nobody loads: the fonts arrive with
+    // the page itself, so the line says so instead of
+    // wearing an invented figure.
+    {
+      label: "self-hosted fonts",
+      promise: Promise.resolve(),
+      format: () => "loaded statically",
     },
   ],
   { t0: bootT0 }
