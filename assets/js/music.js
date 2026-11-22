@@ -2353,14 +2353,16 @@ function gridEdit(ch, step, midi) {
       notes.push(fresh);
     }
     // A channel is one voice, but a voice may sound a chord:
-    // notes that start together are partners, and a new span
-    // never cuts a partner that shares its first step. Anything
-    // else under the new span is cut back or removed, and the
-    // new note stops at the next one.
+    // notes at different pitches may overlap freely, so the
+    // overlap cleanup and the next-note clamp below only apply
+    // to notes at the same pitch as the new one. Same-pitch
+    // conflicts under the new span are cut back or removed, and
+    // the new note stops at the next same-pitch note.
     const s = fresh.step, e = fresh.step + fresh.len;
     for (let i = notes.length - 1; i >= 0; i--) {
       const n = notes[i];
       if (n === fresh) continue;
+      if (n.midi !== fresh.midi) continue;
       if (n.step === s) continue;
       if (n.step < e && n.step + n.len > s) {
         if (n.step >= s) notes.splice(i, 1);
@@ -2368,7 +2370,7 @@ function gridEdit(ch, step, midi) {
       }
     }
     const next = notes
-      .filter((n) => n !== fresh && n.step > s)
+      .filter((n) => n !== fresh && n.midi === fresh.midi && n.step > s)
       .sort((a, b) => a.step - b.step)[0];
     if (next && fresh.step + fresh.len > next.step) {
       fresh.len = Math.max(1, next.step - fresh.step);
