@@ -1133,7 +1133,28 @@ function scheduleChip(ctx, out, kit, n, t, dur) {
   osc.stop(t + dur + 0.05);
 }
 
-function scheduleSample(ctx, outs, n, t, dur) {
+/* ----- one song piano cap ----- */
+
+// Battle! (Champion Cynthia) is the one song whose piano ring
+// is capped. Its figure pulses: eighth-note strikes, about
+// 0.16 s each, every four to six steps (0.32 to 0.49 s), and
+// under the long-press ring every strike rings for the full
+// 3.6 s of the recording, so as many as nine rings sound at
+// once and the figure smears into a wash. There the ring is
+// released 0.25 s after the written note ends instead: a
+// pulse is done by about 0.41 s, inside the usual six-step
+// period, and only the quiet end of the fade overlaps the
+// tightest four-step pairs. The cap keys on the header line
+// the song carries in its own text, so it follows the song
+// through text and grid edits and reaches no other song.
+// The same @11 piano serves every song in the table; the
+// slow songs, Snowpoint included, keep the full ring.
+function pianoRingCap(song) {
+  return song.header.some((l) => l.includes("Champion Cynthia"))
+    ? 0.25 : null;
+}
+
+function scheduleSample(ctx, outs, n, t, dur, ringCap = null) {
   const inst = INSTRUMENTS[n.inst];
   const set = sampleSets.get(n.inst);
   if (!set || !set.length) return;
@@ -1164,9 +1185,19 @@ function scheduleSample(ctx, outs, n, t, dur) {
     // 0.12 s keeps a sample that was trimmed before it fully
     // decayed from clicking off.
     const ringEnd = t + buf.duration / rate;
-    p.setValueAtTime(peak, Math.max(t + 0.008, ringEnd - 0.12));
-    p.linearRampToValueAtTime(0, ringEnd);
-    stopAt = ringEnd + 0.1;
+    // In the capped song the fade runs from the written end
+    // of the note across the release instead, so the ring is
+    // done shortly after the note is. A note whose written
+    // end plus the release already runs past the recording
+    // keeps the full ring; the cap only ever shortens.
+    let fadeFrom = ringEnd - 0.12, fadeTo = ringEnd;
+    if (ringCap !== null && t + dur + ringCap < ringEnd) {
+      fadeFrom = t + dur;
+      fadeTo = t + dur + ringCap;
+    }
+    p.setValueAtTime(peak, Math.max(t + 0.008, fadeFrom));
+    p.linearRampToValueAtTime(0, fadeTo);
+    stopAt = fadeTo + 0.1;
   } else {
     p.setValueAtTime(peak, Math.max(t + 0.008, t + dur - 0.07));
     p.linearRampToValueAtTime(0, t + dur + 0.02);
@@ -1230,12 +1261,13 @@ function buildOfflineGraph(song, chanIdxs, sr, beforeChannel) {
     noise: noiseBuffer(ctx),
   };
   const outs = { dry: master, verb };
+  const ringCap = pianoRingCap(song);
   let noiseAccounted = 0;
   for (const ci of chanIdxs) {
     if (beforeChannel) noiseAccounted += beforeChannel(ci, noiseAccounted);
     for (const n of song.channels[ci].notes) {
       const t = n.step * stepDur, d = n.len * stepDur;
-      if (INSTRUMENTS[n.inst].kind === "sample") scheduleSample(ctx, outs, n, t, d);
+      if (INSTRUMENTS[n.inst].kind === "sample") scheduleSample(ctx, outs, n, t, d, ringCap);
       else scheduleChip(ctx, master, kit, n, t, d);
       if (INSTRUMENTS[n.inst].kind === "noise") noiseAccounted++;
     }
