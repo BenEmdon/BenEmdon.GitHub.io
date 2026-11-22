@@ -1416,6 +1416,8 @@ async function startPlayback() {
     player.rendered = await obtainRender(player.song);
     player.dirty = false;
     player.pending = null;
+    renderedKeys = keySetOf(player.song);
+    pendingRenderKeys = null;
     window.__lastRender = player.rendered;
   }
   stopSource();
@@ -1477,6 +1479,9 @@ function maybeSwap() {
   player.src.stop(boundary);
   player.src = src;
   player.rendered = next;
+  renderedKeys = pendingRenderKeys;
+  pendingRenderKeys = null;
+  refreshNoteStates();
   player.seg = { startCtxTime: boundary - next.loopStart, rendered: next, song: player.song };
   setStatus(readyText());
 }
@@ -1503,7 +1508,28 @@ function runPlayhead() {
 function songChanged(parsed, { restart = false } = {}) {
   player.song = parsed;
   player.dirty = true;
-  if (!player.playing) return;
+  if (!player.playing) {
+    // Experiment (live note feedback): while stopped, still
+    // render in the background, so a note wearing the pending
+    // colour clears at the moment its render actually lands,
+    // not when a timer guesses it might have. Samples first:
+    // a render without them would miss every sampled voice.
+    loadSamples().then(() => obtainRender(parsed, { announce: false }))
+      .then((rendered) => {
+        if (player.song === parsed && !player.playing) {
+          player.rendered = rendered;
+          player.dirty = false;
+          player.pending = null;
+          renderedKeys = keySetOf(parsed);
+          pendingRenderKeys = null;
+          window.__lastRender = rendered;
+          refreshNoteStates();
+          setStatus(readyText());
+        }
+      })
+      .catch(() => { /* a failed background render leaves the notes pending, which is the truth */ });
+    return;
+  }
   if (restart) {
     startPlayback();
     return;
@@ -1511,6 +1537,7 @@ function songChanged(parsed, { restart = false } = {}) {
   obtainRender(parsed, { announce: false }).then((rendered) => {
     if (player.song === parsed && player.playing) {
       player.pending = rendered;
+      pendingRenderKeys = keySetOf(parsed);
       window.__lastRender = rendered;
     }
   });
@@ -1598,6 +1625,7 @@ function buildGrid() {
     gridState.letter = song.channels[0]?.letter ?? null;
   }
   for (const ch of song.channels) buildChannelGrid(ch, song);
+  refreshNoteStates();
 }
 
 function buildChannelGrid(ch, song) {
@@ -1753,8 +1781,144 @@ gridEl.addEventListener("click", (event) => {
     currentChannel();
   if (!ch) return;
   gridState.letter = ch.letter;
-  gridEdit(ch, Number(cell.dataset.step), Number(cell.dataset.midi));
+  const step = Number(cell.dataset.step), midi = Number(cell.dataset.midi);
+  const before = ch.notes.find(
+    (n) => n.midi === midi && step >= n.step && step < n.step + n.len);
+  gridEdit(ch, step, midi);
+  // Live feedback: a tap that creates a note (or extends one
+  // into this step) hears that note at once, through the same
+  // voice the render uses. A tap that deletes or shortens a
+  // note stays silent: there is no new note to hear.
+  const after = ch.notes.find(
+    (n) => n.midi === midi && step >= n.step && step < n.step + n.len);
+  if (after && !before) {
+    previewNote(after, 60 / player.song.tempo / 4);
+  }
 });
+
+/* ----- live note feedback + pending colour (experiment) ----- */
+
+// A note's identity, for telling the song being edited apart
+// from the song the current render was made from. Two renders
+// of the same text share every key; any edit moves at least
+// one key.
+const noteKey = (letter, n) =>
+  [letter, n.midi, n.step, n.len, n.inst, n.vol].join("|");
+
+function keySetOf(song) {
+  const set = new Set();
+  if (!song) return set;
+  for (const ch of song.channels) {
+    for (const n of ch.notes) set.add(noteKey(ch.letter, n));
+  }
+  return set;
+}
+
+// The keys inside the render a listener would hear right now
+// (or, while stopped, the render waiting for the next play),
+// and inside the render waiting at the loop boundary. A note
+// in the edited song but not in renderedKeys has not been
+// heard yet: it wears the pending colour until the swap or
+// the background render actually lands. A note in renderedKeys
+// but no longer in the song is still sounding: it shows as a
+// ghost until the same moment. Neither state ever clears on
+// a timer.
+let renderedKeys = null;
+let pendingRenderKeys = null;
+
+function refreshNoteStates() {
+  if (!player.song || !gridEl) return;
+  const cur = keySetOf(player.song);
+  const span = new Map();
+  for (const ch of player.song.channels) {
+    for (const n of ch.notes) {
+      for (let s = n.step; s < n.step + n.len; s++) {
+        span.set(ch.letter + "|" + n.midi + "|" + s, n);
+      }
+    }
+  }
+  const ghost = new Map();
+  if (renderedKeys) {
+    for (const k of renderedKeys) {
+      if (cur.has(k)) continue;
+      const [letter, midi, step, len] = k.split("|");
+      for (let s = Number(step); s < Number(step) + Number(len); s++) {
+        ghost.set(letter + "|" + midi + "|" + s, true);
+      }
+    }
+  }
+  for (const cell of gridEl.querySelectorAll(".cell")) {
+    const id = cell.dataset.letter + "|" + cell.dataset.midi + "|" + cell.dataset.step;
+    const note = span.get(id);
+    const isPending = Boolean(
+      note && renderedKeys && !renderedKeys.has(noteKey(cell.dataset.letter, note)));
+    cell.classList.toggle("c-pending", isPending);
+    cell.classList.toggle("c-ghost", Boolean(!note && ghost.has(id)));
+  }
+}
+
+// One graph builder for every live voice: the same chain the
+// offline render wires (master gain 0.9, one convolver send at
+// 0.5, the same chip kit), so a tapped note sounds like the
+// loop it is about to join. The offline measurement path in
+// the test harness builds the identical graph on an offline
+// context through this same function.
+function buildVoiceGraph(ctx) {
+  const master = ctx.createGain();
+  master.gain.value = 0.9;
+  master.connect(ctx.destination);
+  const verb = ctx.createConvolver();
+  verb.buffer = makeImpulse(ctx, 1.8, 2.8);
+  const verbOut = ctx.createGain();
+  verbOut.gain.value = 0.5;
+  verb.connect(verbOut).connect(master);
+  const kit = {
+    duties: {
+      0.125: dutyWave(ctx, 0.125), 0.25: dutyWave(ctx, 0.25),
+      0.5: dutyWave(ctx, 0.5), 0.75: dutyWave(ctx, 0.75),
+    },
+    tri: triWave(ctx),
+    noise: noiseBuffer(ctx),
+  };
+  return { master, kit, outs: { dry: master, verb } };
+}
+
+let liveGraph = null;
+function ensureLiveGraph() {
+  if (!player.ctx) player.ctx = new AudioContext();
+  if (liveGraph && liveGraph.ctx === player.ctx) return liveGraph;
+  const g = buildVoiceGraph(player.ctx);
+  liveGraph = { ctx: player.ctx, ...g };
+  return liveGraph;
+}
+
+// Play one note now, through the render's own voice functions,
+// unchanged. Works stopped or playing: the loop is a separate
+// buffer source on the same context and never notices.
+async function previewNote(n, stepDur) {
+  await loadSamples();
+  if (!player.ctx) player.ctx = new AudioContext();
+  await player.ctx.resume();
+  const g = ensureLiveGraph();
+  const t = player.ctx.currentTime + 0.01;
+  const dur = Math.max(1, n.len) * stepDur;
+  if (INSTRUMENTS[n.inst].kind === "sample") {
+    scheduleSample(player.ctx, g.outs, n, t, dur);
+  } else {
+    scheduleChip(player.ctx, g.master, g.kit, n, t, dur);
+  }
+}
+
+// Debug and measurement hooks, in the spirit of __lastRender:
+// the verification harness drives the tap path and reads the
+// pending state through here.
+window.__liveNotes = {
+  player, previewNote, ensureLiveGraph, buildVoiceGraph,
+  scheduleSample, scheduleChip, keySetOf, refreshNoteStates,
+  INSTRUMENTS, parseSong, renderSongBest,
+  get renderedKeys() { return renderedKeys; },
+  get pendingRenderKeys() { return pendingRenderKeys; },
+};
 
 /* ----- song adoption ----- */
 
