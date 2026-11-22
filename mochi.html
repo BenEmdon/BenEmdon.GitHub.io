@@ -45,8 +45,8 @@
 
     <link rel="stylesheet" href="assets/css/tokens.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/base.css" />
-    <link rel="stylesheet" href="assets/css/layout.css?v=20261122" />
-    <link rel="stylesheet" href="assets/css/components.css?v=20261114f" />
+    <link rel="stylesheet" href="assets/css/layout.css?v=20261122-nav2" />
+    <link rel="stylesheet" href="assets/css/components.css?v=20261114-nav2" />
 
     <style>
       /* The portrait panel: the same page-rule frame the portrait and the
@@ -181,6 +181,7 @@
   <body>
     <main class="page">
       <header>
+        <p class="experiment-line"><span class="tag">experiment</span></p>
         <h1>
           <span class="sr-only">Mochi</span>
           <pre class="wordmark" aria-hidden="true">███    ███   ██████    ██████   ██   ██  █████
@@ -208,6 +209,12 @@
         </button>
         <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
       </div>
+
+      <nav class="pagenav" aria-label="Pages">
+        <a href="index.html">home</a>
+        <a href="mochi.html" aria-current="page">mochi</a>
+        <a href="music.html">music</a>
+      </nav>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
@@ -444,7 +451,6 @@ function paint() {
       </section>
 
       <footer class="footer">
-        <p><a href="index.html">&larr; back to the home page</a></p>
         <p>
           Ottawa, ON<span class="clock" data-clock hidden
             ><time class="clock__time" data-clock-time
@@ -483,6 +489,12 @@ function paint() {
           </div>
         </div>
       </footer>
+
+      <nav class="pagenav" aria-label="Pages (bottom)">
+        <a href="index.html">home</a>
+        <a href="mochi.html" aria-current="page">mochi</a>
+        <a href="music.html">music</a>
+      </nav>
     </main>
     <div class="keys" id="keys" data-keys hidden>
       <ul class="keys__list">

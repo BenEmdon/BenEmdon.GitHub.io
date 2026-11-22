@@ -77,8 +77,8 @@
 
     <link rel="stylesheet" href="assets/css/tokens.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/base.css" />
-    <link rel="stylesheet" href="assets/css/layout.css?v=20261122" />
-    <link rel="stylesheet" href="assets/css/components.css?v=20261114f" />
+    <link rel="stylesheet" href="assets/css/layout.css?v=20261122-nav2" />
+    <link rel="stylesheet" href="assets/css/components.css?v=20261114-nav2" />
 
     <!-- Visit counting: GoatCounter. No cookies, no fingerprinting, no
          persistent identifier, nothing personal stored, so there is nothing
@@ -118,6 +118,7 @@
   <body>
     <main class="page">
       <header>
+        <p class="experiment-line"><span class="tag">experiment</span></p>
         <h1>
           <span class="sr-only">Ben Emdon</span>
           <pre class="wordmark" aria-hidden="true">██████  ███████ ███    ██     ███████ ███    ███ ██████   ██████  ███    ██
@@ -149,6 +150,12 @@
         </button>
         <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
       </div>
+
+      <nav class="pagenav" aria-label="Pages">
+        <a href="index.html" aria-current="page">home</a>
+        <a href="mochi.html">mochi</a>
+        <a href="music.html">music</a>
+      </nav>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
@@ -444,6 +451,11 @@
         </div>
       </footer>
 
+      <nav class="pagenav" aria-label="Pages (bottom)">
+        <a href="index.html" aria-current="page">home</a>
+        <a href="mochi.html">mochi</a>
+        <a href="music.html">music</a>
+      </nav>
     </main>
 
     <!-- Ships hidden and stays hidden without JS, since every key it lists is

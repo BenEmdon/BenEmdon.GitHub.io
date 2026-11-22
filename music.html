@@ -51,8 +51,8 @@
 
     <link rel="stylesheet" href="assets/css/tokens.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/base.css" />
-    <link rel="stylesheet" href="assets/css/layout.css?v=20261122" />
-    <link rel="stylesheet" href="assets/css/components.css?v=20261114f" />
+    <link rel="stylesheet" href="assets/css/layout.css?v=20261122-nav2" />
+    <link rel="stylesheet" href="assets/css/components.css?v=20261114-nav2" />
     <link rel="stylesheet" href="assets/css/music.css" />
 
     <script>
@@ -74,6 +74,7 @@
   <body>
     <main class="page">
       <header>
+        <p class="experiment-line"><span class="tag">experiment</span></p>
         <h1>
           <span class="sr-only">Music maker</span>
           <pre class="wordmark" aria-hidden="true">███    ███   ██    ██    ██████    █████    ██████
@@ -101,6 +102,12 @@
         </button>
         <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
       </div>
+
+      <nav class="pagenav" aria-label="Pages">
+        <a href="index.html">home</a>
+        <a href="mochi.html">mochi</a>
+        <a href="music.html" aria-current="page">music</a>
+      </nav>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
@@ -296,7 +303,6 @@ the new recording takes over</pre>
       </section>
 
       <footer class="footer">
-        <p><a href="index.html">&larr; back to the home page</a></p>
         <p>
           Ottawa, ON<span class="clock" data-clock hidden
             ><time class="clock__time" data-clock-time
@@ -335,6 +341,12 @@ the new recording takes over</pre>
           </div>
         </div>
       </footer>
+
+      <nav class="pagenav" aria-label="Pages (bottom)">
+        <a href="index.html">home</a>
+        <a href="mochi.html">mochi</a>
+        <a href="music.html" aria-current="page">music</a>
+      </nav>
     </main>
 
     <!-- Ships hidden and stays hidden without JS, since every key it
