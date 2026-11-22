@@ -508,6 +508,74 @@
 
 }
 
+/* ---------- the maker at desktop width: full width, unboxed ---------- */
+
+/* Ben's call, 2026-11-22: on a desktop the maker takes the full
+   width of the screen, and it lives outside any box: an unbounded
+   focus area, not a framed widget. So at desktop widths the
+   working surface (the transport row, the song picker, and the
+   grid panel) leaves the 36rem column and spans the body's whole
+   content width, and the panel's frame (border and panel
+   background) comes off with the column constraint. The panel
+   element itself stays: it is the grid's scroll container, the
+   structure the sticky pins and the view math measure against.
+   Only the visual box goes.
+   The prose stays in the column: the intro line, the status
+   lines, the hint, the details and notes groups, and the whole
+   how-it-works section are untouched, as are the other pages.
+
+   The breakout width is the viewport minus the body's own
+   gutters. 100vw includes the classic scrollbar's width, so the
+   box overshoots the body content width by that much, centred:
+   half a scrollbar into each gutter, where the gutter absorbs
+   it and nothing reaches the viewport edge, so no page-level
+   horizontal scrollbar can appear. The maker's visible content
+   sits inside the panel's own padding, well clear of the
+   overshoot.
+
+   The panel's padding and the sticky pins keep their shipped
+   values. The pins' rendered inset from the panel's edge is the
+   padding plus their left value (measured: 1px border + 12px +
+   12px = 25px in the column layout), so changing either would
+   move the label rail off the spot the design settled on. What
+   changes here is only the frame and the width.
+
+   The threshold is 48rem: below it the column plus gutters
+   nearly fill the screen anyway and the breakout would buy
+   almost nothing; above it the gain is real. On phone widths
+   nothing in here applies and the page is exactly as it was. */
+@media (min-width: 48rem) {
+  .music-transport,
+  .music-group--songs,
+  .music-panel {
+    width: calc(100vw - 2 * var(--page-gutter));
+    margin-left: calc(50% - 50vw + var(--page-gutter));
+  }
+
+  /* The box comes off: no border, no panel background. The
+     padding and the scroll containment are unchanged. */
+  .music-panel {
+    border: none;
+    background: transparent;
+  }
+
+  /* The labels occlude the notes passing beneath them with the
+     panel's background; unboxed, that is the page's own
+     background. */
+  .glabel {
+    background: var(--page-background);
+  }
+
+  /* The section's accent frame hugs the column-width section
+     box; the wide surface passes through where its sides would
+     fall, so on this page at this width the frame stands down.
+     The maker section is the wide one; how-it-works keeps its
+     frame, and below the threshold nothing changes. */
+  .maker.section {
+    outline: none;
+  }
+}
+
 /* The how-it-works explainer runs at the size the rest of this
    page's own text uses (small), not the larger body size: its
    paragraphs and code blocks sit beside 14px working text, and
