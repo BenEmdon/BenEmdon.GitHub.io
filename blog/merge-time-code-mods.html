@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Merge-time code mods · Ben Emdon</title>
+    <meta
+      name="description"
+      content="When landing is a rebase and every commit lives in the cloud, a code mod stops being a pull request. It becomes a script the system runs inside the landing rebase."
+    />
+    <!-- An experiment, kept unlisted while it is reviewed. -->
+    <meta name="robots" content="noindex" />
+
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="../apple-touch-icon.png" sizes="180x180" />
+
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090d16" />
+
+    <script>
+      try {
+        const saved = localStorage.getItem("theme");
+        if (saved === "light" || saved === "dark") {
+          document.documentElement.dataset.theme = saved;
+        }
+      } catch {}
+    </script>
+
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/400.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/700.css" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=block&text=%20%E2%96%80%E2%96%84%E2%96%88%E2%96%91"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="../assets/css/tokens.css?v=20261114" />
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/layout.css?v=20261122" />
+    <link rel="stylesheet" href="../assets/css/components.css?v=20261114f" />
+    <link rel="stylesheet" href="../assets/css/blog.css" />
+
+    <link rel="alternate" type="application/atom+xml" title="Ben Emdon · notes" href="feed.xml" />
+  </head>
+
+  <body>
+    <main class="page">
+      <p><span class="tag">experiment</span></p>
+
+      <header>
+        <p class="sr-only">Ben Emdon</p>
+        <pre class="wordmark" aria-hidden="true">██████  ███████ ███    ██     ███████ ███    ███ ██████   ██████  ███    ██
+██   ██ ██      ████   ██     ██      ████  ████ ██   ██ ██    ██ ████   ██
+██████  █████   ██ ██  ██     █████   ██ ████ ██ ██   ██ ██    ██ ██ ██  ██
+██   ██ ██      ██  ██ ██     ██      ██  ██  ██ ██   ██ ██    ██ ██  ██ ██
+██████  ███████ ██   ████     ███████ ██      ██ ██████   ██████  ██   ████</pre>
+      </header>
+
+      <div class="theme-scene-control theme-scene-control--masthead" data-theme-scene-control>
+        <button
+          class="theme-scene-button"
+          type="button"
+          data-theme-scene-button
+          aria-label="Theme: system. Activate to switch to light"
+        >
+          <canvas
+            class="theme-scene"
+            data-theme-scene
+            width="24"
+            height="12"
+            aria-hidden="true"
+          ></canvas>
+        </button>
+        <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
+      </div>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <header>
+        <p class="blog-kicker"><a href="index.html">notes</a> · agent scale, part 5 of 6</p>
+        <h1 class="blog-title">Merge-time code mods</h1>
+        <p class="blog-meta">October 2026</p>
+      </header>
+
+      <article class="post">
+        <p>
+          <em>This series is about one thing: how we get to the next
+          magnitude of agent scale. This part is written under two
+          assumptions: every change lands by rebasing onto main, and a
+          commit cloud exists, which part 1 argues for.</em>
+        </p>
+
+        <h2>Thesis</h2>
+        <p>
+          When landing is a rebase and every commit lives in the cloud,
+          a code mod stops being a pull request entirely. It becomes a
+          script the system runs inside the landing rebase: once on
+          main, and once on every open change the mod touches. The
+          cross-cutting change lands everywhere at once, and nobody has
+          to rebase out from under it. That is how we get to the next
+          magnitude of agent scale.
+        </p>
+
+        <h2>Where we are</h2>
+        <p>
+          A code mod today is a really large pull request. It goes
+          through the merge queue, someone times it for a quiet window,
+          and everything queued behind it breaks, because a massive
+          cross-cutting change just rewrote the ground every open branch
+          was standing on. Two pieces of the future make that whole
+          shape unnecessary. The first is the commit cloud from part 1:
+          commits are born server-side and stay there, so the system can
+          see and compute over all of them. The second is the landing
+          model: no merge commits, every change merges by rebasing onto
+          the tip of main. Given those two, the code mod problem changes
+          completely.
+        </p>
+
+        <h2>The bet</h2>
+        <ul>
+          <li>
+            <strong>Landing is already a computation the system
+            performs.</strong> Every change lands by rebasing onto
+            main&rsquo;s tip, server-side. A code mod hooks into that
+            computation. When a mod lands, the system runs its script
+            against the current tip and commits the result. No stale
+            snapshot from when the author started work, no quiet window
+            to aim for.
+          </li>
+          <li>
+            <strong>The cloud can see every open change.</strong> It
+            knows each change&rsquo;s diff, so it can select exactly the
+            changes whose files intersect the mod&rsquo;s surface and
+            run the script on each one, in parallel, server-side. Each
+            change is rewritten in place under the same change ID, so
+            stacks and descendants follow automatically.
+          </li>
+          <li>
+            <strong>Then the rebase does the rest.</strong> An open
+            change that already carries the mod rebases onto the new
+            main cleanly, because the mod is present on both sides. The
+            breakage that used to surface one author at a time, over
+            days, mostly never happens.
+          </li>
+          <li>
+            <strong>What cannot be applied cleanly gets flagged on the
+            change itself</strong>, with the script&rsquo;s output
+            attached, and the author or their agent repairs it. That
+            change cannot land until it takes the mod. That is the
+            correct incentive: the mod is not a suggestion, it is part
+            of the ground everyone stands on.
+          </li>
+        </ul>
+        <p>
+          The rebase framing is the stronger one. There is no merge
+          driver analogy, because there are no merge commits. There is
+          no separate fan-out step across branch heads, because the
+          cloud already holds every change. And targeting is by
+          intersection, not by brute force across all branches.
+        </p>
+
+        <h2>What we build</h2>
+        <ol>
+          <li>A landing pipeline where the rebase is a server-side, scriptable step, with code mod scripts as a first-class hook in it.</li>
+          <li>Change selection by intersection: the system computes which open changes a mod touches, from the cloud&rsquo;s view of every change&rsquo;s diff.</li>
+          <li>In-place rewrite semantics with stable change IDs, so applying a mod to an open change does not fork its identity or break its stack.</li>
+          <li>Per-change result reporting, and a repair loop for changes the script cannot apply cleanly, blocking their landing until resolved.</li>
+        </ol>
+
+        <h2>Open questions</h2>
+        <ul>
+          <li>Concurrency: two mods landing minutes apart, selecting overlapping changes. What order do they apply in, and does the second mod&rsquo;s author see the first already applied to their selected changes.</li>
+          <li>Determinism: the script has to produce the same result on main and on an open change, or the present-on-both-sides trick fails and the conflicts come back.</li>
+          <li>Who can ship a mod: a script the system runs across the whole cloud is the highest-impact change class we have. Agent approvals (part 2) gate it, but what review of a script actually looks like is an open design problem.</li>
+          <li>Cost when the intersection is nearly everything: a truly global mod still pays one run per open change. Parallelism helps. It does not make it free.</li>
+        </ul>
+
+        <footer class="post__notes">
+          <p id="fn1">
+            1. Jujutsu CLI reference, <code>jj run</code> (&ldquo;run a
+            command across a set of revisions&rdquo;), the original
+            inspiration for this part:
+            <a href="https://docs.jj-vcs.dev/latest/cli-reference/">docs.jj-vcs.dev</a>
+          </p>
+        </footer>
+      </article>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <nav class="series" aria-label="Series">
+        <p>Part 5 of 6 in the agent scale series.</p>
+        <p class="series__row">
+          <span>Previous: <a href="code-review-for-the-agent-era.html">Code review for the agent era</a></span>
+          <span>Next: <a href="indexing-the-commit-cloud.html">Indexing the commit cloud</a></span>
+          <a href="index.html">All notes</a>
+        </p>
+      </nav>
+
+      <footer class="footer">
+        <p>Ottawa, ON</p>
+        <p><a href="../index.html">benemdon.github.io</a></p>
+      </footer>
+    </main>
+
+    <script type="module" src="../assets/js/blog.js"></script>
+  </body>
+</html>

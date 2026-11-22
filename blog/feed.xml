@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Ben Emdon · notes</title>
+  <subtitle>Notes on source control and code review at agent scale.</subtitle>
+  <link href="https://benemdon.github.io/blog/" rel="alternate" />
+  <link href="https://benemdon.github.io/blog/feed.xml" rel="self" />
+  <id>https://benemdon.github.io/blog/</id>
+  <updated>2026-10-21T00:00:00Z</updated>
+  <author>
+    <name>Ben Emdon</name>
+    <uri>https://benemdon.github.io/</uri>
+  </author>
+
+  <entry>
+    <title>Indexing the commit cloud</title>
+    <link href="https://benemdon.github.io/blog/indexing-the-commit-cloud.html" />
+    <id>https://benemdon.github.io/blog/indexing-the-commit-cloud.html</id>
+    <published>2026-10-21T00:00:00Z</published>
+    <updated>2026-10-21T00:00:00Z</updated>
+    <summary>Agent scale, part 6. In a commit-cloud architecture, every index we need can be computed the moment a commit is created, for every change, merged or not.</summary>
+  </entry>
+
+  <entry>
+    <title>Merge-time code mods</title>
+    <link href="https://benemdon.github.io/blog/merge-time-code-mods.html" />
+    <id>https://benemdon.github.io/blog/merge-time-code-mods.html</id>
+    <published>2026-10-19T00:00:00Z</published>
+    <updated>2026-10-19T00:00:00Z</updated>
+    <summary>Agent scale, part 5. When landing is a rebase and every commit lives in the cloud, a code mod becomes a script the system runs inside the landing rebase, everywhere at once.</summary>
+  </entry>
+
+  <entry>
+    <title>Code review for the agent era</title>
+    <link href="https://benemdon.github.io/blog/code-review-for-the-agent-era.html" />
+    <id>https://benemdon.github.io/blog/code-review-for-the-agent-era.html</id>
+    <published>2026-10-01T00:00:00Z</published>
+    <updated>2026-10-01T00:00:00Z</updated>
+    <summary>Agent scale, part 4. The review surface needs a rebuild around agents and intent: review intent and consequence, not lines.</summary>
+  </entry>
+
+  <entry>
+    <title>Removing the merge queue</title>
+    <link href="https://benemdon.github.io/blog/removing-the-merge-queue.html" />
+    <id>https://benemdon.github.io/blog/removing-the-merge-queue.html</id>
+    <published>2026-10-01T00:00:00Z</published>
+    <updated>2026-10-01T00:00:00Z</updated>
+    <summary>Agent scale, part 3. The merge queue is a human-scale synchronization primitive. Land fast, verify continuously, revert forward.</summary>
+  </entry>
+
+  <entry>
+    <title>Agent approvals</title>
+    <link href="https://benemdon.github.io/blog/agent-approvals.html" />
+    <id>https://benemdon.github.io/blog/agent-approvals.html</id>
+    <published>2026-10-01T00:00:00Z</published>
+    <updated>2026-10-01T00:00:00Z</updated>
+    <summary>Agent scale, part 2. When agents author most changes, approvals become semantic policy plus intent review.</summary>
+  </entry>
+
+  <entry>
+    <title>Solving source control</title>
+    <link href="https://benemdon.github.io/blog/solving-source-control.html" />
+    <id>https://benemdon.github.io/blog/solving-source-control.html</id>
+    <published>2026-10-01T00:00:00Z</published>
+    <updated>2026-10-01T00:00:00Z</updated>
+    <summary>Agent scale, part 1. Source control is solved when every commit, landed or in flight, lives in one place: the commit cloud.</summary>
+  </entry>
+</feed>

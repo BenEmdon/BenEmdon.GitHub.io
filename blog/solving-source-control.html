@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Solving source control · Ben Emdon</title>
+    <meta
+      name="description"
+      content="Source control is solved when every commit, landed or in flight, lives in one place: the commit cloud."
+    />
+    <!-- An experiment, kept unlisted while it is reviewed. -->
+    <meta name="robots" content="noindex" />
+
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="../apple-touch-icon.png" sizes="180x180" />
+
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090d16" />
+
+    <script>
+      try {
+        const saved = localStorage.getItem("theme");
+        if (saved === "light" || saved === "dark") {
+          document.documentElement.dataset.theme = saved;
+        }
+      } catch {}
+    </script>
+
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/400.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/700.css" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=block&text=%20%E2%96%80%E2%96%84%E2%96%88%E2%96%91"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="../assets/css/tokens.css?v=20261114" />
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/layout.css?v=20261122" />
+    <link rel="stylesheet" href="../assets/css/components.css?v=20261114f" />
+    <link rel="stylesheet" href="../assets/css/blog.css" />
+
+    <link rel="alternate" type="application/atom+xml" title="Ben Emdon · notes" href="feed.xml" />
+  </head>
+
+  <body>
+    <main class="page">
+      <p><span class="tag">experiment</span></p>
+
+      <header>
+        <p class="sr-only">Ben Emdon</p>
+        <pre class="wordmark" aria-hidden="true">██████  ███████ ███    ██     ███████ ███    ███ ██████   ██████  ███    ██
+██   ██ ██      ████   ██     ██      ████  ████ ██   ██ ██    ██ ████   ██
+██████  █████   ██ ██  ██     █████   ██ ████ ██ ██   ██ ██    ██ ██ ██  ██
+██   ██ ██      ██  ██ ██     ██      ██  ██  ██ ██   ██ ██    ██ ██  ██ ██
+██████  ███████ ██   ████     ███████ ██      ██ ██████   ██████  ██   ████</pre>
+      </header>
+
+      <div class="theme-scene-control theme-scene-control--masthead" data-theme-scene-control>
+        <button
+          class="theme-scene-button"
+          type="button"
+          data-theme-scene-button
+          aria-label="Theme: system. Activate to switch to light"
+        >
+          <canvas
+            class="theme-scene"
+            data-theme-scene
+            width="24"
+            height="12"
+            aria-hidden="true"
+          ></canvas>
+        </button>
+        <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
+      </div>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <header>
+        <p class="blog-kicker"><a href="index.html">notes</a> · agent scale, part 1 of 6</p>
+        <h1 class="blog-title">Solving source control</h1>
+        <p class="blog-meta">October 2026</p>
+      </header>
+
+      <article class="post">
+        <p>
+          <em>This series is about one thing: how we get to the next
+          magnitude of agent scale.</em>
+        </p>
+
+        <h2>Thesis</h2>
+        <p>
+          Source control is solved when every commit, landed or in
+          flight, lives in one place: the commit cloud. Commits are
+          created server-side, synced to any client that needs them, and
+          computable by the system itself. Git stores history on laptops
+          and negotiates copies between them. We store commits in the
+          cloud and let clients ask questions. That is what gets us to
+          the next magnitude of agent scale.
+        </p>
+
+        <h2>Where we are</h2>
+        <p>
+          We run a massive, fast-moving Git monorepo, kept alive with
+          mirrors, shallow clones, sparse checkouts, and snapshot seeds,
+          each a workaround for a design that assumed every client holds
+          the whole repository. But the deeper problem is where commits
+          live. In git, a commit exists on one machine until someone
+          pushes it. Unpushed work is invisible: CI cannot test it,
+          reviewers cannot see it, an agent cannot pick it up. Work in
+          flight, which is most of the work, and nearly all agent work,
+          lives outside the system that is supposed to manage it. Agents
+          run in sandboxes and spend their time cloning, pushing, and
+          re-cloning just to move commits between the places work
+          happens.
+        </p>
+
+        <h2>The bet</h2>
+        <p>
+          Anthropic&rsquo;s Scion is the proof of the model: clients
+          always online, commits created server-side, everything else
+          derived from that.<sup><a href="#fn1" id="fnref1">1</a></sup>
+          The piece that makes it cohere is the commit cloud.
+        </p>
+        <ul>
+          <li>
+            <strong>Commits are born in the cloud.</strong> A commit is
+            created server-side, as a changeset in an append-only log
+            with content-addressed pointers into blob storage. There is
+            no push step, because there is nowhere to push from. The
+            cloud is the first and only home a commit has.
+          </li>
+          <li>
+            <strong>The cloud holds in-flight work, not just main.</strong>
+            Drafts, stacks, half-finished agent runs: all first-class
+            cloud commits from the moment they exist, visible to CI, to
+            review, and to other agents, subject to access control. A
+            human can hand a change to an agent, or take one over,
+            because the change lives in the cloud and not on
+            someone&rsquo;s laptop.
+          </li>
+          <li>
+            <strong>Clients sync, they do not clone.</strong> A working
+            copy is a sparse, virtualized view over cloud state. Moving
+            machines is a sync. So is an agent sandbox starting up: no
+            multi-gigabyte fetch, no seeds falling behind the tip.
+          </li>
+          <li>
+            <strong>Everything else is derived data over the cloud.</strong>
+            Blame, path history, ancestry, and indexes for search and
+            code intelligence are computed from the cloud&rsquo;s commit
+            log, behind an API. No fully materialized copy of the repo
+            anywhere, and no local repo needed to answer a question
+            about one.
+          </li>
+        </ul>
+        <p>
+          The cloud is also what makes the rest of the agent-scale
+          agenda possible at all. Landing changes without a merge queue
+          needs the server to hold every open change. Running code mods
+          at merge time needs to compute over all of them. Indexing
+          every change the moment it exists needs a creation event to
+          trigger on. None of that works if commits live on laptops. All
+          of it falls out once commits live in the cloud.
+        </p>
+
+        <h2>What we build</h2>
+        <ol>
+          <li>The commit cloud itself: an authoritative, replicated changeset log over content-addressed blob storage, holding landed and in-flight commits alike.</li>
+          <li>Server-side commit creation and a sync protocol: clients sync state instead of pushing objects, with stable change IDs across rewrites.</li>
+          <li>Sparse, virtualized working copies over cloud state, so a checkout or a sandbox startup costs seconds.</li>
+          <li>The source-control API over the cloud, answering blame, history, diff, and ancestry with no local repo, plus access control down to the directory, covering in-flight work too.</li>
+        </ol>
+
+        <h2>Open questions</h2>
+        <ul>
+          <li>The offline story. Git&rsquo;s best property is the one we are giving up. How much local capability do we keep for the plane case, and is the honest answer just &ldquo;less than you want.&rdquo;</li>
+          <li>Sync conflicts: two clients rewriting the same change at once, and what the cloud&rsquo;s conflict semantics should be.</li>
+          <li>Visibility defaults for in-flight work: who can see a draft, and whether agent work defaults to visible or private.</li>
+          <li>The migration path for a monorepo this size, and the long tail of tools that speak git and will keep speaking it for years.</li>
+        </ul>
+
+        <footer class="post__notes">
+          <p id="fn1">
+            1. Anthropic, &ldquo;Redesigning source control&rdquo;
+            (Oct 2026):
+            <a href="https://www.anthropic.com/engineering/redesigning-source-control">anthropic.com/engineering/redesigning-source-control</a>
+            <a href="#fnref1" aria-label="Back to the reference">&#8617;</a>
+          </p>
+        </footer>
+      </article>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <nav class="series" aria-label="Series">
+        <p>Part 1 of 6 in the agent scale series.</p>
+        <p class="series__row">
+          <span>Next: <a href="agent-approvals.html">Agent approvals</a></span>
+          <a href="index.html">All notes</a>
+        </p>
+      </nav>
+
+      <footer class="footer">
+        <p>Ottawa, ON</p>
+        <p><a href="../index.html">benemdon.github.io</a></p>
+      </footer>
+    </main>
+
+    <script type="module" src="../assets/js/blog.js"></script>
+  </body>
+</html>

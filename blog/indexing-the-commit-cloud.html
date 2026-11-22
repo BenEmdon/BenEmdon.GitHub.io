@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Indexing the commit cloud · Ben Emdon</title>
+    <meta
+      name="description"
+      content="In a commit-cloud architecture, every index we need can be computed the moment a commit is created, for every change, merged or not."
+    />
+    <!-- An experiment, kept unlisted while it is reviewed. -->
+    <meta name="robots" content="noindex" />
+
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="../apple-touch-icon.png" sizes="180x180" />
+
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090d16" />
+
+    <script>
+      try {
+        const saved = localStorage.getItem("theme");
+        if (saved === "light" || saved === "dark") {
+          document.documentElement.dataset.theme = saved;
+        }
+      } catch {}
+    </script>
+
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/400.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/700.css" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=block&text=%20%E2%96%80%E2%96%84%E2%96%88%E2%96%91"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="../assets/css/tokens.css?v=20261114" />
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/layout.css?v=20261122" />
+    <link rel="stylesheet" href="../assets/css/components.css?v=20261114f" />
+    <link rel="stylesheet" href="../assets/css/blog.css" />
+
+    <link rel="alternate" type="application/atom+xml" title="Ben Emdon · notes" href="feed.xml" />
+  </head>
+
+  <body>
+    <main class="page">
+      <p><span class="tag">experiment</span></p>
+
+      <header>
+        <p class="sr-only">Ben Emdon</p>
+        <pre class="wordmark" aria-hidden="true">██████  ███████ ███    ██     ███████ ███    ███ ██████   ██████  ███    ██
+██   ██ ██      ████   ██     ██      ████  ████ ██   ██ ██    ██ ████   ██
+██████  █████   ██ ██  ██     █████   ██ ████ ██ ██   ██ ██    ██ ██ ██  ██
+██   ██ ██      ██  ██ ██     ██      ██  ██  ██ ██   ██ ██    ██ ██  ██ ██
+██████  ███████ ██   ████     ███████ ██      ██ ██████   ██████  ██   ████</pre>
+      </header>
+
+      <div class="theme-scene-control theme-scene-control--masthead" data-theme-scene-control>
+        <button
+          class="theme-scene-button"
+          type="button"
+          data-theme-scene-button
+          aria-label="Theme: system. Activate to switch to light"
+        >
+          <canvas
+            class="theme-scene"
+            data-theme-scene
+            width="24"
+            height="12"
+            aria-hidden="true"
+          ></canvas>
+        </button>
+        <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
+      </div>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <header>
+        <p class="blog-kicker"><a href="index.html">notes</a> · agent scale, part 6 of 6</p>
+        <h1 class="blog-title">Indexing the commit cloud</h1>
+        <p class="blog-meta">October 2026</p>
+      </header>
+
+      <article class="post">
+        <p>
+          <em>This series is about one thing: how we get to the next
+          magnitude of agent scale.</em>
+        </p>
+
+        <h2>Thesis</h2>
+        <p>
+          In a commit-cloud architecture, a commit lives on the server
+          the moment it is created. So every index we need, search, code
+          intelligence, blame, can be computed right then, for every
+          change, merged or not. Code intelligence stops being a batch
+          job over main and becomes a property of every commit. That is
+          how we get to the next magnitude of agent scale.
+        </p>
+
+        <h2>Where we are</h2>
+        <p>
+          Our code search leans on Sourcegraph, an external system that
+          has to be fed from the outside. Indexes are built for merged
+          code, on a schedule, by pipelines that live outside source
+          control. The consequences are predictable. Search results lag
+          main. Precise navigation, jump to definition, find references,
+          exists only where an index happened to be generated and
+          uploaded. And open changes, the work actually in flight, get
+          neither. A reviewer looking at an unmerged change is
+          navigating with a stale map. Agents have it worse: they
+          consume code intelligence programmatically, and the index they
+          query describes a repo that no longer exists. We want off
+          Sourcegraph for code search, and swapping in another external
+          indexer bolted onto the side of source control repeats the
+          same structural mistake.
+        </p>
+
+        <h2>The bet</h2>
+        <p>
+          Indexes are derived data. That is the core move in part 1:
+          everything that is not the changeset itself, blame, path
+          history, ancestry, is derived data, computed from the commit,
+          recursively, eagerly or lazily, and cached behind an
+          API.<sup><a href="#fn1" id="fnref1">1</a></sup> The mechanism
+          generalizes past what Anthropic described. The search index
+          is derived data. The SCIP index is derived
+          data.<sup><a href="#fn2" id="fnref2">2</a></sup>
+        </p>
+        <p>
+          In a commit cloud, the commit is born on the server, so index
+          generation starts the moment the commit exists:
+        </p>
+        <ul>
+          <li><strong>Post-commit, not post-merge.</strong> The trigger is commit creation, not landing. Open changes get indexed on the same footing as main.</li>
+          <li><strong>Incremental and content-addressed.</strong> Only the files a change touched get re-indexed. Results are keyed by content, so a rebase or a restack reuses most of the parent&rsquo;s index instead of starting over.</li>
+          <li><strong>Two index families, one mechanism.</strong> A text search index for fast search across any revision, and a SCIP index for precise navigation: jump to definition, find references, the language-server-grade answers that text search cannot fake.</li>
+          <li><strong>Eager where it is hot, lazy where it is cold.</strong> Main and open changes index immediately. Deep history computes on demand and caches.</li>
+        </ul>
+        <p>
+          The payoff lands in review first. Jump to definition on the
+          exact change in front of you, not on last night&rsquo;s main.
+          Then it lands everywhere else: agents planning a change can
+          search the world as it will look with their change applied,
+          because that world already has an index.
+        </p>
+
+        <h2>What we build</h2>
+        <ol>
+          <li>A derived-data indexing service inside source control: post-commit triggers, content-addressed index storage, incremental computation as the default.</li>
+          <li>SCIP generation per change for our main languages, so review tools and editors get precise jump to definition on any revision, merged or not.</li>
+          <li>A search index per revision, owned by source control itself, so code search can target any commit and Sourcegraph can be retired for code search.</li>
+          <li>A freshness policy consumers can rely on: eager indexing for main and open changes, on-demand for cold history, and explicit staleness signals when an index is not ready yet.</li>
+        </ol>
+
+        <h2>Open questions</h2>
+        <ul>
+          <li>Cost and retention: indexing every change is real compute. What is the TTL on indexes for abandoned changes, and who pays for the fan-out.</li>
+          <li>How much index reuse actually survives a rebase. SCIP is compiler-backed, so reuse may be strong for text search and weaker per language for precise indexes.</li>
+          <li>Indexer ownership: per-language SCIP indexers owned centrally by one platform team, or by the language communities that know the compilers.</li>
+          <li>Demand: do users and agents truly search arbitrary revisions, or is main plus open changes enough to cover nearly everything.</li>
+        </ul>
+
+        <footer class="post__notes">
+          <p id="fn1">
+            1. Anthropic, &ldquo;Redesigning source control&rdquo;
+            (Oct 2026), on derived data in Scion:
+            <a href="https://www.anthropic.com/engineering/redesigning-source-control">anthropic.com/engineering/redesigning-source-control</a>
+            <a href="#fnref1" aria-label="Back to the reference">&#8617;</a>
+          </p>
+          <p id="fn2">
+            2. SCIP, the Source Code Intelligence Protocol, a
+            language-agnostic format for precise code navigation (go to
+            definition, find references):
+            <a href="https://deepwiki.com/sourcegraph/scip">deepwiki.com/sourcegraph/scip</a>
+            <a href="#fnref2" aria-label="Back to the reference">&#8617;</a>
+          </p>
+        </footer>
+      </article>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <nav class="series" aria-label="Series">
+        <p>Part 6 of 6 in the agent scale series. The series ends here, for now.</p>
+        <p class="series__row">
+          <span>Previous: <a href="merge-time-code-mods.html">Merge-time code mods</a></span>
+          <a href="index.html">All notes</a>
+        </p>
+      </nav>
+
+      <footer class="footer">
+        <p>Ottawa, ON</p>
+        <p><a href="../index.html">benemdon.github.io</a></p>
+      </footer>
+    </main>
+
+    <script type="module" src="../assets/js/blog.js"></script>
+  </body>
+</html>

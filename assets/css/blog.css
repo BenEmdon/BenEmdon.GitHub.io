@@ -1,0 +1,129 @@
+/*
+  Blog experiment: Ben's notes, a room in the same house. Everything here
+  only adds what the shared sheets do not already say: the experiment
+  badge, a text masthead line, and prose rhythm for long-form posts.
+  Type, palette, and the --step grid all come from tokens.css.
+*/
+
+/* The experiment badge: mono, uppercase, accent ink, hairline frame.
+   The same tag the earlier aria-lens preview wore. Experiment previews
+   carry it; production never does. */
+.tag {
+  display: inline-block;
+  font-size: var(--text-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-color);
+  border: 1px solid var(--page-rule);
+  padding-inline: 1ch;
+}
+
+/* ---------- masthead line ---------- */
+
+.blog-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--step);
+  color: var(--muted-color);
+  font-size: var(--text-small);
+}
+
+/* ---------- post header ---------- */
+
+.blog-kicker {
+  color: var(--muted-color);
+  font-size: var(--text-small);
+  margin-block-end: var(--step-half);
+}
+
+.blog-title {
+  color: var(--page-color);
+  font-size: var(--text-body);
+}
+
+.blog-meta {
+  color: var(--muted-color);
+  font-size: var(--text-small);
+  margin-block-start: var(--step-half);
+}
+
+/* ---------- prose ---------- */
+
+/* One step between blocks, two before a heading: the same grid the rest
+   of the site keeps, just applied inside an article. */
+.post > * + * {
+  margin-block-start: var(--step);
+}
+
+.post h2 {
+  color: var(--page-color);
+  margin-block-start: var(--step-2);
+}
+
+.post > h2:first-child {
+  margin-block-start: 0;
+}
+
+.post ul,
+.post ol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--step-half);
+}
+
+.post li {
+  padding-inline-start: 3ch;
+  position: relative;
+}
+
+.post ul li::before {
+  content: "-";
+  position: absolute;
+  inset-inline-start: 0;
+  color: var(--muted-color);
+}
+
+.post ol {
+  counter-reset: post-item;
+}
+
+.post ol li::before {
+  counter-increment: post-item;
+  content: counter(post-item) ".";
+  position: absolute;
+  inset-inline-start: 0;
+  color: var(--muted-color);
+}
+
+.post sup a {
+  text-decoration: none;
+}
+
+/* Footnotes: small, muted, set off by the page rule. */
+.post__notes {
+  border-top: 1px solid var(--page-rule);
+  padding-block-start: var(--step);
+  font-size: var(--text-small);
+  color: var(--muted-color);
+}
+
+.post__notes > * + * {
+  margin-block-start: var(--step-half);
+}
+
+/* ---------- series nav ---------- */
+
+.series {
+  font-size: var(--text-small);
+  color: var(--muted-color);
+}
+
+.series > * + * {
+  margin-block-start: var(--step-half);
+}
+
+.series__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--step);
+}

@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Code review for the agent era · Ben Emdon</title>
+    <meta
+      name="description"
+      content="The pull request UI was built for humans reading diffs line by line. The review surface needs a rebuild around agents and intent."
+    />
+    <!-- An experiment, kept unlisted while it is reviewed. -->
+    <meta name="robots" content="noindex" />
+
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="../apple-touch-icon.png" sizes="180x180" />
+
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090d16" />
+
+    <script>
+      try {
+        const saved = localStorage.getItem("theme");
+        if (saved === "light" || saved === "dark") {
+          document.documentElement.dataset.theme = saved;
+        }
+      } catch {}
+    </script>
+
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/400.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/700.css" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=block&text=%20%E2%96%80%E2%96%84%E2%96%88%E2%96%91"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="../assets/css/tokens.css?v=20261114" />
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/layout.css?v=20261122" />
+    <link rel="stylesheet" href="../assets/css/components.css?v=20261114f" />
+    <link rel="stylesheet" href="../assets/css/blog.css" />
+
+    <link rel="alternate" type="application/atom+xml" title="Ben Emdon · notes" href="feed.xml" />
+  </head>
+
+  <body>
+    <main class="page">
+      <p><span class="tag">experiment</span></p>
+
+      <header>
+        <p class="sr-only">Ben Emdon</p>
+        <pre class="wordmark" aria-hidden="true">██████  ███████ ███    ██     ███████ ███    ███ ██████   ██████  ███    ██
+██   ██ ██      ████   ██     ██      ████  ████ ██   ██ ██    ██ ████   ██
+██████  █████   ██ ██  ██     █████   ██ ████ ██ ██   ██ ██    ██ ██ ██  ██
+██   ██ ██      ██  ██ ██     ██      ██  ██  ██ ██   ██ ██    ██ ██  ██ ██
+██████  ███████ ██   ████     ███████ ██      ██ ██████   ██████  ██   ████</pre>
+      </header>
+
+      <div class="theme-scene-control theme-scene-control--masthead" data-theme-scene-control>
+        <button
+          class="theme-scene-button"
+          type="button"
+          data-theme-scene-button
+          aria-label="Theme: system. Activate to switch to light"
+        >
+          <canvas
+            class="theme-scene"
+            data-theme-scene
+            width="24"
+            height="12"
+            aria-hidden="true"
+          ></canvas>
+        </button>
+        <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
+      </div>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <header>
+        <p class="blog-kicker"><a href="index.html">notes</a> · agent scale, part 4 of 6</p>
+        <h1 class="blog-title">Code review for the agent era</h1>
+        <p class="blog-meta">October 2026</p>
+      </header>
+
+      <article class="post">
+        <p>
+          <em>This series is about one thing: how we get to the next
+          magnitude of agent scale.</em>
+        </p>
+
+        <h2>Thesis</h2>
+        <p>
+          The pull request UI was built for humans reading diffs line by
+          line. The review surface needs a rebuild around agents and
+          intent. That rebuild is part of how we get to the next
+          magnitude of agent scale.
+        </p>
+
+        <h2>Where we are</h2>
+        <p>
+          Our code review tool is a bet that the GitHub pull request UX
+          is not the end state of code review. But a prettier diff is
+          still a diff. Reviewers still scroll lines, still reconstruct
+          intent from code, still approve changes they half-understood.
+          We changed the surface; we have not changed the job.
+        </p>
+
+        <h2>The bet</h2>
+        <p>
+          Flip the review. The agent that wrote the change explains it
+          first: what it intended, what it considered, what it ruled
+          out. The AI reviewer runs on every change, always, and its
+          findings are part of the change record. Humans review intent
+          and consequence, not lines:
+        </p>
+        <ul>
+          <li>Is this the right change?</li>
+          <li>Does it do what it claims?</li>
+          <li>What is the blast radius, and what is the rollback story?</li>
+        </ul>
+        <p>
+          And the diff itself stops being text. <strong>Semantic
+          diffs</strong> show what changed in meaning: behavior changes
+          surfaced, mechanical changes collapsed. A rename across fifty
+          files should read as one line, not fifty. A subtle behavior
+          change buried in a large diff should be impossible to miss.
+        </p>
+        <p>
+          This closes the loop with the rest of the series. Solved
+          source control gives every tool cheap, programmatic access to
+          history and blame, so the review surface can answer &ldquo;has
+          this pattern caused incidents before&rdquo; inline. Agent
+          approvals give low-risk, well-understood changes a path that
+          clears without a human in the loop. The review surface is
+          where the remaining human judgment gets spent, and only there.
+        </p>
+
+        <h2>What we build</h2>
+        <ol>
+          <li>A review surface where the authoring agent&rsquo;s intent summary is the primary artifact and the code is secondary.</li>
+          <li>Always-on AI first pass, with findings attached to the change record.</li>
+          <li>Semantic diff views: behavior up, mechanics down.</li>
+          <li>A tight loop into agent approvals: changes the system understands clear without waiting on a person.</li>
+        </ol>
+
+        <h2>Open questions</h2>
+        <ul>
+          <li>How much context a reviewer actually needs to judge intent, and how we keep the intent summary honest.</li>
+          <li>When a human must still read the code, and how the surface makes that call instead of the reviewer guessing.</li>
+          <li>Whether intent review composes across stacked changes, or whether stacks need their own review shape.</li>
+        </ul>
+      </article>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <nav class="series" aria-label="Series">
+        <p>Part 4 of 6 in the agent scale series.</p>
+        <p class="series__row">
+          <span>Previous: <a href="removing-the-merge-queue.html">Removing the merge queue</a></span>
+          <span>Next: <a href="merge-time-code-mods.html">Merge-time code mods</a></span>
+          <a href="index.html">All notes</a>
+        </p>
+      </nav>
+
+      <footer class="footer">
+        <p>Ottawa, ON</p>
+        <p><a href="../index.html">benemdon.github.io</a></p>
+      </footer>
+    </main>
+
+    <script type="module" src="../assets/js/blog.js"></script>
+  </body>
+</html>

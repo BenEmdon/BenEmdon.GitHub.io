@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Notes · Ben Emdon</title>
+    <meta
+      name="description"
+      content="Notes on source control and code review at agent scale: a series in six parts, written October 2026."
+    />
+    <!-- An experiment, kept unlisted while it is reviewed. -->
+    <meta name="robots" content="noindex" />
+
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="../apple-touch-icon.png" sizes="180x180" />
+
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090d16" />
+
+    <!-- Same pre-paint theme script as the home page, so a saved theme
+         applies here too and never flashes the other one. -->
+    <script>
+      try {
+        const saved = localStorage.getItem("theme");
+        if (saved === "light" || saved === "dark") {
+          document.documentElement.dataset.theme = saved;
+        }
+      } catch {}
+    </script>
+
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/400.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/700.css" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=block&text=%20%E2%96%80%E2%96%84%E2%96%88%E2%96%91"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="../assets/css/tokens.css?v=20261114" />
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/layout.css?v=20261122" />
+    <link rel="stylesheet" href="../assets/css/components.css?v=20261114f" />
+    <link rel="stylesheet" href="../assets/css/blog.css" />
+
+    <link rel="alternate" type="application/atom+xml" title="Ben Emdon · notes" href="feed.xml" />
+  </head>
+
+  <body>
+    <main class="page">
+      <p><span class="tag">experiment</span></p>
+
+      <header>
+        <p class="sr-only">Ben Emdon</p>
+        <pre class="wordmark" aria-hidden="true">██████  ███████ ███    ██     ███████ ███    ███ ██████   ██████  ███    ██
+██   ██ ██      ████   ██     ██      ████  ████ ██   ██ ██    ██ ████   ██
+██████  █████   ██ ██  ██     █████   ██ ████ ██ ██   ██ ██    ██ ██ ██  ██
+██   ██ ██      ██  ██ ██     ██      ██  ██  ██ ██   ██ ██    ██ ██  ██ ██
+██████  ███████ ██   ████     ███████ ██      ██ ██████   ██████  ██   ████</pre>
+      </header>
+
+      <div class="theme-scene-control theme-scene-control--masthead" data-theme-scene-control>
+        <button
+          class="theme-scene-button"
+          type="button"
+          data-theme-scene-button
+          aria-label="Theme: system. Activate to switch to light"
+        >
+          <canvas
+            class="theme-scene"
+            data-theme-scene
+            width="24"
+            height="12"
+            aria-hidden="true"
+          ></canvas>
+        </button>
+        <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
+      </div>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <section class="section">
+        <h1 class="section__title" id="notes"><span class="prompt" aria-hidden="true">$</span> notes</h1>
+        <p>
+          Notes on source control and code review at agent scale. One
+          series so far, in six parts, written October 2026. It starts
+          from a simple observation: the tools were designed for humans
+          moving commits and reading diffs, and agents are about to move
+          and read far more of both.
+        </p>
+        <p class="muted">
+          Subscribe: <a href="feed.xml">Atom feed</a>. No comments; replies
+          by email are welcome.
+        </p>
+        <nav class="links links--posts" aria-label="Posts in the agent scale series">
+          <a href="solving-source-control.html">
+            <span class="links__key">1 · Solving source control</span>
+            <span class="links__value">Every commit, landed or in flight, in one place: the commit cloud.</span>
+          </a>
+          <a href="agent-approvals.html">
+            <span class="links__key">2 · Agent approvals</span>
+            <span class="links__value">Approvals become semantic policy plus intent review, not a flat human gate.</span>
+          </a>
+          <a href="removing-the-merge-queue.html">
+            <span class="links__key">3 · Removing the merge queue</span>
+            <span class="links__value">Land fast, verify continuously, revert forward: the deploy gate is the real quality bar.</span>
+          </a>
+          <a href="code-review-for-the-agent-era.html">
+            <span class="links__key">4 · Code review for the agent era</span>
+            <span class="links__value">Review intent and consequence, not lines: the diff stops being text.</span>
+          </a>
+          <a href="merge-time-code-mods.html">
+            <span class="links__key">5 · Merge-time code mods</span>
+            <span class="links__value">A code mod becomes a script the system runs inside the landing rebase, everywhere at once.</span>
+          </a>
+          <a href="indexing-the-commit-cloud.html">
+            <span class="links__key">6 · Indexing the commit cloud</span>
+            <span class="links__value">Search and code intelligence computed at commit time, for every change, merged or not.</span>
+          </a>
+        </nav>
+      </section>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <footer class="footer">
+        <p>Ottawa, ON</p>
+        <p><a href="../index.html">benemdon.github.io</a></p>
+      </footer>
+    </main>
+
+    <script type="module" src="../assets/js/blog.js"></script>
+  </body>
+</html>

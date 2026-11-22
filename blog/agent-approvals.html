@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Agent approvals · Ben Emdon</title>
+    <meta
+      name="description"
+      content="Approvals were designed for humans reading lines of code. When agents author most changes, approvals have to become semantic policy plus intent review."
+    />
+    <!-- An experiment, kept unlisted while it is reviewed. -->
+    <meta name="robots" content="noindex" />
+
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="../apple-touch-icon.png" sizes="180x180" />
+
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090d16" />
+
+    <script>
+      try {
+        const saved = localStorage.getItem("theme");
+        if (saved === "light" || saved === "dark") {
+          document.documentElement.dataset.theme = saved;
+        }
+      } catch {}
+    </script>
+
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/400.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/700.css" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=block&text=%20%E2%96%80%E2%96%84%E2%96%88%E2%96%91"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="../assets/css/tokens.css?v=20261114" />
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="../assets/css/layout.css?v=20261122" />
+    <link rel="stylesheet" href="../assets/css/components.css?v=20261114f" />
+    <link rel="stylesheet" href="../assets/css/blog.css" />
+
+    <link rel="alternate" type="application/atom+xml" title="Ben Emdon · notes" href="feed.xml" />
+  </head>
+
+  <body>
+    <main class="page">
+      <p><span class="tag">experiment</span></p>
+
+      <header>
+        <p class="sr-only">Ben Emdon</p>
+        <pre class="wordmark" aria-hidden="true">██████  ███████ ███    ██     ███████ ███    ███ ██████   ██████  ███    ██
+██   ██ ██      ████   ██     ██      ████  ████ ██   ██ ██    ██ ████   ██
+██████  █████   ██ ██  ██     █████   ██ ████ ██ ██   ██ ██    ██ ██ ██  ██
+██   ██ ██      ██  ██ ██     ██      ██  ██  ██ ██   ██ ██    ██ ██  ██ ██
+██████  ███████ ██   ████     ███████ ██      ██ ██████   ██████  ██   ████</pre>
+      </header>
+
+      <div class="theme-scene-control theme-scene-control--masthead" data-theme-scene-control>
+        <button
+          class="theme-scene-button"
+          type="button"
+          data-theme-scene-button
+          aria-label="Theme: system. Activate to switch to light"
+        >
+          <canvas
+            class="theme-scene"
+            data-theme-scene
+            width="24"
+            height="12"
+            aria-hidden="true"
+          ></canvas>
+        </button>
+        <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
+      </div>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <header>
+        <p class="blog-kicker"><a href="index.html">notes</a> · agent scale, part 2 of 6</p>
+        <h1 class="blog-title">Agent approvals</h1>
+        <p class="blog-meta">October 2026</p>
+      </header>
+
+      <article class="post">
+        <p>
+          <em>This series is about one thing: how we get to the next
+          magnitude of agent scale.</em>
+        </p>
+
+        <h2>Thesis</h2>
+        <p>
+          Approvals were designed for humans reading lines of code. When
+          agents author most changes, approvals have to become semantic
+          policy plus intent review. That shift is what gets us to the
+          next magnitude of agent scale.
+        </p>
+
+        <h2>Where we are</h2>
+        <p>
+          Every change funnels through the same human review gate no
+          matter what it is. A comment-only cleanup and a change to
+          sensitive logic get the same treatment. Reviewers drown,
+          agents wait, and the gate teaches us nothing about actual
+          risk. We are spending our scarcest resource, human attention,
+          completely flat.
+        </p>
+
+        <h2>The bet</h2>
+        <p>
+          The unit of approval should be what a change <em>means</em>,
+          not who wrote it. Anthropic&rsquo;s review tooling already
+          expresses this:<sup><a href="#fn1" id="fnref1">1</a></sup>
+          semantic constraints that separate comment-only changes from
+          sensitive logical ones, so human reviewers focus on the
+          consequential set. I want to take it further:
+        </p>
+        <ul>
+          <li>
+            <strong>Approval policy as code.</strong> Rules over the
+            change itself: what paths it touches, what behavior it
+            alters, what risk class it falls in. Directory-level access
+            control baked into source control, so sensitive code carries
+            stronger requirements by default.
+          </li>
+          <li>
+            <strong>The AI reviewer as a first-class approver</strong>
+            for low-risk classes. This has been the open question on my
+            site for years: where does AI code review earn enough trust
+            to approve a change. My answer now: in narrow, measured risk
+            classes, with sampled human audit keeping it honest. Trust
+            is earned per class and revoked on evidence.
+          </li>
+          <li>
+            <strong>Humans review intent, not lines.</strong> Does this
+            change do what the author meant? Should it exist at all?
+            What is the blast radius and the rollback story? That is the
+            only review that still needs a person.
+          </li>
+        </ul>
+        <p>
+          None of this lowers the bar. It moves the bar to where the
+          risk actually is, and it stops pretending a tired human
+          skimming a 400-line diff was ever a safety property.
+        </p>
+
+        <h2>What we build</h2>
+        <ol>
+          <li>Approval policies expressed as semantic rules over the change, replacing blanket human gates.</li>
+          <li>The AI reviewer approving low-risk classes outright, with continuous calibration against human judgment and a permanent audit sample.</li>
+          <li>Human review reserved for intent and consequence, with the tooling shaped around that job.</li>
+          <li>Rich access control in source control itself, so the most sensitive paths are protected without losing the monorepo.</li>
+        </ol>
+
+        <h2>Open questions</h2>
+        <ul>
+          <li>How trust is measured, grown, and revoked, and who owns that loop.</li>
+          <li>Accountability: who answers when an agent-approved change breaks something.</li>
+          <li>Keeping the audit loop cheap enough to run forever, because the day it stops, the trust decays.</li>
+        </ul>
+
+        <footer class="post__notes">
+          <p id="fn1">
+            1. Anthropic, &ldquo;Redesigning source control&rdquo;
+            (Oct 2026):
+            <a href="https://www.anthropic.com/engineering/redesigning-source-control">anthropic.com/engineering/redesigning-source-control</a>
+            <a href="#fnref1" aria-label="Back to the reference">&#8617;</a>
+          </p>
+        </footer>
+      </article>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <nav class="series" aria-label="Series">
+        <p>Part 2 of 6 in the agent scale series.</p>
+        <p class="series__row">
+          <span>Previous: <a href="solving-source-control.html">Solving source control</a></span>
+          <span>Next: <a href="removing-the-merge-queue.html">Removing the merge queue</a></span>
+          <a href="index.html">All notes</a>
+        </p>
+      </nav>
+
+      <footer class="footer">
+        <p>Ottawa, ON</p>
+        <p><a href="../index.html">benemdon.github.io</a></p>
+      </footer>
+    </main>
+
+    <script type="module" src="../assets/js/blog.js"></script>
+  </body>
+</html>
