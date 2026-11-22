@@ -4,7 +4,7 @@ import { createThemeScene } from "./theme-scene.js";
 import { announceBootTask, whenBootTask } from "./boot-tasks.js";
 
 const THEME_KEY = "theme";
-// The cycle the toggle walks. "system" is where everyone starts, and it is
+// The cycle the scene control walks. "system" is where everyone starts, and it is
 // less a stored preference than the absence of one: in that mode nothing is
 // pinned and color-scheme follows the OS.
 const MODES = ["system", "light", "dark"];
@@ -214,12 +214,42 @@ function setUp() {
 
   /* ---------- theme ---------- */
 
-  const toggle = document.querySelector("[data-theme-toggle]");
-  const themeLabel = toggle.querySelector("[data-theme-label]");
+  const sceneButton = document.querySelector("[data-theme-scene-button]");
+  const sceneCurrent = document.querySelector("[data-theme-scene-current]");
   let mode = storedMode();
+  let sceneCycleStarted = false;
+  // The mode word beside the scene is a tap's receipt, not a permanent
+  // readout: a tap shows it, it stays for about 2.5 seconds, then it
+  // goes away and the control is the picture alone again. The theme
+  // itself does not revert when the word hides, and a fresh tap
+  // restarts the window.
+  let sceneRevealed = false;
+  let sceneRevealTimer;
 
   const resolvedDark = () =>
     mode === "dark" || (mode === "system" && systemDark.matches);
+
+  function persistMode() {
+    try {
+      localStorage.setItem(THEME_KEY, mode);
+    } catch {
+      // Private-mode Safari refuses writes; the choice still holds this visit.
+    }
+  }
+
+  // Where a scene click goes. The plain cycle is light, dark, system,
+  // and back to light, which is nextMode's order read from light. One
+  // exception: the first scene click out of system mode jumps to the
+  // opposite of whatever system is currently resolving to, so the
+  // click always lands on a visible change. After that first jump the
+  // plain cycle runs from wherever it landed, even when the cycle
+  // comes back around to system.
+  function nextSceneMode() {
+    if (!sceneCycleStarted && mode === "system") {
+      return resolvedDark() ? "light" : "dark";
+    }
+    return nextMode(mode);
+  }
 
   // Only light and dark pin [data-theme]. System mode removes it, which is the
   // same state the inline script in <head> leaves the page in before first
@@ -231,34 +261,45 @@ function setUp() {
       document.documentElement.dataset.theme = mode;
     }
 
-    const resolved = systemDark.matches ? "dark" : "light";
-    // The toggle carries the theme scene now, so the mode word lives in its
-    // own span; setting textContent on the button would wipe the canvas.
-    if (themeLabel) themeLabel.textContent = mode;
-    else toggle.textContent = mode;
-    toggle.setAttribute(
+    // The scene carries the current mode as its word while the post-tap
+    // window is open, and the button's name says where a click goes
+    // next, worked out live so the system first-click rule is in the
+    // name, word showing or not.
+    if (sceneCurrent) {
+      sceneCurrent.textContent = mode;
+      sceneCurrent.hidden = !sceneRevealed;
+    }
+    sceneButton?.setAttribute(
       "aria-label",
-      `Theme: ${mode === "system" ? `system (${resolved})` : mode}. ` +
-        `Switch to ${nextMode(mode)}.`
+      `Theme: ${mode}. Activate to switch to ${nextSceneMode()}`
     );
 
     // The dither reads its two colours back out of CSS, so it has to be
     // redrawn whenever the resolved theme could have moved under it.
     repaints.forEach((repaint) => repaint());
 
-    // The toggle's little landscape re-lights to match: day in light,
-    // night in dark, stepped cell by cell unless reduced motion is on.
+    // The little landscape re-lights to match: day in light, night in
+    // dark, stepped cell by cell unless reduced motion is on.
     themeScene?.setDark(resolvedDark(), reduced.matches);
   }
 
-  toggle.addEventListener("click", () => {
-    mode = nextMode(mode);
-    try {
-      localStorage.setItem(THEME_KEY, mode);
-    } catch {
-      // Private-mode Safari refuses writes; the choice still holds this visit.
-    }
+  // The picture is the control. The swap is whole and instant, and the
+  // button is never hidden or replaced, so focus stays on it.
+  sceneButton?.addEventListener("click", () => {
+    mode = nextSceneMode();
+    sceneCycleStarted = true;
+    sceneRevealed = true;
+    persistMode();
     applyMode();
+    // The word is a receipt with a short life: restart its window on
+    // every tap, then let applyMode hide it when the window closes.
+    // Hiding only flips the label's hidden flag; the mode, and the
+    // scene lit for it, stay as the tap left them.
+    clearTimeout(sceneRevealTimer);
+    sceneRevealTimer = setTimeout(() => {
+      sceneRevealed = false;
+      applyMode();
+    }, 2500);
   });
 
   // Only in system mode does the OS still get a vote.
@@ -342,7 +383,7 @@ function setUp() {
     if (Number.isInteger(digit) && digit >= 1 && digit <= sections.length) {
       jump(sections[digit - 1]);
     } else if (event.key === "t") {
-      toggle.click();
+      sceneButton?.click();
     } else if (event.key === "?") {
       showKeys(keys.hidden);
     } else if (event.key === "Escape") {

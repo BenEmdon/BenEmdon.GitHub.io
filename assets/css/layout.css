@@ -337,10 +337,71 @@
   font: inherit;
 }
 
-/* The theme scene sits beside the toggle, not inside it (Ben's call,
-   2026-11-20): a 24x12 landscape at 2px cells, exactly one --step tall
-   so the footer row keeps its rhythm. It is decoration, not a control;
-   the toggle beside it stays a plain text button. */
+/* The theme scene is the theme control (Ben's call, 2026-11-22): a
+   24x12 landscape at 2px cells, exactly one --step tall. It sits in the
+   masthead of every page, anchored to the right edge with its word on
+   the left, so the scene itself never moves. Clicking it advances the
+   mode in one whole step: no slide, no fade, the new state is simply
+   there. The word beside it is a tap's receipt, not a permanent
+   readout: a tap shows it, it stays for about 2.5 seconds, then the
+   control is the picture alone again. The footer text toggle it
+   replaced is gone. */
+
+.theme-scene-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--step-half);
+}
+
+.theme-scene-control--masthead {
+  display: flex;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+/* The masthead word sits on the scene's left, so the scene keeps the
+   right edge however long the active mode word is. */
+.theme-scene-control--masthead .theme-scene-button {
+  order: 2;
+}
+
+.theme-scene-control--masthead .theme-scene-current {
+  order: 1;
+}
+
+.theme-scene-current {
+  color: var(--muted-color);
+  line-height: var(--step);
+  white-space: nowrap;
+}
+
+.theme-scene-current[hidden] {
+  display: none;
+}
+
+.theme-scene-button {
+  display: block;
+  flex: none;
+  padding: 0;
+  line-height: 0;
+  /* Repeated taps cycle the theme; they are a rhythm, not a zoom.
+     Manipulation keeps the taps and drops the double-tap zoom,
+     without touching the viewport, so pinch zoom still works. */
+  touch-action: manipulation;
+}
+
+/* The ring hugs the picture, not the button box: on coarse pointers
+   the box is mostly invisible sizing (below), and a ring around it
+   would float in empty space. */
+.theme-scene-button:hover .theme-scene {
+  outline: 1px solid var(--accent-color);
+  outline-offset: 3px;
+}
+
+.theme-scene-button:focus-visible .theme-scene {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 3px;
+}
 
 .theme-scene {
   display: block;
@@ -348,6 +409,23 @@
   height: 24px;
   image-rendering: pixelated;
   border: 1px solid var(--page-rule);
+}
+
+/* The tap target matches the footer text toggle this control replaced,
+   measured on the live site at phone width: 48 tall, and 50.58 wide in
+   its widest state (the word "system" at 14px Iosevka, over a 48px
+   floor). The box is sized to that measurement and cancelled by equal
+   negative margins, so the layout footprint stays the picture's own
+   48 by 24 and nothing around it moves. */
+@media (max-width: 34rem), (pointer: coarse) {
+  .theme-scene-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50.58px;
+    height: calc(var(--step) * 2);
+    margin: calc(var(--step) * -0.5) -1.29px;
+  }
 }
 
 /* A keyboard hint is noise on a device with no keyboard. */

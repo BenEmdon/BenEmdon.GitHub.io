@@ -77,7 +77,7 @@
 
     <link rel="stylesheet" href="assets/css/tokens.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/base.css" />
-    <link rel="stylesheet" href="assets/css/layout.css?v=20261114" />
+    <link rel="stylesheet" href="assets/css/layout.css?v=20261122" />
     <link rel="stylesheet" href="assets/css/components.css?v=20261114f" />
 
     <!-- Visit counting: GoatCounter. No cookies, no fingerprinting, no
@@ -131,6 +131,24 @@
       <p class="tagline">
         Making software development faster and safer at Stripe. Previously GitHub.
       </p>
+
+      <div class="theme-scene-control theme-scene-control--masthead" data-theme-scene-control>
+        <button
+          class="theme-scene-button"
+          type="button"
+          data-theme-scene-button
+          aria-label="Theme: system. Activate to switch to light"
+        >
+          <canvas
+            class="theme-scene"
+            data-theme-scene
+            width="24"
+            height="12"
+            aria-hidden="true"
+          ></canvas>
+        </button>
+        <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
+      </div>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
@@ -406,20 +424,6 @@
           >
             <kbd>?</kbd> keys
           </button>
-          <button
-            class="footer__button"
-            type="button"
-            data-theme-toggle
-          >
-            <span data-theme-label>system</span>
-          </button>
-          <canvas
-            class="theme-scene"
-            data-theme-scene
-            width="24"
-            height="12"
-            aria-hidden="true"
-          ></canvas>
         </div>
       </footer>
 
@@ -458,7 +462,7 @@
       </div>
     </div>
 
-    <script type="module" src="assets/js/main.js"></script>
+    <script type="module" src="assets/js/main.js?v=20261122-scene"></script>
     <script type="module" src="assets/js/meadow.js"></script>
     <script type="module" src="assets/js/keycaps.js"></script>
     <script type="module" src="assets/js/music-demo.js"></script>
