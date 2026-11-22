@@ -488,6 +488,9 @@
   color: var(--page-color);
   border: 1px solid var(--page-rule);
   cursor: pointer;
+  /* Play and restart get tapped in time with the music; keep
+     the taps, drop the double-tap zoom. */
+  touch-action: manipulation;
 }
 
 .music-demo__button:hover,

@@ -64,6 +64,9 @@
   color: var(--page-color);
   border: 1px solid var(--page-rule);
   cursor: pointer;
+  /* Rapid taps on the tempo buttons are a rhythm, not a zoom:
+     manipulation keeps the taps and drops the double-tap zoom. */
+  touch-action: manipulation;
 }
 
 .music-btn:hover,

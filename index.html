@@ -225,29 +225,26 @@
       <section class="section">
         <h2 class="section__title" id="music"><span class="prompt" aria-hidden="true">$</span> music<a class="anchor" href="#music" aria-label="Link to this section">#</a></h2>
         <p>
-          A small music maker lives on this site now. It holds seven famous game
-          themes, and every song is written as text, one line per channel.
-        </p>
-        <p>
-          This is Saria's Song from Ocarina of Time, all four channels drawn in
-          one piano roll. Press play and the page renders the loop, then plays it.
+          Saria's Song, from the music maker. Press play: it
+          renders the loop, then plays it.
         </p>
         <div class="music-demo">
           <canvas
             class="music-demo__roll"
             data-music-demo-roll
-            width="576"
+            width="192"
             height="150"
             role="img"
-            aria-label="Piano roll of Saria's Song: four channels of notes, the ocarina line on top, across 288 steps"
+            aria-label="Piano roll of Saria's Song: four channels of notes, the ocarina line on top, shown in a window that follows the song as it plays"
           ></canvas>
           <p class="music-demo__row">
             <button class="music-demo__button" type="button" data-music-demo-play aria-pressed="false">play</button>
+            <button class="music-demo__button" type="button" data-music-demo-restart>restart</button>
             <span class="music-demo__status" data-music-demo-status aria-live="polite"></span>
           </p>
         </div>
         <p class="muted">
-          The other six songs, and the text this one is written in, are in the
+          The other songs, and the text this one is written in, are in the
           <a href="music.html">full music maker</a>.
         </p>
       </section>
