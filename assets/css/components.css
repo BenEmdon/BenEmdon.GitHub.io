@@ -782,3 +782,122 @@ html[data-boot-hide] main {
     min-height: calc(var(--step) * 2);
   }
 }
+
+/* ---------- the portrait and the pixel lab ---------- */
+
+/* Moved here from identical inline <style> blocks on the Mochi and
+   art pages: the portrait panel, the pixel lab, the step-by-step
+   process, and the code block are one set of components used by
+   both pages, so they live with the other components. */
+
+/* The portrait panel: the same page-rule frame the portrait and the
+   meadow use, with the subtle page wash behind the canvas so the
+   pixel backdrop sits on something quieter than the page itself. */
+.mochi-figure {
+  border: 1px solid var(--page-rule);
+  background: var(--page-subtle);
+  padding: var(--step);
+}
+
+.mochi-figure canvas {
+  width: min(240px, 100%);
+  height: auto;
+  margin-inline: auto;
+  image-rendering: pixelated;
+}
+
+.mochi-figure figcaption {
+  margin-block-start: var(--step);
+  color: var(--muted-color);
+  font-size: var(--text-small);
+  text-align: center;
+}
+
+/* The portrait panel follows a paragraph, not a heading, so the
+   heading's margin never gives it its step; every gallery panel
+   gets one from its title, and this one needs its own. */
+.section > p + .mochi-figure {
+  margin-block-start: var(--step);
+}
+
+/* The pixel lab: the map and its rendering side by side, then the
+   same map built again in steps. Same page-rule frame as the portrait. */
+.lab {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--step);
+  margin-block: var(--step);
+}
+
+.lab__fig { margin: 0; }
+
+.lab__fig figcaption {
+  margin-block-start: calc(var(--step) / 2);
+  color: var(--muted-color);
+  font-size: var(--text-small);
+}
+
+.lab__map {
+  border: 1px solid var(--page-rule);
+  background: var(--page-subtle);
+  padding: calc(var(--step) / 2);
+  font-size: 10px;
+  line-height: 1.2;
+  letter-spacing: 2px;
+}
+
+.lab canvas {
+  width: 216px;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--page-rule);
+  image-rendering: pixelated;
+}
+
+.process {
+  border: 1px solid var(--page-rule);
+  background: var(--page-subtle);
+  padding: var(--step);
+  margin-block: var(--step);
+}
+
+.process canvas {
+  width: min(336px, 100%);
+  height: auto;
+  margin-inline: auto;
+  image-rendering: pixelated;
+}
+
+.process__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px var(--step);
+  justify-content: space-between;
+  margin-block-start: var(--step);
+}
+
+.process__caption,
+.process__step {
+  margin: 0;
+  color: var(--muted-color);
+  font-size: var(--text-small);
+}
+
+.process__list {
+  margin-block: var(--step) 0;
+  padding-inline-start: 1.5em;
+  color: var(--muted-color);
+  font-size: var(--text-small);
+}
+
+.code {
+  border: 1px solid var(--page-rule);
+  background: var(--page-subtle);
+  padding: calc(var(--step) / 2);
+  margin-block: var(--step);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

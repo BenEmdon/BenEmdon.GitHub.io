@@ -27,34 +27,22 @@
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090d16" />
 
-    <!-- Same pre-paint theme script as the home page, so a saved theme
-         applies here too and never flashes the other one. -->
-    <script>
-      try {
-        const saved = localStorage.getItem("theme");
-        if (saved === "light" || saved === "dark") {
-          document.documentElement.dataset.theme = saved;
-        }
-      } catch {}
-    </script>
+    <!-- The shared chrome (assets/js/chrome.js): one definition of
+         the pieces every page carries. The pre-paint theme read and
+         the GoatCounter config run from its head; the boot screen,
+         both nav rows, the scene controls, the footer, and the keys
+         panel are rendered from it below. A plain script, not a
+         module: it has to be loaded before the body parses. -->
+    <script src="assets/js/chrome.js?v=20261122a"></script>
 
     <link rel="stylesheet" href="assets/css/fonts.css" />
 
     <link rel="stylesheet" href="assets/css/tokens.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/base.css?v=20261122h" />
     <link rel="stylesheet" href="assets/css/layout.css?v=20261122d" />
-    <link rel="stylesheet" href="assets/css/components.css?v=20261122h" />
+    <link rel="stylesheet" href="assets/css/components.css?v=20261122j" />
     <link rel="stylesheet" href="assets/css/music.css?v=20261122-sticky2" />
-
-    <script>
-      window.goatcounter = {
-        path(p) {
-          if (location.hostname !== "benemdon.github.io") return null;
-          if (navigator.doNotTrack === "1" || navigator.globalPrivacyControl) return null;
-          return p;
-        },
-      };
-    </script>
+    <!-- Visit counting: GoatCounter; the config lives in chrome.js. -->
     <script
       data-goatcounter="https://benemdon.goatcounter.com/count"
       async
@@ -63,22 +51,8 @@
   </head>
 
   <body>
-    <!-- The boot screen. Ships hidden and empty: without JS it never appears,
-         and a crawler is handed the real page rather than a splash. boot.js
-         fills it and takes it away again. aria-hidden because it is theatre;
-         a screen reader should be reading the page below it, which is
-         already there. -->
-    <div class="boot" data-boot aria-hidden="true" hidden>
-      <div class="boot__inner">
-        <div data-boot-logo></div>
-        <div class="boot__row">
-          <div class="boot__icon" data-boot-icon></div>
-          <div class="boot__main">
-            <ul class="boot__log" data-boot-log></ul>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- The boot screen, rendered by the shared chrome. -->
+    <script>window.SiteChrome && SiteChrome.boot()</script>
 
     <main class="page">
       <header>
@@ -92,30 +66,11 @@
         </h1>
       </header>
 
-      <div class="theme-scene-control theme-scene-control--masthead" data-theme-scene-control>
-        <button
-          class="theme-scene-button"
-          type="button"
-          data-theme-scene-button
-          aria-label="Theme: system. Activate to switch to light"
-        >
-          <canvas
-            class="theme-scene"
-            data-theme-scene
-            width="24"
-            height="12"
-            aria-hidden="true"
-          ></canvas>
-        </button>
-        <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
-      </div>
+      <script>window.SiteChrome && SiteChrome.sceneControl(true)</script>
 
-      <nav class="pagenav" aria-label="Pages">
-        <a href="index.html">home</a>
-        <a href="music.html" aria-current="page">music</a>
-        <a href="art.html">art</a>
-        <a href="mochi.html">mochi</a>
-      </nav>
+      <!-- The page nav: one shared component (chrome.js), this row
+           and the one above the footer, on every page. -->
+      <script>window.SiteChrome && SiteChrome.nav("top")</script>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
@@ -371,63 +326,11 @@ the new recording takes over</pre>
         </p>
       </section>
 
-      <nav class="pagenav" aria-label="Pages (bottom)">
-        <a href="index.html">home</a>
-        <a href="music.html" aria-current="page">music</a>
-        <a href="art.html">art</a>
-        <a href="mochi.html">mochi</a>
-      </nav>
-      <footer class="footer">
-        <p>
-          Ottawa, ON<span class="clock" data-clock hidden
-            ><time class="clock__time" data-clock-time
-              ><span data-clock-hours>--</span
-              ><span class="clock__tick" aria-hidden="true">:</span
-              ><span data-clock-minutes>--</span></time
-            ></span
-          >
-        </p>
-        <div class="footer__controls">
-          <button
-            class="footer__button"
-            type="button"
-            data-keys-toggle
-            aria-expanded="false"
-            aria-controls="keys"
-          >
-            <kbd>?</kbd> keys
-          </button>
-          <div class="theme-scene-control" data-theme-scene-control>
-            <button
-              class="theme-scene-button"
-              type="button"
-              data-theme-scene-button
-              aria-label="Theme: system. Activate to switch to light"
-            >
-              <canvas
-                class="theme-scene"
-                data-theme-scene
-                width="24"
-                height="12"
-                aria-hidden="true"
-              ></canvas>
-            </button>
-            <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
-          </div>
-        </div>
-      </footer>
+      <script>window.SiteChrome && SiteChrome.nav("bottom")</script>
+      <script>window.SiteChrome && SiteChrome.footer()</script>
     </main>
 
-    <!-- Ships hidden and stays hidden without JS, since every key it
-         lists is wired up there. Mirrors the home and Mochi pages. -->
-    <div class="keys" id="keys" data-keys hidden>
-      <ul class="keys__list">
-        <li><kbd data-cap="1">1</kbd><span class="keys__label">music maker</span></li>
-        <li><kbd data-cap="2">2</kbd><span class="keys__label">how it works</span></li>
-        <li><kbd data-cap="t">t</kbd><span class="keys__label">theme</span></li>
-        <li><kbd data-cap="?">?</kbd><span class="keys__label">this</span></li>
-      </ul>
-    </div>
+    <script>window.SiteChrome && SiteChrome.keys([["1","music maker"],["2","how it works"]])</script>
 
     <script type="module" src="assets/js/music.js?v=20261122h"></script>
     <script type="module" src="assets/js/keycaps.js"></script>
