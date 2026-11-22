@@ -251,7 +251,8 @@
         <pre class="code">@0 pulse 12.5%   @4 triangle    @8  strings
 @1 pulse 25%     @5 noise       @9  cello
 @2 pulse 50%     @6 ocarina     @10 harp
-@3 pulse 75%     @7 flute       @11 piano</pre>
+@3 pulse 75%     @7 flute       @11 piano
+@12 synth lead   @13 soft square</pre>
         <p>
           Everything lands on a sixteenth-note grid. That grid is
           what lets the text and the grid view stay two views of
@@ -331,7 +332,11 @@ the new recording takes over</pre>
           are the old hardware channels: pulse waves at their real
           duty cycles, the triangle channel with its stepped 4-bit
           wave, noise from a shift register, and envelopes that
-          move in steps instead of fading. The sampled voices cover
+          move in steps instead of fading. Two chip voices are
+          newer and break the hardware rule on purpose: the synth
+          lead and the soft square, whose harmonics roll off and
+          pass through a filter, closer to the sampled synths the
+          DS played than to a raw square wave. The sampled voices cover
           the parts the consoles played from recordings, the N64
           and the DS both being sample machines: a few recorded
           notes per instrument, pitch-shifted to reach the rest,
