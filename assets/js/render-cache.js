@@ -40,7 +40,7 @@
   never played.
 */
 
-export const RENDER_CACHE_VERSION = 8;
+export const RENDER_CACHE_VERSION = 9;
 
 const DB_NAME = "music-render-cache";
 const MAX_ENTRIES = 16;
