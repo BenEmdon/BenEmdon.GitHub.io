@@ -2,6 +2,7 @@ import { attach } from "./dither.js";
 import { animateWordmark } from "./wordmark.js";
 import { createThemeScene } from "./theme-scene.js";
 import { announceBootTask, whenBootTask } from "./boot-tasks.js";
+import { runBoot } from "./boot.js";
 
 const THEME_KEY = "theme";
 // The cycle the scene control walks. "system" is where everyone starts, and it is
@@ -441,6 +442,9 @@ function setUp() {
   // read (announced from music-demo.js, which now renders in the
   // background at load instead of waiting for a first press of play),
   // and the footer clock's first tick, resolved from tick() below.
+  // The surfaces themselves, the full screen for a session's first
+  // load and the segmented indicator for the loads after, live in
+  // boot.js, shared with the other two pages.
   let resolveClock;
   const clockTask = new Promise((resolve) => {
     resolveClock = resolve;
@@ -451,222 +455,8 @@ function setUp() {
     () => performance.now() - bootT0
   );
 
-  // A spruce, drawn as data: one character per cell on an 11 x 13 grid.
-  // L, M and D are the canopy ramp, lit from the upper left: the lit shade
-  // rims the left edge and catches the top row of each tier, the deep
-  // shade is the underside of each tier and grows down the right side,
-  // and the ground row is one deep cluster the trunk lands in, a shadow
-  // rather than a lawn. The colours themselves live in components.css as
-  // the .boot__tree custom properties. It builds beside the log while the
-  // lines resolve: ground first, apex last, two rows per motion step, so
-  // the whole tree stands in about half a second, and the screen's exit
-  // waits for it plus a short hold (see the gate below).
-  const TREE = [
-    ".....M.....",
-    "....LLD....",
-    "....LMD....",
-    "...LLMMD...",
-    "...LMMDD...",
-    "..LLMMMMD..",
-    "..LMMMDDD..",
-    ".LLMMMMMMD.",
-    ".LMMMMDDDD.",
-    "LLMMMMMMMMD",
-    "LMMMMMMDDDD",
-    ".....T.....",
-    "...DDDDD...",
-  ];
-  const TREE_SHADE = {
-    L: "is-lit",
-    M: "is-mid",
-    D: "is-deep",
-    T: "is-trunk",
-  };
-  const TREE_CELL = 6;
-
-  // Progress as cells rather than a bar: this many squares, filled a few
-  // per settled line. Four per line, so the row completes exactly when the
-  // log does.
-  const PROGRESS_CELLS = 16;
-
-  // Braille rather than the circle spinners git-merge uses: Iosevka draws
-  // those at two columns and these at one, so these keep the mark column the
-  // same width from frame to frame.
-  const SPINNER = [..."⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"];
-
-  // No schedule at all: a line resolves when its task resolves. The
-  // screen leaves when the last task does, with one gate on top: the
-  // exit also waits until the tree beside the log has fully grown,
-  // plus a short hold after its last row, so the finished tree is
-  // actually seen before the screen goes. The tree takes about half
-  // a second to grow and the hold is 450 ms, so a cached load's whole
-  // boot lands at about a second; a task that genuinely runs longer
-  // (a first music render) still holds the screen for its real
-  // duration and quotes its real time. Neither the gate nor the hold
-  // pads anything a line quotes: every duration stays the task's real
-  // measured time.
-  // The other number is the per-task timeout, the safety valve: a task
-  // that hangs (a stalled image, a wedged audio render) reports "still
-  // working" at the timeout and stops holding the screen, while the
-  // work itself carries on in the background and the page underneath
-  // stays usable. The skip ignores the gate too: any key or click
-  // cuts to the page at once.
-  const TASK_TIMEOUT = 12000;
-  const BOOT_HOLD_MS = 450;
-
-  const boot = document.querySelector("[data-boot]");
-
-  // Once per session in production. The screen belongs to the visit's
-  // first page load; later loads in the same session (a reload, or a
-  // trip back from the mochi or music pages) go straight to the page.
-  // Only the screen and its hold are skipped: the scene still
-  // generates, the music still preloads, and the clock still syncs,
-  // because the tasks announce themselves outside this block. Pages
-  // carrying the experiment badge are the exception and run the
-  // screen on every load, so a preview always shows what a first
-  // visit shows. The flag is written as the screen opens, so a load
-  // that never shows it (reduced motion, just below) does not spend
-  // it, and a fresh tab or session sees it again.
-  const BOOT_SEEN_KEY = "boot-seen";
-  const experimental = [...document.querySelectorAll(".tag")].some(
-    (el) => el.textContent.trim().toLowerCase() === "experiment"
-  );
-  let bootSeen = false;
-  if (!experimental) {
-    try {
-      bootSeen = sessionStorage.getItem(BOOT_SEEN_KEY) === "1";
-    } catch {
-      // Storage refused: treat the load as a first one and run it.
-      bootSeen = false;
-    }
-  }
-
-  // Skipped outright for anyone who asked not to be animated: for
-  // them it is a blank screen between them and the content, which is
-  // the opposite of the point.
-  if (boot && !reduced.matches && !bootSeen) {
-    if (!experimental) {
-      try {
-        sessionStorage.setItem(BOOT_SEEN_KEY, "1");
-      } catch {
-        // The screen still runs this load; the next one decides again.
-      }
-    }
-    const log = boot.querySelector("[data-boot-log]");
-    const logo = wordmark.cloneNode(true);
-    boot.querySelector("[data-boot-logo]").append(logo);
-    boot.hidden = false;
-
-    // The clone is taken before the block glyphs have loaded, since they are
-    // served display=block and the boot starts immediately. Rather than hold
-    // the whole screen for the font, let the logo run the same paint-in the
-    // real one does, the moment it can.
-    document.fonts.ready.then(() => logo.classList.add("is-booting"));
-
-    const timers = [];
-    const marks = [];
-    let frame = 0;
-
-    const spin = setInterval(() => {
-      frame = (frame + 1) % SPINNER.length;
-      for (const mark of marks) {
-        if (!mark.dataset.done) mark.textContent = SPINNER[frame];
-      }
-    }, 80);
-
-    // The tree builds two rows per motion step, ground first. Rows are
-    // pre-built as detached cells and placed group by group; a cell is
-    // either there, fully coloured, or not there. Nothing slides or fades.
-    // Two rows per step land all thirteen rows in seven steps, about
-    // half a second: one row per step took the better part of a second,
-    // and the screen used to leave with the tree half grown. The moment
-    // the last row lands is recorded, because the exit gate below waits
-    // on it.
-    const treeBox = boot.querySelector("[data-boot-tree]");
-    const treeRows = TREE.map((row, y) => {
-      const cells = [];
-      [...row].forEach((ch, x) => {
-        if (ch === ".") return;
-        const cell = document.createElement("span");
-        cell.className = `boot__pix ${TREE_SHADE[ch]}`;
-        cell.style.left = `${x * TREE_CELL}px`;
-        cell.style.top = `${y * TREE_CELL}px`;
-        cells.push(cell);
-      });
-      return cells;
-    }).reverse();
-
-    let treeRow = 0;
-    let treeGrownAt = null;
-    const grow = setInterval(() => {
-      if (treeRow >= treeRows.length) {
-        clearInterval(grow);
-        return;
-      }
-      for (let n = 0; n < 2 && treeRow < treeRows.length; n++) {
-        treeBox.append(...treeRows[treeRow]);
-        treeRow += 1;
-      }
-      if (treeRow >= treeRows.length) {
-        clearInterval(grow);
-        treeGrownAt = performance.now();
-        maybeExit();
-      }
-    }, 75);
-
-    // The progress row: every cell starts as track, and settling a line
-    // raises the target by its share. The filler walks two cells per
-    // motion step until it catches up, so the row reads as steps of work
-    // done rather than a bar sliding.
-    const progressBox = boot.querySelector("[data-boot-progress]");
-    const pcells = [];
-    for (let i = 0; i < PROGRESS_CELLS; i++) {
-      const cell = document.createElement("span");
-      cell.className = "boot__pcell";
-      cell.style.left = `${i * 8}px`;
-      progressBox.append(cell);
-      pcells.push(cell);
-    }
-    let progressTarget = 0;
-    let progressFilled = 0;
-    const fill = setInterval(() => {
-      for (let n = 0; n < 2 && progressFilled < progressTarget; n++) {
-        pcells[progressFilled].classList.add("is-on");
-        progressFilled += 1;
-      }
-      if (progressFilled >= PROGRESS_CELLS) clearInterval(fill);
-    }, 75);
-
-    let bootDone = false;
-    function done() {
-      if (bootDone) return;
-      bootDone = true;
-      clearInterval(spin);
-      clearInterval(grow);
-      clearInterval(fill);
-      timers.forEach(clearTimeout);
-      removeEventListener("keydown", done);
-      boot.remove();
-    }
-
-    // Nobody should be held here. Any key or any click cuts to the page. The
-    // click listener leaves with the element; the keydown one has to be taken
-    // off by hand, or it outlives the boot and fires on the first key the
-    // visitor presses at the real page.
-    addEventListener("keydown", done);
-    boot.addEventListener("click", done);
-
-    function span(className, text) {
-      const el = document.createElement("span");
-      el.className = className;
-      el.textContent = text;
-      return el;
-    }
-
-    // One row per task, up front with its spinner turning; the row
-    // resolves in place the moment its task settles. Nothing here is
-    // on a timer except the timeout race beside each task.
-    const BOOT_TASKS = [
+  runBoot(
+    [
       {
         label: "building pixel scene",
         promise: sceneTask,
@@ -685,81 +475,9 @@ function setUp() {
         promise: clockTask,
         format: (r) => r.value,
       },
-    ];
-
-    let settled = 0;
-    let tasksSettled = false;
-    let exitScheduled = false;
-
-    // The exit needs both halves: every task settled, and the tree
-    // fully grown plus the hold after its last row. Whichever half
-    // lands second runs this check. A scheduled exit sits in timers,
-    // so a skip still clears it and cuts straight to the page.
-    function maybeExit() {
-      if (!tasksSettled || treeGrownAt === null || exitScheduled) return;
-      const remaining = treeGrownAt + BOOT_HOLD_MS - performance.now();
-      if (remaining > 0) {
-        exitScheduled = true;
-        timers.push(setTimeout(done, remaining));
-      } else {
-        done();
-      }
-    }
-
-    const settle = () => {
-      settled += 1;
-      progressTarget = settled * (PROGRESS_CELLS / BOOT_TASKS.length);
-      if (settled !== BOOT_TASKS.length) return;
-      tasksSettled = true;
-      maybeExit();
-    };
-
-    for (const task of BOOT_TASKS) {
-      const line = document.createElement("li");
-      line.className = "boot__line";
-
-      const mark = span("boot__mark", SPINNER[frame]);
-      const result = span("boot__value is-pending", "_");
-      marks.push(mark);
-
-      line.append(
-        mark,
-        span("boot__task", task.label),
-        // Longer than any gap it has to fill; the overflow is clipped.
-        span("boot__dots", ".".repeat(80)),
-        result
-      );
-      log.append(line);
-
-      const timedOut = new Promise((resolve) => {
-        timers.push(setTimeout(() => resolve({ timedOut: true }), TASK_TIMEOUT));
-      });
-
-      Promise.race([task.promise, timedOut]).then(
-        (value) => {
-          if (!boot.isConnected) return; // the visitor skipped ahead
-          mark.dataset.done = "1";
-          result.className = "boot__value";
-          if (value && value.timedOut) {
-            mark.textContent = "!";
-            result.textContent = "still working";
-          } else {
-            mark.textContent = "\u2713";
-            result.textContent = task.format(value);
-          }
-          settle();
-        },
-        () => {
-          if (!boot.isConnected) return;
-          mark.dataset.done = "1";
-          mark.textContent = "\u00d7";
-          result.className = "boot__value";
-          result.textContent = "failed";
-          settle();
-        }
-      );
-    }
-  }
+    ],
+    { t0: bootT0 }
+  );
 
   /* ---------- clock ---------- */
 

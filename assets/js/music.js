@@ -37,6 +37,18 @@
 import { createThemeScene } from "./theme-scene.js";
 import { animateWordmark, setUpStaticWordmark } from "./wordmark.js";
 import { renderCacheKey, readRender, writeRender } from "./render-cache.js";
+import { runBoot } from "./boot.js";
+
+/* ---------- boot ---------- */
+
+// The boot's zero: this page's task durations and the follow-up
+// indicator's total both measure from the top of the module.
+const bootT0 = performance.now();
+
+// The clock's first tick, handed to the boot where the page
+// starts up below.
+let resolveClockTask;
+const clockTask = new Promise((resolve) => { resolveClockTask = resolve; });
 
 /* ---------- theme ---------- */
 
@@ -180,6 +192,7 @@ function setUpClock() {
     minutes.textContent = parts.minute;
     clockTime.dateTime = `${parts.hour}:${parts.minute}`;
     clock.hidden = false;
+    resolveClockTask?.({ value: `ottawa ${parts.hour}:${parts.minute}` });
     setTimeout(tick, 60_000 - (now.getSeconds() * 1000 + now.getMilliseconds()));
   }
 
@@ -2126,3 +2139,44 @@ setUpThemeToggle();
 setUpClock();
 setUpKeys();
 loadSong("storms");
+
+// The boot's view of this page's real startup work: the samples
+// loading (loadSamples is memoized, so this is the same fetch the
+// first render waits on), the default song's render, which cannot
+// start until the samples land and resolves through the same
+// obtainRender the play button uses, cache reads included, and
+// the clock's first tick. Starting the samples here mirrors the
+// home page's demo preload. The render's buffer is stored on the
+// player when the song is still current and still needs it, so
+// pressing play afterwards is instant.
+const bootSong = player.song;
+const samplesTask = loadSamples().then(() => performance.now() - bootT0);
+const renderTask = (async () => {
+  await samplesTask;
+  const startedAt = performance.now();
+  const rendered = await obtainRender(bootSong, { announce: false });
+  const wallMs = performance.now() - startedAt;
+  if (player.song === bootSong && player.dirty && !player.rendered) {
+    player.rendered = rendered;
+    player.dirty = false;
+    window.__lastRender = rendered;
+  }
+  return {
+    fromCache: rendered.fromCache === true,
+    ms: wallMs,
+    renderMs: rendered.renderMs,
+  };
+})();
+runBoot(
+  [
+    { label: "loading samples", promise: samplesTask,
+      format: (ms) => `${Math.round(ms)} ms` },
+    { label: "rendering song", promise: renderTask,
+      format: (r) => (r.fromCache
+        ? `from cache · ${Math.round(r.ms)} ms`
+        : `rendered in ${Math.round(r.renderMs)} ms`) },
+    { label: "syncing clock", promise: clockTask,
+      format: (r) => r.value },
+  ],
+  { t0: bootT0 }
+);

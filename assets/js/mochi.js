@@ -17,6 +17,7 @@
 
 import { createThemeScene } from "./theme-scene.js";
 import { animateWordmark, setUpStaticWordmark } from "./wordmark.js";
+import { runBoot } from "./boot.js";
 
 /* ---------- theme ---------- */
 
@@ -329,6 +330,33 @@ function mulberry32(seed) {
   };
 }
 
+/* ---------- boot ---------- */
+
+// The shared boot (boot.js) runs on this page's own three tasks:
+// the portrait's first paint, the gallery scenes' first frames,
+// and the clock's first tick. Each promise resolves only when the
+// work it names has actually happened. The portrait paints
+// synchronously inside setUpPortrait, so its resolver is called
+// from there. The gallery modules are deferred scripts that paint
+// as they execute, in order after this one, so DOMContentLoaded
+// means every scene has its first frame. The clock resolves from
+// its first tick, the same arrangement as the home page.
+const bootT0 = performance.now();
+
+let resolvePortraitTask;
+const portraitTask = new Promise((resolve) => {
+  resolvePortraitTask = resolve;
+});
+let resolveClockTask;
+const clockTask = new Promise((resolve) => {
+  resolveClockTask = resolve;
+});
+const galleryTask = new Promise((resolve) => {
+  const settled = () => resolve(performance.now() - bootT0);
+  if (document.readyState === "complete") settled();
+  else document.addEventListener("DOMContentLoaded", settled, { once: true });
+});
+
 function setUpPortrait() {
   const canvas = document.querySelector("[data-mochi-canvas]");
   if (!canvas) return;
@@ -337,6 +365,10 @@ function setUpPortrait() {
 
   const paint = () => paintPortrait(canvas, eyesShut);
   paint();
+  // The boot's portrait task resolves on this first paint. Theme
+  // swaps and blink steps paint again later; resolving an
+  // already-settled promise is a no-op.
+  resolvePortraitTask(performance.now() - bootT0);
 
   // The page follows the resolved theme the way the meadow does: a pinned
   // [data-theme] when one is set, the OS preference otherwise. A swap
@@ -515,6 +547,10 @@ function setUpClock() {
     minutes.textContent = parts.minute;
     clockTime.dateTime = `${parts.hour}:${parts.minute}`;
     clock.hidden = false;
+    // The boot's clock task resolves here, once the footer is
+    // actually telling this time. Later ticks resolve an
+    // already-settled promise, which is a no-op.
+    resolveClockTask({ value: `ottawa ${parts.hour}:${parts.minute}` });
     setTimeout(tick, 60_000 - (now.getSeconds() * 1000 + now.getMilliseconds()));
   }
 
@@ -595,6 +631,27 @@ setUpPortrait();
 setUpThemeToggle();
 setUpClock();
 setUpKeys();
+
+runBoot(
+  [
+    {
+      label: "painting portrait",
+      promise: portraitTask,
+      format: (ms) => `${Math.round(ms)} ms`,
+    },
+    {
+      label: "painting gallery scenes",
+      promise: galleryTask,
+      format: (ms) => `${Math.round(ms)} ms`,
+    },
+    {
+      label: "syncing clock",
+      promise: clockTask,
+      format: (r) => r.value,
+    },
+  ],
+  { t0: bootT0 }
+);
 
 /* ---------- the pixel lab ---------- */
 
