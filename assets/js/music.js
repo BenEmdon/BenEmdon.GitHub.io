@@ -280,6 +280,15 @@ const INSTRUMENTS = [
     files: [[48, "harp-48.mp3"], [72, "harp-72.mp3"]] },
   { name: "piano", kind: "sample", verb: 0.4,
     files: [[48, "piano-48.mp3"], [60, "piano-60.mp3"], [72, "piano-72.mp3"], [84, "piano-84.mp3"], [36, "piano-36.mp3"]] },
+  // Two shaped chip voices, appended for Cynthia's battle theme.
+  // The DS has no square-wave generator: its synth leads are
+  // short looped samples, band-limited by the sample rate and
+  // the output path, so an ideal square at full bandwidth is
+  // far brighter than the thing it names. These roll the
+  // square's harmonics off past a knee, filter what is left,
+  // and start slower. See shapedWave.
+  { name: "synth lead", kind: "lead", wave: "lead", cutoff: 2600, attack: 0.025, level: 0.9, detune: 5 },
+  { name: "soft square", kind: "lead", wave: "soft", cutoff: 3800, attack: 0.012, level: 0.9 },
 ];
 const AUDIO_BASE = "assets/audio/";
 
@@ -393,8 +402,12 @@ C @9 v10 o2 g4. r4 g8 r1 r8 g4. r4 g8 g8 r4 f#4. r4 f#8 r1 r8 f#4. r4 f#8 f#8 r4
 ; second bar. Its intro carries a tempo curve, 171 easing
 ; to 185; the song is written at the main tempo, 185.
 ; After a 7-bar intro the body loops, marked by the L.
-; A: the two square-wave leads, on pulse 25%. B: the
-; string tracks, as chords. C: the triangle bass; its
+; A: the two synth leads. The rip's GM map calls them
+; square leads, but the DS plays a sampled synth, and a
+; raw pulse 25% at full bandwidth was harsh enough that
+; Ben flagged the opening by ear; A now plays on the
+; synth lead voice (@12), a shaped and filtered square.
+; B: the string tracks, as chords. C: the triangle bass; its
 ; lowest notes sit below this format's lowest octave and
 ; are written an octave up. D: the drum track, on noise,
 ; pitches kept as written, every hit one step long.
@@ -404,7 +417,8 @@ C @9 v10 o2 g4. r4 g8 r1 r8 g4. r4 g8 g8 r4 f#4. r4 f#8 r1 r8 f#4. r4 f#8 f#8 r4
 ; harp sample; in the game that figure is the piano,
 ; so the whole track moves to piano here. F: the horn,
 ; orchestra hit and synth brass tracks, on strings.
-; G: the agogo and guitar tracks, on pulse 50%. H: the
+; G: the agogo and guitar tracks, on the soft square
+; (@13), shaped and filtered for the same reason. H: the
 ; rip's own piano track (marked bright acoustic piano
 ; in the rip), two fast runs late in the body, dropped
 ; by the last pass and restored on piano. Two tracks
@@ -413,13 +427,13 @@ C @9 v10 o2 g4. r4 g8 r1 r8 g4. r4 g8 g8 r4 f#4. r4 f#8 r1 r8 f#4. r4 f#8 f#8 r4
 ; Note lengths were rounded to
 ; the step grid: the rip's notes are legato and overlap,
 ; and a channel here cannot ring past its next note.
-A @1 t185 v13 o5 a-1^1 r1 r1 r1 r1 r1 L r1 r1 r2. o4 a-16 a16 o5 d16 e-16 a-2. f#8 a-8 a8 a-8 f#8 a8 a-4 g8 f8 f#2. f8 f#8 g8 f#8 f8 g8 f#4 e8 e-8 e2^8 o4 b8 o5 e8 a-8 a8 a-8 a8 b-8 b2 f#2^8 c#8 f#8 b-8 b8 b-8 b8 o6 c8 c#2 o5 a-2. f#8 a-8 a8 a-8 f#8 a8 a-4 g8 f8 f#2. f8 f#8 g8 f#8 f8 g8 f#4 e8 e-8 o4 {b>e}8 a-8 b4. {b>e}8 {b>e}8 {a->a-}8 o5 {ea}8 o4 {b>a-}8 o5 {ea}8 {gb-}8 {a-b}8 e8 c#8 o4 b8 o5 {c#f#}8 o4 b-8 o5 c#4. {c#f#}8 {c#f#}8 o4 {b->b-}8 o5 {f#b}8 {c#b-}8 {f#b}8 {a->c}8 {b->c#}8 f#8 e-8 c#8 {e-a-}8 c8 e-4. {e->c}8 a-8 o6 {ce-}8 {cc#}8 o5 {a->c}8 o6 {c#e-}8 {cd}8 e-8 a-8 e-8 c#8 o5 {e->c}8 c8 e-4. {e->c}8 a-8 o6 {ce-}8 {cc#}8 o5 {a->c}8 {e->c#}8 {f>d}8 {a->e-}8 g8 f8 e-8 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 o4 b4. o5 f#4. e8 e-8 f#4 e8 e-8 o4 b4 a4 b4. o5 f#4. e8 e-8 f#4 e8 e-8 o4 b4 a4 o5 c4. g4. f8 e8 g4 f8 e8 c4 o4 g4 o5 c4. g4. f8 e8 g4 f8 e8 c4 o4 g4 r1 r1 r1 r1 r1 r1 r1 r1 o5 f#8 f1^1^1^2.^8
+A @12 t185 v13 o5 a-1^1 r1 r1 r1 r1 r1 L r1 r1 r2. o4 a-16 a16 o5 d16 e-16 a-2. f#8 a-8 a8 a-8 f#8 a8 a-4 g8 f8 f#2. f8 f#8 g8 f#8 f8 g8 f#4 e8 e-8 e2^8 o4 b8 o5 e8 a-8 a8 a-8 a8 b-8 b2 f#2^8 c#8 f#8 b-8 b8 b-8 b8 o6 c8 c#2 o5 a-2. f#8 a-8 a8 a-8 f#8 a8 a-4 g8 f8 f#2. f8 f#8 g8 f#8 f8 g8 f#4 e8 e-8 o4 {b>e}8 a-8 b4. {b>e}8 {b>e}8 {a->a-}8 o5 {ea}8 o4 {b>a-}8 o5 {ea}8 {gb-}8 {a-b}8 e8 c#8 o4 b8 o5 {c#f#}8 o4 b-8 o5 c#4. {c#f#}8 {c#f#}8 o4 {b->b-}8 o5 {f#b}8 {c#b-}8 {f#b}8 {a->c}8 {b->c#}8 f#8 e-8 c#8 {e-a-}8 c8 e-4. {e->c}8 a-8 o6 {ce-}8 {cc#}8 o5 {a->c}8 o6 {c#e-}8 {cd}8 e-8 a-8 e-8 c#8 o5 {e->c}8 c8 e-4. {e->c}8 a-8 o6 {ce-}8 {cc#}8 o5 {a->c}8 {e->c#}8 {f>d}8 {a->e-}8 g8 f8 e-8 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 o4 b4. o5 f#4. e8 e-8 f#4 e8 e-8 o4 b4 a4 b4. o5 f#4. e8 e-8 f#4 e8 e-8 o4 b4 a4 o5 c4. g4. f8 e8 g4 f8 e8 c4 o4 g4 o5 c4. g4. f8 e8 g4 f8 e8 c4 o4 g4 r1 r1 r1 r1 r1 r1 r1 r1 o5 f#8 f1^1^1^2.^8
 B @8 v9 o4 {a-a}1^1 r1 r1 r1 r1 r1 r1 r1 r2. o3 {e-a-}16 {ea}16 {a>d}16 {b->e-}16 o4 {e-a-}2. {c#f#}8 {e-a-}8 {ea}8 {e-a-}8 {c#f#}8 {ea}8 {e-a-}4 {dg}8 {cf}8 {c#f#}2. {cf}8 {c#f#}8 {dg}8 {c#f#}8 {cf}8 {dg}8 {c#f#}4 o3 {b>e}8 {b->e-}8 {b>e}2^8 {ea-b}8 {b>e}8 o4 {ea-}8 {f#a}16 o3 f16 {f#>ea-}16 g16 {a->f#a}16 a16 {b->gb-}16 b16 o4 {ca-b}16 o3 b16 b-16 a16 a-16 g16 f#16 f16 {f#>c#f#}2^8 {c#b->c#}8 o4 {c#f#}8 {f#b-}8 o3 {f#>a-b}16 g16 {a->f#b-}16 a16 {b->a-b}16 b16 o4 {ca>c}16 c#16 {db->c#}16 c#16 c16 o3 b16 b-16 a16 a-16 g16 o4 {e-a-}2. {c#f#}8 {e-a-}8 {ea}8 {e-a-}8 {c#f#}8 {ea}8 {e-a-}4 {dg}8 {cf}8 {c#f#}2. {cf}8 {c#f#}8 {dg}8 {c#f#}8 {cf}8 {dg}8 {c#f#}4 o3 {b>e}8 {b->e-}8 {b>e}2^8 {ea-b}8 {b>e}8 o4 {ea-}8 {f#a}16 o3 f16 {f#>ea-}16 g16 {a->f#a}16 a16 {b->gb-}16 b16 o4 {ca-b}16 o3 b16 b-16 a16 a-16 g16 f#16 f16 {f#>c#f#}2^8 {c#b->c#}8 o4 {c#f#}8 {f#b-}8 o3 {f#>a-b}16 g16 {a->f#b-}16 a16 {b->a-b}16 b16 o4 {ca>c}16 c#16 {db->c#}16 c#16 c16 o3 b16 b-16 a16 a-16 g16 {a->e-a-}2^8 {e->ce-}8 o4 a-16 e-16 {a->c}8 o3 {a->b->c#}16 a16 {b->a->c}16 b16 o4 {cb->c#}16 c#16 {db>d}16 e-16 {e>ce-}16 e-16 d16 c#16 c16 o3 b16 b-16 a16 {a->a->c}2^8 {e->ce-}8 o4 {e-a-}8 {a->c}8 o3 {a->b->c#}16 a16 {b->a->c}16 b16 o4 {cb->c#}16 c#16 {db>d}16 e-16 {e>ce-}16 e-16 d16 c#16 c16 o3 b16 b-16 a16 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 o4 {b>cf#b}1^1 {b>f#b}16 r4 r16 {b>f#b}16 r4 r16 {b>f#b}16 r4 r16 {b>f#b}16 r4 r16 o5 {da>d}4 {cg>c}4 o4 {b>f#b}8 r2. r8 o1 {b>b}1 o4 b16 f#16 o3 a16 o4 b16 o5 b-16 f16 g16 o4 b16 o6 c#16 o5 e-16 g16 o4 g16 o5 c16 c#16 a16 o4 a16 o5 d16 g16 e16 f16 o6 e16 o5 f#16 o6 c16 o5 c16 a-16 o4 b16 o5 f#16 o4 a-16 d16 a-16 o5 d16 g16 {e-f#}8 {df}1^1^1^2.^8
 C @4 v12 o1 e-4. r8 e-4. r8 e-4. r8 o2 e-8 e8 e-8 a8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 e-8 o2 f8 o1 f8 o2 c#8 o1 f8 o2 c#8 o1 {f>e-}8 o2 f8 o1 c#8 o2 f8 o1 c#8 o2 f8 o1 c#8 o2 f8 o1 c#8 o2 f8 o1 f8 o2 a-8 o1 f8 o2 a-8 o1 f8 o2 a-8 o1 f8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 e-8 o2 f8 o1 f8 o2 c#8 o1 f8 o2 c#8 o1 {f>e-}8 o2 f8 o1 c#8 o2 f8 o1 c#8 o2 f8 o1 c#8 o2 f8 o1 c#8 o2 f8 o1 f8 o2 a-8 o1 f8 o2 a-8 o1 {f>>c#}8 o2 a-8 o1 {fb}8 o2 c8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 c8 o1 b-8 o2 c8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 d8 f8 d8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 d8 o1 b-8 o2 c#8 o1 b8 o2 f#8 f8 c#8 f#8 e8 a8 d8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 c8 o1 b-8 o2 c8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 d8 f8 d8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 d8 o1 b-8 o2 c#8 o1 b8 o2 f#8 f8 c#8 f#8 e8 a8 d8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 c8 o1 b-8 o2 c8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 d8 f8 d8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 d8 o1 b-8 o2 c#8 o1 b8 o2 f#8 f8 c#8 f#8 e8 a8 d8 c8 g8 f#8 e-8 c8 c#8 o1 b8 o2 c#8 c8 g8 f#8 e-8 c8 e-8 f#8 e-8 c8 g8 f#8 e-8 c8 e-8 o1 b8 o2 d8 c8 g8 f#8 d8 g8 f8 b-8 e-8 c8 g8 f#8 e-8 c8 c#8 o1 b8 o2 c#8 c8 g8 f#8 e-8 c8 e-8 f#8 e-8 c8 g8 f#8 e-8 c8 e-8 o1 b8 o2 d8 c8 g8 f#8 d8 g8 f8 b-8 e-8 c8 g8 f#8 e-8 c8 c#8 o1 b8 o2 c#8 c8 g8 f#8 e-8 c8 e-8 f#8 e-8 c8 g8 f#8 e-8 c8 e-8 o1 b8 o2 d8 c8 g8 f#8 d8 g8 f8 b-8 e-8 c8 g8 f#8 e-8 c8 c#8 o1 b8 o2 c#8 c8 g8 f#8 e-8 c8 e-8 f#8 e-8 c8 g8 f#8 e-8 c8 e-8 o1 b8 o2 d8 c8 g8 f#8 d8 g8 f8 b-8 e-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8
 D @5 v6 o2 c16 r4. r16 c16 r4. r16 c16 r4. r16 c16 r8. c16 r8. c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {cb-}16 c16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {c>c#}16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 c16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 c16 c16 c16 c16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 {c>a}16 r16 b-16 r16 c16 r16 {b->c#}16 r16 c16 r16 b-16 r16 {c>a}16 r16 b-16 r16 c16 r16 {b->c#}16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 {c>a}16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 {c>c#}16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 c16 c16 c16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 r16 {db-}16 d16
 E r1 r2. r8 @11 v8 o2 a-16 a-16 o3 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r4 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r4 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r4 e-8 r8 c#8 r4 c#8 r4 c#8 r4 c#8 r4 c#8 r8 c#8 r8 o2 b8 r4 b8 r4 b8 r4 b8 r4 b8 r8 b8 r8 o3 c#8 r4 c#8 r4 c#8 r4 c#8 r4 c#8 r8 c#8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r4 e-8 r8 c#8 r4 c#8 r4 c#8 r4 c#8 r4 c#8 r8 c#8 r8 o2 b8 r4 b8 r4 b8 r4 b8 r4 b8 r8 b8 r8 o3 c#8 r4 c#8 r4 c#8 r4 c#8 r4 c#8 r8 c#8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r4 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r4 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r8 e-8. r8. e-8. r8. e-8. r8. e-8. r16 e-8. r8. e-8. r16 e-8. r8. e-8. r8. e-8. r8. e-8. r8. e-8. r16 e-8. r16 e-8. r8. e-8. r8. e-8. r8. e-8. r16 e-8. r8. e-8. r16 e-8. r8. e-8. r8. e-8. r8. e-8. r8. e-8. r16 e-8. r16 e-8. r8. e-8. r8. e-8. r8. e-8. r16 e-8. r8. e-8. r16 d8. r8. d8. r8. d8. r8. c#8. r8. c#8. r16 c#8. r16 e-8 r4 e-8 r4 e-8
 F @8 v10 o5 c#1^1 o3 {a->a->a-}4. r1 r1 r1 r2 r8 {a->a->a-}4. r1 r1 r1 r1 r1 r1 r1 r1 r4 b8 o4 e8 a-8 a8 a-8 a8 b-8 b2 f#2^8 c#8 f#8 b-8 b8 b-8 b8 o5 c8 c#2 r1 r1 r1 r1 r2 r8 o3 b8 o4 e8 a-8 a8 a-8 a8 b-8 b2 f#2^8 c#8 f#8 b-8 b8 b-8 b8 o5 c8 c#2 o4 a-2^8 e-8 a-8 o5 c8 c#8 c8 c#8 d8 e-2 c2^8 o4 e-8 a-8 o5 c8 c#8 c8 c#8 d8 e-2 o4 e-2 c#2 a-4. f4. c#4 a-4. f4. c#4 o3 a-1 o5 e-2 c#2 o4 a-4. b-4. a-4 o5 c#4. f4. e4 f1 o2 {b>b>b}4. r1 r2 r8 {f#>f#>f#}4. r1 r2 r8 {g>g>g}4. r1 r2 r8 o3 {c>c>c}4. r1 r2 r8 o2 {b>b>b}4. r1 r2 r8 {g>g>g}4. r1 r2 r8 o3 {c>c>c}4. r1 r2 r8 {c>c>c}4. r1 r1 r1 r2 r8 o2 {b>b>b}4 r8 {b>b>b}4 r8 {b>b>b}4 r8 {b>b>b}4 r8 o4 {d>d}4 {c>c}4 o2 {b>b>b}4 r1 r1 r1 r2. o5 e-8 d1^1^1^2.^8 o3 {a->a-}4.
-G @2 v9 o5 {e-a-}8 o4 {a>e-}8 a8 a-8 e-8 o3 b8 a-8 b8 o4 c8 e-8 a8 o5 c8 c#16 e-16 r16 f#16 a-16 a16 r16 b16 r1 r1 r1 r1 r8 o6 a-16 r16 a-16 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r2 r8. e-8 d8 e-8 r4 e8 r8 e-8 r1 c#8 c8 c#8 r4 d8 r8 c#8 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 c8 g8 c8 g8 o5 c8 r8 o4 g8 r8 c8 g8 c8 g8 o5 c8 f8 o4 g8 o5 c8 o4 c8 g8 c8 g8 o5 c8 r8 o4 g8 r8 c8 g8 c8 g8 o5 c8 f8 o4 g8 o5 c8 o4 b8 f#8 o5 c8 o6 c8 o5 d8 o6 d8 o5 f#8 a8 o6 a8 f#8 c8 d8 c8 o5 a-8 f#8 d8 o2 b16 b16 b16 b16 b16 r16 b4^16 r16 b16 b16 b16 b16 b16 b16 b4. {f>g}8 o3 f8 o2 {a>b-}8 o3 e-8 o5 b4.^16 r16 b4.^16 r16 b4.^16 r1 r1 r2 r16 o4 c8 g8 f#8 e-8 c8 c#8 o3 b8 o4 c#8 c8 g8 f#8 e-8 c8 e-8 f#8 e-8 c8 g8 f#8 e-8 c8 e-8 o3 b8 o4 d8 c8 g8 f#8 d8 g8 f8 b-8 e-8 r8 o6 a-16 r16 a-16
+G @13 v9 o5 {e-a-}8 o4 {a>e-}8 a8 a-8 e-8 o3 b8 a-8 b8 o4 c8 e-8 a8 o5 c8 c#16 e-16 r16 f#16 a-16 a16 r16 b16 r1 r1 r1 r1 r8 o6 a-16 r16 a-16 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r2 r8. e-8 d8 e-8 r4 e8 r8 e-8 r1 c#8 c8 c#8 r4 d8 r8 c#8 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 c8 g8 c8 g8 o5 c8 r8 o4 g8 r8 c8 g8 c8 g8 o5 c8 f8 o4 g8 o5 c8 o4 c8 g8 c8 g8 o5 c8 r8 o4 g8 r8 c8 g8 c8 g8 o5 c8 f8 o4 g8 o5 c8 o4 b8 f#8 o5 c8 o6 c8 o5 d8 o6 d8 o5 f#8 a8 o6 a8 f#8 c8 d8 c8 o5 a-8 f#8 d8 o2 b16 b16 b16 b16 b16 r16 b4^16 r16 b16 b16 b16 b16 b16 b16 b4. {f>g}8 o3 f8 o2 {a>b-}8 o3 e-8 o5 b4.^16 r16 b4.^16 r16 b4.^16 r1 r1 r2 r16 o4 c8 g8 f#8 e-8 c8 c#8 o3 b8 o4 c#8 c8 g8 f#8 e-8 c8 e-8 f#8 e-8 c8 g8 f#8 e-8 c8 e-8 o3 b8 o4 d8 c8 g8 f#8 d8 g8 f8 b-8 e-8 r8 o6 a-16 r16 a-16
 H r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 @11 v8 o5 d16 e16 f#16 a16 o6 c#16 e16 g16 a-16 o7 c#16 d16 c#16 c16 o6 a16 g16 e16 d16 o5 a16 o6 c16 d16 e-16 f#16 a-16 o7 c16 d16 c#16 e-16 c16 o6 a-16 o7 c16 o6 b16 f16 f#16`,
   },
   route209: {
@@ -965,6 +979,19 @@ function triWave(ctx) {
   return ctx.createPeriodicWave(real, imag);
 }
 
+// A square wave whose odd harmonics roll off past a knee
+// instead of running flat to the 96th partial: the shape of a
+// sampled synth lead rather than an ideal pulse. knee is the
+// harmonic where the rolloff reaches half strength.
+function shapedWave(ctx, knee) {
+  const N = 48;
+  const real = new Float32Array(N + 1), imag = new Float32Array(N + 1);
+  for (let k = 1; k <= N; k += 2) {
+    imag[k] = -(4 / (Math.PI * k)) / (1 + (k / knee) * (k / knee));
+  }
+  return ctx.createPeriodicWave(real, imag);
+}
+
 // GB/NES noise is an LFSR bit-stream, not white noise: brighter
 // and more metallic, and it loops like the hardware's does.
 function noiseBuffer(ctx) {
@@ -995,10 +1022,10 @@ function makeImpulse(ctx, seconds, decay) {
 
 const freqOf = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
 
-function chipEnvelope(gain, t, dur, peak) {
+function chipEnvelope(gain, t, dur, peak, attack = 0.004) {
   const p = gain.gain;
   p.setValueAtTime(0, t);
-  p.linearRampToValueAtTime(peak, t + 0.004);
+  p.linearRampToValueAtTime(peak, t + attack);
   if (dur > 0.15) {
     // Stepped, the way the hardware envelopes step: a few flat
     // levels on the way down, never a smooth ramp.
@@ -1007,7 +1034,7 @@ function chipEnvelope(gain, t, dur, peak) {
       p.setValueAtTime(peak * (1 - 0.07 * s), t + (dur * s) / (steps + 1));
     }
   }
-  p.setValueAtTime(peak * 0.72, Math.max(t + 0.004, t + dur - 0.012));
+  p.setValueAtTime(peak * 0.72, Math.max(t + attack, t + dur - 0.012));
   p.linearRampToValueAtTime(0, t + dur);
 }
 
@@ -1026,6 +1053,32 @@ function scheduleChip(ctx, out, kit, n, t, dur) {
     src.connect(g).connect(out);
     src.start(t, Math.random() * 1.5);
     src.stop(t + dur + 0.05);
+    return;
+  }
+  if (inst.kind === "lead") {
+    // Shaped wave, a low-pass, a slower attack, and (on the
+    // lead) a second oscillator a few cents off for body: the
+    // sampled-synth character the pulse waves are too raw for.
+    const g = ctx.createGain();
+    chipEnvelope(g, t, dur, peak * (inst.level ?? 1), inst.attack ?? 0.004);
+    const flt = ctx.createBiquadFilter();
+    flt.type = "lowpass";
+    flt.frequency.value = inst.cutoff;
+    flt.Q.value = 0.4;
+    const voice = (detune, trim) => {
+      const o = ctx.createOscillator();
+      o.setPeriodicWave(kit.waves[inst.wave]);
+      o.frequency.value = freqOf(n.midi);
+      o.detune.value = detune;
+      const og = ctx.createGain();
+      og.gain.value = trim;
+      o.connect(og).connect(flt);
+      o.start(t);
+      o.stop(t + dur + 0.05);
+    };
+    if (inst.detune) { voice(-inst.detune, 0.72); voice(inst.detune, 0.5); }
+    else voice(0, 1);
+    flt.connect(g).connect(out);
     return;
   }
   const osc = ctx.createOscillator();
@@ -1140,6 +1193,7 @@ function buildOfflineGraph(song, chanIdxs, sr, beforeChannel) {
       0.125: dutyWave(ctx, 0.125), 0.25: dutyWave(ctx, 0.25),
       0.5: dutyWave(ctx, 0.5), 0.75: dutyWave(ctx, 0.75),
     },
+    waves: { lead: shapedWave(ctx, 9), soft: shapedWave(ctx, 14) },
     tri: triWave(ctx),
     noise: noiseBuffer(ctx),
   };
