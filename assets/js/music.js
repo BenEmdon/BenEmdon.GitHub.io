@@ -30,7 +30,7 @@
 */
 
 import { createThemeScene } from "./theme-scene.js";
-import { animateWordmark } from "./wordmark.js";
+import { animateWordmark, setUpStaticWordmark } from "./wordmark.js";
 
 /* ---------- theme ---------- */
 
@@ -1509,27 +1509,16 @@ window.addEventListener("pointerdown", () => loadSamples(), { once: true });
 // way main.js wires it: the stepped boot reveal starts once
 // the block-glyph font is ready, and wordmark.js splits the
 // art into fixed cells and runs its scan on pointer devices.
-// On touch devices the scan never runs and the splitter in
-// wordmark.js stays out, so the split happens here instead,
-// statically: the same .wordmark__cell spans on the same
-// fixed grid, which is what keeps the letters from merging
-// together in a phone browser.
+// On touch devices the scan never runs, so wordmark.js does
+// the split statically instead, after the same font wait:
+// fixed cells at the measured glyph width, spaces included,
+// which is what keeps the letters from merging together in
+// a phone browser.
 const wordmark = document.querySelector(".wordmark");
 document.fonts.ready.then(() => wordmark?.classList.add("is-booting"));
 animateWordmark(wordmark, window.matchMedia("(prefers-reduced-motion: reduce)"));
 if (wordmark && !window.matchMedia("(hover: hover)").matches) {
-  const fragment = document.createDocumentFragment();
-  wordmark.textContent.split("\n").forEach((row, y, rows) => {
-    for (const glyph of row) {
-      if (glyph === " ") { fragment.append(" "); continue; }
-      const el = document.createElement("span");
-      el.className = "wordmark__cell";
-      el.textContent = glyph;
-      fragment.append(el);
-    }
-    if (y < rows.length - 1) fragment.append("\n");
-  });
-  wordmark.replaceChildren(fragment);
+  setUpStaticWordmark(wordmark);
 }
 
 setUpThemeToggle();

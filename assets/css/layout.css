@@ -63,10 +63,21 @@
 }
 
 /* Each character is one terminal cell. Animation changes a whole cell's
-   colour in place; cells never move or resize. */
-.wordmark__cell {
+   colour in place; cells never move or resize. Spaces get a gap span of
+   the same width, so every column in the grid is sized by the same rule.
+
+   The width is the measured advance of the block glyph itself, set from
+   JS as --wordmark-cell-w once the font is in (see wordmark.js). It used
+   to be 1ch, but ch is the advance of "0", a glyph the subset font does
+   not contain, so each engine resolved it through its own fallback and
+   the columns drifted by an amount the engine chose, differently from
+   the advance the glyphs and spaces were actually laid out with. The
+   0.6em default below is the subset's true advance, for the moments
+   before the measurement lands. */
+.wordmark__cell,
+.wordmark__gap {
   display: inline-block;
-  width: 1ch;
+  width: var(--wordmark-cell-w, 0.6em);
   white-space: pre;
 }
 
