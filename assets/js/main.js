@@ -151,6 +151,12 @@ function setUp() {
   // shades are data in components.css): the distance math leans angular
   // so clusters grow facets, and single glint cells on cluster edges
   // switch as the pointer travels, light catching the crystal.
+  //
+  // Third pass, also on Ben's word: scrolling to the block lights it
+  // too. A source parked at the block's centre holds while the block
+  // straddles the site's focus line, sharing one state with the
+  // pointer hold, and the flare anchors at the centre for it. When
+  // every hold lets go, the settle drains every cell to zero.
   const hiring = document.querySelector("[data-hiring]");
 
   if (hiring) {
@@ -185,6 +191,7 @@ function setUp() {
     let pointerSource = null;
     let touchSource = null;
     let focusSource = null;
+    let scrollSource = null;
     let pointerSpeed = 0;
     let trailX = null;
     let trailY = null;
@@ -399,6 +406,8 @@ function setUp() {
           s.energy = Math.min(0.9, s.energy + 0.12);
         } else if (s.kind === "focus") {
           s.energy = Math.min(0.55, s.energy + 0.06);
+        } else if (s.kind === "scroll") {
+          s.energy = Math.min(0.85, s.energy + 0.08);
         } else if (s.kind === "pulse") {
           if (s.rising) {
             s.energy += 0.25;
@@ -452,7 +461,8 @@ function setUp() {
       // The flare rides the primary source: the pointer first, then a
       // held touch, then focus. Its cells step one level toward the
       // wanted set each tick, the bloom's own discipline.
-      const primary = pointerSource || touchSource || focusSource;
+      const primary =
+        pointerSource || touchSource || scrollSource || focusSource;
       const want = primary
         ? flareTargets(primary.col, primary.row, primary.energy, cols, rows)
         : new Map();
@@ -494,37 +504,68 @@ function setUp() {
     if (reduced.matches) {
       // The still state: three seeded clusters at fixed spots, levels set
       // outright from the same target math, drawn once and never ticked.
-      const cols = Math.ceil(hiring.clientWidth / CELL);
-      const rows = Math.ceil(hiring.clientHeight / CELL);
-      sources.add({ col: 6, row: 2, energy: 0.85 });
-      sources.add({ col: cols - 7, row: rows - 3, energy: 0.7 });
-      sources.add({ col: Math.floor(cols / 2), row: rows - 2, energy: 0.55 });
-      for (let c = 0; c < cols; c++) {
-        for (let r = 0; r < rows; r++) {
-          const level = targetLevel(c, r);
-          if (level > 0) setLevel(`${c},${r}`, c, r, level);
+      // The scroll trigger applies it in one cut when the block reaches
+      // the focus line and clears it in one cut when the block leaves,
+      // the still form of the same hold the animated path keeps.
+      let stillDrawn = false;
+      const drawStill = () => {
+        const cols = Math.ceil(hiring.clientWidth / CELL);
+        const rows = Math.ceil(hiring.clientHeight / CELL);
+        sources.add({ col: 6, row: 2, energy: 0.85 });
+        sources.add({ col: cols - 7, row: rows - 3, energy: 0.7 });
+        sources.add({ col: Math.floor(cols / 2), row: rows - 2, energy: 0.55 });
+        for (let c = 0; c < cols; c++) {
+          for (let r = 0; r < rows; r++) {
+            const level = targetLevel(c, r);
+            if (level > 0) setLevel(`${c},${r}`, c, r, level);
+          }
         }
-      }
-      // The flare in its still form, centred on the middle cluster,
-      // and in dark mode a few fixed glints on the cluster edges.
-      const stillFlare = flareTargets(
-        Math.floor(cols / 2),
-        rows - 2,
-        0.85,
-        cols,
-        rows,
-      );
-      for (const [key, level] of stillFlare) {
-        const comma = key.indexOf(",");
-        setFlareLevel(
-          key,
-          Number(key.slice(0, comma)),
-          Number(key.slice(comma + 1)),
-          level,
+        // The flare in its still form, centred on the middle cluster,
+        // and in dark mode a few fixed glints on the cluster edges.
+        const stillFlare = flareTargets(
+          Math.floor(cols / 2),
+          rows - 2,
+          0.85,
+          cols,
+          rows,
         );
-      }
-      if (isDark()) applyGlints(true, 2);
-      sources.clear();
+        for (const [key, level] of stillFlare) {
+          const comma = key.indexOf(",");
+          setFlareLevel(
+            key,
+            Number(key.slice(0, comma)),
+            Number(key.slice(comma + 1)),
+            level,
+          );
+        }
+        if (isDark()) applyGlints(true, 2);
+        sources.clear();
+      };
+      const clearStill = () => {
+        for (const key of [...lit.keys()]) {
+          const comma = key.indexOf(",");
+          setLevel(key, Number(key.slice(0, comma)), Number(key.slice(comma + 1)), 0);
+        }
+        for (const key of [...flareLit.keys()]) {
+          const comma = key.indexOf(",");
+          setFlareLevel(key, Number(key.slice(0, comma)), Number(key.slice(comma + 1)), 0);
+        }
+      };
+      const stillBand = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting && !stillDrawn) {
+              stillDrawn = true;
+              drawStill();
+            } else if (!entry.isIntersecting && stillDrawn) {
+              stillDrawn = false;
+              clearStill();
+            }
+          }
+        },
+        { rootMargin: "-33.333% 0px -66.667% 0px" },
+      );
+      stillBand.observe(hiring);
     } else {
       hiring.addEventListener("pointermove", (event) => {
         const rect = hiring.getBoundingClientRect();
@@ -646,6 +687,40 @@ function setUp() {
         release(focusSource);
         focusSource = null;
       });
+
+      // Scrolling brings the bloom too, on Ben's word: when the block
+      // straddles the site's focus line, a source parked at its centre
+      // lights it in the same stepped stages, the flare anchored at
+      // the centre so it still reads as light through the posting.
+      // On touch this is the primary trigger, since there is no hover
+      // to speak of. The holds share one state with the pointer: the
+      // effect stands while either holds it, and when both let go the
+      // settle drains every cell back to zero, the same clear the
+      // pointer path ends in.
+      const band = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              if (scrollSource) continue;
+              const cols = Math.ceil(hiring.clientWidth / CELL);
+              const rows = Math.ceil(hiring.clientHeight / CELL);
+              scrollSource = {
+                col: cols / 2,
+                row: rows / 2,
+                energy: 0.1,
+                kind: "scroll",
+              };
+              sources.add(scrollSource);
+              startTick();
+            } else if (scrollSource) {
+              release(scrollSource);
+              scrollSource = null;
+            }
+          }
+        },
+        { rootMargin: "-33.333% 0px -66.667% 0px" },
+      );
+      band.observe(hiring);
     }
   }
 
