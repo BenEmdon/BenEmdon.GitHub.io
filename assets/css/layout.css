@@ -435,3 +435,60 @@
     opacity: 1;
   }
 }
+
+/* ---------- interesting as a links table ---------- */
+
+/* The same step off the intro line that .section > .entry__list gets, and a
+   full step between entries: at several lines per entry, the elsewhere
+   table's flush stacking stops showing where one entry ends. */
+.links--posts {
+  margin-block-start: var(--step);
+  gap: var(--step);
+}
+
+/* The key column holds post titles here, not platform names, so it takes a
+   wider fixed measure than .links__key's 6.5rem; titles wrap inside it. */
+.links--posts .links__key {
+  width: 15rem;
+}
+
+/* The Code Mode pair: two titles share one description cell. The pair is a
+   div, not an anchor, because one row cannot hold two links. */
+.links__pair {
+  display: flex;
+  gap: var(--step-half);
+  max-width: 100%;
+}
+
+.links__key--pair {
+  display: flex;
+  flex-direction: column;
+  gap: var(--step-half);
+}
+
+.links__key--pair a {
+  text-decoration: none;
+  /* The coarse-pointer rule gives .links anchors a 48px floor; inside the
+     pair that floor reads as a blank line between the two titles. */
+  min-height: 0;
+}
+
+/* At phone width the two columns stop fitting side by side: 15rem of title
+   would leave roughly eleven characters for the description. Stack each
+   row instead, title over description, both at full measure. */
+@media (max-width: 34rem) {
+  .links--posts a,
+  .links__pair {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .links--posts .links__key {
+    width: auto;
+  }
+
+  .links__key--pair {
+    gap: 0;
+  }
+}
