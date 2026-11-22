@@ -1417,6 +1417,10 @@ function songChanged(parsed, { restart = false } = {}) {
 const textEl = document.querySelector("[data-song-text]");
 const gridEl = document.querySelector("[data-grid]");
 const panelEl = document.querySelector(".music-panel");
+const factsEl = document.querySelector("[data-song-facts]");
+const factNameEl = document.querySelector("[data-fact-name]");
+const factMetaEl = document.querySelector("[data-fact-meta]");
+const factKeyEl = document.querySelector("[data-fact-key]");
 const statusEl = document.querySelector("[data-status]");
 const textStatusEl = document.querySelector("[data-text-status]");
 const playBtn = document.querySelector("[data-play]");
@@ -1630,7 +1634,7 @@ function gridEdit(ch, step, midi) {
   player.song.steps = player.song.channels
     .reduce((mx, c) => Math.max(mx, c.steps), 0);
   const text = songToText(player.song);
-  textEl.value = text;
+  textEl.value = notesText(player.song);
   const parsed = parseSong(text);
   if (parsed.ok) adoptSong(parsed);
 }
@@ -1658,24 +1662,90 @@ function adoptSong(parsed, { restart = false } = {}) {
   }
   buildGrid();
   updateTempoUI();
+  updateSongFacts(parsed);
+  fitText();
   showIssues(parsed);
 }
 
 function markSongButton(key) {
   for (const btn of document.querySelectorAll("[data-song]")) {
-    btn.setAttribute("aria-pressed", String(btn.dataset.song === key));
+    const current = btn.dataset.song === key;
+    btn.setAttribute("aria-current", String(current));
+    if (!current) continue;
+    // Keep the current row in view inside the capped list,
+    // moving the list only as much as it takes.
+    const list = btn.closest(".songlist");
+    if (!list) continue;
+    const lr = list.getBoundingClientRect();
+    const br = btn.getBoundingClientRect();
+    if (br.top < lr.top) {
+      list.scrollTop += br.top - lr.top;
+    } else if (br.bottom > lr.bottom) {
+      list.scrollTop += br.bottom - lr.bottom;
+    }
   }
+}
+
+// The notes box shows the channel lines only. The header
+// comments stay with the song (the details block shows their
+// music facts), so the text here is the listing itself.
+function notesText(song) {
+  const lines = songToText(song).split("\n");
+  const first = lines.findIndex((l) => /^\s*[A-H](\s|$)/.test(l));
+  return lines.slice(first < 0 ? lines.length : first).join("\n");
+}
+
+// The notes box never scrolls: its height is fitted to its
+// full content, wrapped lines and all, the way code areas
+// elsewhere on the site show everything and scroll nothing.
+function fitText() {
+  if (!textEl) return;
+  textEl.style.height = "auto";
+  textEl.style.height = textEl.scrollHeight + "px";
+  for (let i = 0; i < 2; i++) {
+    const short = textEl.scrollHeight - textEl.clientHeight;
+    if (short <= 0) break;
+    textEl.style.height = textEl.offsetHeight + short + "px";
+  }
+}
+
+// The details block: the music facts from the song's header.
+// Line one is "Name: Game (System, Year)" in every song; line
+// two leads with the key and time in most, and where it does
+// not (it goes straight to where the transcription came from)
+// there is no key line to show. The rest of the header prose
+// stays out of the panel.
+function updateSongFacts(song) {
+  if (!factsEl) return;
+  const head = (song.header || [])
+    .map((l) => l.replace(/^;\s*/, "").trim())
+    .filter((l) => l.length);
+  const m = (head[0] || "").match(
+    /^(.+?):\s*(.+?)\s*\(([^,]+),\s*(\d{4})\)\s*$/);
+  if (!m) {
+    factsEl.hidden = true;
+    return;
+  }
+  factsEl.hidden = false;
+  factNameEl.textContent = m[1];
+  factMetaEl.textContent = `${m[2]} · ${m[3]} · ${m[4]}`;
+  const km = (head[1] || "").match(
+    /^([A-G][#b]? (?:major|minor))?(?:\s*,\s*)?(\d+\/\d+(?: at \d+)?|quick: \d+)?/);
+  const key = km ? [km[1], km[2]].filter(Boolean).join(" · ") : "";
+  factKeyEl.hidden = !key;
+  factKeyEl.textContent = key;
 }
 
 function loadSong(key, { restart = false } = {}) {
   const song = SONGS[key];
   if (!song) return;
-  textEl.value = song.text + "\n";
-  const parsed = parseSong(textEl.value);
+  const parsed = parseSong(song.text + "\n");
   markSongButton(key);
   if (panelEl) panelEl.scrollLeft = 0;
   if (parsed.ok) adoptSong(parsed, { restart });
   else showIssues(parsed);
+  textEl.value = notesText(parsed);
+  fitText();
 }
 
 for (const btn of document.querySelectorAll("[data-song]")) {
@@ -1724,23 +1794,43 @@ for (const btn of document.querySelectorAll("[data-tempo]")) {
       }
     }
     textEl.value = lines.join("\n");
-    const parsed = parseSong(textEl.value);
+    const parsed = parseBoxText();
     if (parsed.ok) { markSongButton(null); adoptSong(parsed); }
   });
 }
 
 /* ----- text editing ----- */
 
+// The box holds the channel lines; the song's header rides
+// along from the song itself. A pasted text that brings its
+// own header comments is parsed as the full text it is.
+function parseBoxText() {
+  const raw = textEl.value;
+  const firstLine = raw.split("\n").find((l) => l.trim()) || "";
+  if (firstLine.trim().startsWith(";") || !player.song) {
+    return parseSong(raw);
+  }
+  const head = (player.song.header || []).join("\n");
+  return parseSong(head ? head + "\n" + raw : raw);
+}
+
 let textTimer = 0;
 textEl.addEventListener("input", () => {
+  fitText();
   clearTimeout(textTimer);
   textTimer = setTimeout(() => {
-    const parsed = parseSong(textEl.value);
+    const parsed = parseBoxText();
     if (!parsed.ok) { showIssues(parsed); return; }
     markSongButton(null);
     adoptSong(parsed);
   }, 300);
 });
+
+// Wrapping changes with the width and with the font arriving,
+// so the fit is redone then too: the box must never be left
+// with anything to scroll.
+window.addEventListener("resize", fitText);
+if (document.fonts?.ready) document.fonts.ready.then(() => fitText());
 
 // Warm the sample cache on the first touch, so the first press of
 // play is not also the first download.

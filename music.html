@@ -120,22 +120,63 @@
           </span>
         </div>
         <p class="music-status" data-status aria-live="polite"></p>
-        <div class="music-group">
+        <div class="music-group music-group--songs">
           <span class="music-group__label" id="songs-label">songs</span>
-          <div class="music-group__btns" role="group" aria-labelledby="songs-label">
-            <button class="music-btn" type="button" data-song="storms" aria-pressed="false">Song of Storms (Zelda)</button>
-            <button class="music-btn" type="button" data-song="lullaby" aria-pressed="false">Zelda's Lullaby (Zelda)</button>
-            <button class="music-btn" type="button" data-song="saria" aria-pressed="false">Saria's Song (Zelda)</button>
-            <button class="music-btn" type="button" data-song="twinleaf" aria-pressed="false">Twinleaf Town (Pokémon)</button>
-            <button class="music-btn" type="button" data-song="route201" aria-pressed="false">Route 201 (Pokémon)</button>
-            <button class="music-btn" type="button" data-song="jubilife" aria-pressed="false">Jubilife City (Pokémon)</button>
-            <button class="music-btn" type="button" data-song="cynthia" aria-pressed="false">Battle! (Champion Cynthia)</button>
-            <button class="music-btn" type="button" data-song="route209" aria-pressed="false">Route 209 (Pokémon)</button>
-            <button class="music-btn" type="button" data-song="eterna" aria-pressed="false">Eterna City (Pokémon)</button>
-            <button class="music-btn" type="button" data-song="canalave" aria-pressed="false">Canalave City (Pokémon)</button>
-            <button class="music-btn" type="button" data-song="snowpoint" aria-pressed="false">Snowpoint City (Pokémon)</button>
-            <button class="music-btn" type="button" data-song="hearthome" aria-pressed="false">Hearthome City (Pokémon)</button>
-            <button class="music-btn" type="button" data-song="pokecenter" aria-pressed="false">Pokémon Center (Pokémon)</button>
+          <div class="songlist" role="group" aria-labelledby="songs-label">
+            <p class="songlist__group">The Legend of Zelda: Ocarina of Time</p>
+            <button class="songrow" type="button" data-song="storms" aria-current="false">
+              <span class="songrow__title">Song of Storms</span>
+              <span class="songrow__meta">N64 · 1998</span>
+            </button>
+            <button class="songrow" type="button" data-song="lullaby" aria-current="false">
+              <span class="songrow__title">Zelda's Lullaby</span>
+              <span class="songrow__meta">N64 · 1998</span>
+            </button>
+            <button class="songrow" type="button" data-song="saria" aria-current="false">
+              <span class="songrow__title">Saria's Song</span>
+              <span class="songrow__meta">N64 · 1998</span>
+            </button>
+            <p class="songlist__group">Pokémon Diamond and Pearl</p>
+            <button class="songrow" type="button" data-song="twinleaf" aria-current="false">
+              <span class="songrow__title">Twinleaf Town</span>
+              <span class="songrow__meta">DS · 2006</span>
+            </button>
+            <button class="songrow" type="button" data-song="route201" aria-current="false">
+              <span class="songrow__title">Route 201</span>
+              <span class="songrow__meta">DS · 2006</span>
+            </button>
+            <button class="songrow" type="button" data-song="jubilife" aria-current="false">
+              <span class="songrow__title">Jubilife City</span>
+              <span class="songrow__meta">DS · 2006</span>
+            </button>
+            <button class="songrow" type="button" data-song="cynthia" aria-current="false">
+              <span class="songrow__title">Battle! (Champion Cynthia)</span>
+              <span class="songrow__meta">DS · 2006</span>
+            </button>
+            <button class="songrow" type="button" data-song="route209" aria-current="false">
+              <span class="songrow__title">Route 209</span>
+              <span class="songrow__meta">DS · 2006</span>
+            </button>
+            <button class="songrow" type="button" data-song="eterna" aria-current="false">
+              <span class="songrow__title">Eterna City</span>
+              <span class="songrow__meta">DS · 2006</span>
+            </button>
+            <button class="songrow" type="button" data-song="canalave" aria-current="false">
+              <span class="songrow__title">Canalave City</span>
+              <span class="songrow__meta">DS · 2006</span>
+            </button>
+            <button class="songrow" type="button" data-song="snowpoint" aria-current="false">
+              <span class="songrow__title">Snowpoint City</span>
+              <span class="songrow__meta">DS · 2006</span>
+            </button>
+            <button class="songrow" type="button" data-song="hearthome" aria-current="false">
+              <span class="songrow__title">Hearthome City</span>
+              <span class="songrow__meta">DS · 2006</span>
+            </button>
+            <button class="songrow" type="button" data-song="pokecenter" aria-current="false">
+              <span class="songrow__title">Pokémon Center</span>
+              <span class="songrow__meta">DS · 2006</span>
+            </button>
           </div>
         </div>
         <div class="music-panel">
@@ -149,20 +190,31 @@
           high at the top. Notes in the same column on one channel
           sound together, as a chord.
         </p>
+        <div class="music-group" data-song-facts hidden>
+          <span class="music-group__label" id="details-label">details</span>
+          <div class="songfacts" role="group" aria-labelledby="details-label">
+            <p class="songfacts__name" data-fact-name></p>
+            <p class="songfacts__meta" data-fact-meta></p>
+            <p class="songfacts__key" data-fact-key></p>
+          </div>
+        </div>
         <p class="music-status music-status--text" data-text-status aria-live="polite"></p>
-        <textarea
-          class="music-text"
-          data-song-text
-          rows="26"
-          wrap="soft"
-          spellcheck="false"
-          aria-label="Song text"
-        ></textarea>
+        <div class="music-group music-group--stack">
+          <span class="music-group__label" id="notes-label">notes</span>
+          <textarea
+            class="music-text"
+            data-song-text
+            rows="8"
+            wrap="soft"
+            spellcheck="false"
+            aria-labelledby="notes-label"
+          ></textarea>
+        </div>
       </section>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
-      <section class="section">
+      <section class="section music-how">
         <h2 class="section__title" id="how-it-works"><span class="prompt" aria-hidden="true">$</span> how-it-works<a class="anchor" href="#how-it-works" aria-label="Link to this section">#</a></h2>
         <p>
           Every song is written as text, one line per channel, in a
