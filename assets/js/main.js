@@ -38,12 +38,13 @@ function setUp() {
   const DISSOLVE_STEPS = 8;
 
   // The portrait half of the boot log's scene task: resolved once the
-  // dither has decoded the photo and painted its first frame.
+  // dither has decoded the photo and painted its first frame. It never
+  // rejects: a portrait that fails resolves with a false flag instead,
+  // so a photo problem can never read as a scene failure (see the
+  // catch below).
   let resolvePortrait;
-  let rejectPortrait;
-  const portraitTask = new Promise((resolve, reject) => {
+  const portraitTask = new Promise((resolve) => {
     resolvePortrait = resolve;
-    rejectPortrait = reject;
   });
 
   for (const frame of document.querySelectorAll("[data-dither]")) {
@@ -102,9 +103,13 @@ function setUp() {
           });
         }
       })
-      // Without the dither the photo simply shows through, so there is nothing
-      // to clean up on failure; the boot task still has to hear about it.
-      .catch((err) => rejectPortrait(err));
+      // Without the dither the photo simply shows through, so there is
+      // nothing to clean up on failure. The boot task still hears about
+      // it, but as a resolution carrying a false flag, never a
+      // rejection: served cross-origin (a preview host redirecting the
+      // photo, say), the photo can taint the canvas and throw, and
+      // that is a portrait problem, not a scene failure.
+      .catch(() => resolvePortrait(false));
   }
 
   /* ---------- hiring sparkle ---------- */
@@ -511,10 +516,42 @@ function setUp() {
 
   const boot = document.querySelector("[data-boot]");
 
-  // Runs on every load, the way the page it is borrowed from does. Skipped outright for anyone who asked not to be animated:
-  // for them it is a blank screen between them and the content, which is the
-  // opposite of the point.
-  if (boot && !reduced.matches) {
+  // Once per session in production. The screen belongs to the visit's
+  // first page load; later loads in the same session (a reload, or a
+  // trip back from the mochi or music pages) go straight to the page.
+  // Only the screen and its hold are skipped: the scene still
+  // generates, the music still preloads, and the clock still syncs,
+  // because the tasks announce themselves outside this block. Pages
+  // carrying the experiment badge are the exception and run the
+  // screen on every load, so a preview always shows what a first
+  // visit shows. The flag is written as the screen opens, so a load
+  // that never shows it (reduced motion, just below) does not spend
+  // it, and a fresh tab or session sees it again.
+  const BOOT_SEEN_KEY = "boot-seen";
+  const experimental = [...document.querySelectorAll(".tag")].some(
+    (el) => el.textContent.trim().toLowerCase() === "experiment"
+  );
+  let bootSeen = false;
+  if (!experimental) {
+    try {
+      bootSeen = sessionStorage.getItem(BOOT_SEEN_KEY) === "1";
+    } catch {
+      // Storage refused: treat the load as a first one and run it.
+      bootSeen = false;
+    }
+  }
+
+  // Skipped outright for anyone who asked not to be animated: for
+  // them it is a blank screen between them and the content, which is
+  // the opposite of the point.
+  if (boot && !reduced.matches && !bootSeen) {
+    if (!experimental) {
+      try {
+        sessionStorage.setItem(BOOT_SEEN_KEY, "1");
+      } catch {
+        // The screen still runs this load; the next one decides again.
+      }
+    }
     const log = boot.querySelector("[data-boot-log]");
     const logo = wordmark.cloneNode(true);
     boot.querySelector("[data-boot-logo]").append(logo);
