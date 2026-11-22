@@ -11,6 +11,31 @@
 
 /* ---------- masthead ---------- */
 
+/* Standing rule for experiment previews: a small strip at the very top
+   naming the site and carrying the experiment tag, the same tag the
+   aria-lens page uses. The tag itself is in the facts voice: mono,
+   uppercase, accent ink inside a hairline accent frame. */
+.experiment-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: var(--text-caption);
+  color: var(--muted-color);
+}
+
+.tag {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-color);
+  border: 1px solid var(--accent-color);
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
 /* Solid block-letter art, 75 columns x 5 rows, set in the accent colour: a
    logo rather than a paragraph. Renders from the dedicated JetBrains Mono
    glyph subset loaded in <head> (see the comment there), not a local system
@@ -337,10 +362,83 @@
   font: inherit;
 }
 
-/* The theme scene sits beside the toggle, not inside it (Ben's call,
-   2026-11-20): a 24x12 landscape at 2px cells, exactly one --step tall
-   so the footer row keeps its rhythm. It is decoration, not a control;
-   the toggle beside it stays a plain text button. */
+/* The theme scene is a 24x12 landscape at 2px cells, exactly one --step
+   tall so the footer row keeps its rhythm. Experiment: the picture is
+   the closed state of a theme control, duplicated in the masthead and
+   the footer. Clicking it reveals the three mode words in one whole
+   step: no slide, no fade, the new state is simply there. The masthead
+   control is anchored to the right edge and grows leftward, so the
+   scene itself never moves; the footer control grows rightward. */
+
+.theme-scene-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--step-half);
+}
+
+.theme-scene-control--masthead {
+  display: flex;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+/* The masthead scene stays first in the tab order, ahead of its words,
+   and CSS order puts the words on its left where the expansion goes. */
+.theme-scene-control--masthead .theme-scene-button {
+  order: 2;
+}
+
+.theme-scene-control--masthead .theme-scene-options {
+  order: 1;
+}
+
+.theme-scene-options {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--step-half);
+}
+
+.theme-scene-options[hidden] {
+  display: none;
+}
+
+.theme-scene-choice {
+  padding: 0;
+  color: var(--muted-color);
+  line-height: var(--step);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.theme-scene-choice:hover,
+.theme-scene-choice:focus-visible,
+.theme-scene-choice[aria-pressed="true"] {
+  background: var(--accent-color);
+  color: var(--inverted-color);
+  text-decoration: none;
+}
+
+.theme-scene-button {
+  display: block;
+  flex: none;
+  padding: 0;
+  line-height: 0;
+}
+
+.theme-scene-button:hover .theme-scene,
+.theme-scene-button:focus-visible .theme-scene {
+  border-color: var(--accent-color);
+}
+
+.theme-scene-button:hover {
+  outline: 1px solid var(--accent-color);
+  outline-offset: 3px;
+}
+
+.theme-scene-button:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 3px;
+}
 
 .theme-scene {
   display: block;

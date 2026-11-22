@@ -117,6 +117,11 @@
 
   <body>
     <main class="page">
+      <p class="experiment-line">
+        benemdon.github.io
+        <span class="tag">experiment</span>
+      </p>
+
       <header>
         <h1>
           <span class="sr-only">Ben Emdon</span>
@@ -131,6 +136,35 @@
       <p class="tagline">
         Making software development faster and safer at Stripe. Previously GitHub.
       </p>
+
+      <div class="theme-scene-control theme-scene-control--masthead" data-theme-scene-control>
+        <button
+          class="theme-scene-button"
+          type="button"
+          data-theme-scene-button
+          aria-label="Theme"
+          aria-expanded="false"
+          aria-controls="theme-scene-options-top"
+        >
+          <canvas
+            class="theme-scene"
+            data-theme-scene
+            width="24"
+            height="12"
+            aria-hidden="true"
+          ></canvas>
+        </button>
+        <span
+          class="theme-scene-options"
+          id="theme-scene-options-top"
+          data-theme-scene-options
+          hidden
+        >
+          <button class="theme-scene-choice" type="button" data-theme-choice="system" aria-pressed="true">system</button>
+          <button class="theme-scene-choice" type="button" data-theme-choice="light" aria-pressed="false">light</button>
+          <button class="theme-scene-choice" type="button" data-theme-choice="dark" aria-pressed="false">dark</button>
+        </span>
+      </div>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
@@ -413,13 +447,34 @@
           >
             <span data-theme-label>system</span>
           </button>
-          <canvas
-            class="theme-scene"
-            data-theme-scene
-            width="24"
-            height="12"
-            aria-hidden="true"
-          ></canvas>
+          <span class="theme-scene-control theme-scene-control--footer" data-theme-scene-control>
+            <button
+              class="theme-scene-button"
+              type="button"
+              data-theme-scene-button
+              aria-label="Theme"
+              aria-expanded="false"
+              aria-controls="theme-scene-options-footer"
+            >
+              <canvas
+                class="theme-scene"
+                data-theme-scene
+                width="24"
+                height="12"
+                aria-hidden="true"
+              ></canvas>
+            </button>
+            <span
+              class="theme-scene-options"
+              id="theme-scene-options-footer"
+              data-theme-scene-options
+              hidden
+            >
+              <button class="theme-scene-choice" type="button" data-theme-choice="system" aria-pressed="true">system</button>
+              <button class="theme-scene-choice" type="button" data-theme-choice="light" aria-pressed="false">light</button>
+              <button class="theme-scene-choice" type="button" data-theme-choice="dark" aria-pressed="false">dark</button>
+            </span>
+          </span>
         </div>
       </footer>
 

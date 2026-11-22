@@ -203,10 +203,36 @@ function setUp() {
 
   const toggle = document.querySelector("[data-theme-toggle]");
   const themeLabel = toggle.querySelector("[data-theme-label]");
+  const sceneButtons = [...document.querySelectorAll("[data-theme-scene-button]")];
+  const sceneOptions = [...document.querySelectorAll("[data-theme-scene-options]")];
+  const choiceButtons = [...document.querySelectorAll("[data-theme-choice]")];
+  let themeScenes = [];
+  let sceneExpanded = false;
   let mode = storedMode();
 
   const resolvedDark = () =>
     mode === "dark" || (mode === "system" && systemDark.matches);
+
+  function persistMode() {
+    try {
+      localStorage.setItem(THEME_KEY, mode);
+    } catch {
+      // Private-mode Safari refuses writes; the choice still holds this visit.
+    }
+  }
+
+  // One shared expanded state for both scene controls: opening or
+  // closing one moves the other too. The swap is whole and instant, a
+  // single step on the grid rather than a slide.
+  function setSceneExpanded(next) {
+    sceneExpanded = next;
+    sceneButtons.forEach((button) =>
+      button.setAttribute("aria-expanded", String(next))
+    );
+    sceneOptions.forEach((options) => {
+      options.hidden = !next;
+    });
+  }
 
   // Only light and dark pin [data-theme]. System mode removes it, which is the
   // same state the inline script in <head> leaves the page in before first
@@ -229,23 +255,49 @@ function setUp() {
         `Switch to ${nextMode(mode)}.`
     );
 
+    // The expanded scene controls mark the current mode on their word
+    // buttons, in both instances, so they agree with the text toggle.
+    choiceButtons.forEach((button) =>
+      button.setAttribute("aria-pressed", String(button.dataset.themeChoice === mode))
+    );
+
     // The dither reads its two colours back out of CSS, so it has to be
     // redrawn whenever the resolved theme could have moved under it.
     repaints.forEach((repaint) => repaint());
 
-    // The toggle's little landscape re-lights to match: day in light,
-    // night in dark, stepped cell by cell unless reduced motion is on.
-    themeScene?.setDark(resolvedDark(), reduced.matches);
+    // Both little landscapes re-light to match: day in light, night in
+    // dark, stepped cell by cell unless reduced motion is on.
+    themeScenes.forEach((scene) => scene.setDark(resolvedDark(), reduced.matches));
   }
 
   toggle.addEventListener("click", () => {
     mode = nextMode(mode);
-    try {
-      localStorage.setItem(THEME_KEY, mode);
-    } catch {
-      // Private-mode Safari refuses writes; the choice still holds this visit.
-    }
+    persistMode();
     applyMode();
+  });
+
+  // The picture is the closed state of a control. Clicking it opens
+  // both instances to the three mode words; clicking it again closes
+  // them without touching the theme. The scene button itself is never
+  // hidden or replaced, so focus stays on it across the swap.
+  sceneButtons.forEach((button) => {
+    button.addEventListener("click", () => setSceneExpanded(!sceneExpanded));
+  });
+
+  // Picking a word sets the mode, collapses both instances, and returns
+  // focus to the scene button of the control that was used, since the
+  // word button it was on is about to be hidden.
+  choiceButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      mode = button.dataset.themeChoice;
+      persistMode();
+      applyMode();
+      setSceneExpanded(false);
+      button
+        .closest("[data-theme-scene-control]")
+        ?.querySelector("[data-theme-scene-button]")
+        ?.focus();
+    });
   });
 
   // Only in system mode does the OS still get a vote.
@@ -253,13 +305,13 @@ function setUp() {
     if (mode === "system") applyMode();
   });
 
-  // The scene starts on whichever state the page loaded in, drawn in one
-  // cut; only changes after this earn the stepped swap.
-  const sceneCanvas = document.querySelector("[data-theme-scene]");
-  const themeScene = sceneCanvas
-    ? createThemeScene(sceneCanvas, { dark: resolvedDark() })
-    : null;
+  // Both scenes start on whichever state the page loaded in, drawn in
+  // one cut; only changes after this earn the stepped swap.
+  themeScenes = [...document.querySelectorAll("[data-theme-scene]")].map(
+    (canvas) => createThemeScene(canvas, { dark: resolvedDark() })
+  );
 
+  setSceneExpanded(false);
   applyMode();
 
   /* ---------- section in view ---------- */
@@ -333,7 +385,15 @@ function setUp() {
     } else if (event.key === "?") {
       showKeys(keys.hidden);
     } else if (event.key === "Escape") {
-      showKeys(false);
+      if (sceneExpanded) {
+        // Close the scene control and keep focus inside it: back on its
+        // scene button, which never left the page.
+        const control = el.closest?.("[data-theme-scene-control]");
+        setSceneExpanded(false);
+        control?.querySelector("[data-theme-scene-button]")?.focus();
+      } else {
+        showKeys(false);
+      }
     } else {
       return;
     }
