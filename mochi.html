@@ -72,6 +72,13 @@
         text-align: center;
       }
 
+      /* The portrait panel follows a paragraph, not a heading, so the
+         heading's margin never gives it its step; every gallery panel
+         gets one from its title, and this one needs its own. */
+      .section > p + .mochi-figure {
+        margin-block-start: var(--step);
+      }
+
       /* The pixel lab: the map and its rendering side by side, then the
          same map built again in steps. Same page-rule frame as the portrait. */
       .lab {
@@ -146,6 +153,7 @@
         border: 1px solid var(--page-rule);
         background: var(--page-subtle);
         padding: calc(var(--step) / 2);
+        margin-block: var(--step);
         font-family: inherit;
         font-size: 12px;
         line-height: 1.55;
@@ -455,7 +463,7 @@ function paint() {
         <li><kbd data-cap="5">5</kbd><span class="keys__label">desktop</span></li>
         <li><kbd data-cap="6">6</kbd><span class="keys__label">underwater</span></li>
         <li><kbd data-cap="7">7</kbd><span class="keys__label">neon city</span></li>
-        <li><kbd data-cap="8">8</kbd><span class="keys__label">tennis</span></li>
+        <li><kbd data-cap="8">8</kbd><span class="keys__label">the court</span></li>
         <li><kbd data-cap="9">9</kbd><span class="keys__label">highland</span></li>
         <li><kbd data-cap="t">t</kbd><span class="keys__label">theme</span></li>
         <li><kbd data-cap="?">?</kbd><span class="keys__label">this</span></li>
