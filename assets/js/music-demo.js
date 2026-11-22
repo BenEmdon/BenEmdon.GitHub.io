@@ -575,11 +575,10 @@ async function obtainRender(song, onRendering) {
 
 const roll = document.querySelector("[data-music-demo-roll]");
 const playButton = document.querySelector("[data-music-demo-play]");
-const pauseButton = document.querySelector("[data-music-demo-pause]");
 const restartButton = document.querySelector("[data-music-demo-restart]");
 const status = document.querySelector("[data-music-demo-status]");
 
-if (roll && playButton && pauseButton) {
+if (roll && playButton) {
   const song = parseSong(SARIA_TEXT);
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
@@ -752,24 +751,21 @@ if (roll && playButton && pauseButton) {
     tick();
   }
 
-  // The three controls, kept honest about the state: play is
-  // pressed while sounding and rests while paused, pause is
-  // pressed while holding and only enabled while sounding,
-  // and during a render all three wait.
+  // The two controls, kept honest about the state: the play
+  // toggle reads pause while sounding and play otherwise, its
+  // pressed state follows the sound, and during a render both
+  // controls wait.
   function updateControls() {
     if (demo.rendering) {
       playButton.textContent = "rendering…";
       playButton.setAttribute("aria-pressed", "false");
       playButton.disabled = true;
-      pauseButton.disabled = true;
       if (restartButton) restartButton.disabled = true;
       return;
     }
-    playButton.textContent = "play";
+    playButton.textContent = demo.playing ? "pause" : "play";
     playButton.setAttribute("aria-pressed", String(demo.playing));
-    playButton.disabled = demo.playing;
-    pauseButton.setAttribute("aria-pressed", String(!demo.playing && demo.pausedPos !== null));
-    pauseButton.disabled = !demo.playing;
+    playButton.disabled = false;
     if (restartButton) restartButton.disabled = false;
   }
 
@@ -883,8 +879,12 @@ if (roll && playButton && pauseButton) {
     startSource(0);
   }
 
-  playButton.addEventListener("click", play);
-  pauseButton.addEventListener("click", pause);
+  function togglePlayPause() {
+    if (demo.playing) pause();
+    else play();
+  }
+
+  playButton.addEventListener("click", togglePlayPause);
   restartButton?.addEventListener("click", restart);
 
   // Repaint when the theme flips, from the toggle or the OS.
