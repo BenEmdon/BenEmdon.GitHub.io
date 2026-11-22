@@ -255,6 +255,7 @@
 }
 
 .music-hint {
+  margin-block-start: var(--step);
   color: var(--muted-color);
   font-size: var(--text-small);
 }
@@ -275,10 +276,12 @@
 }
 
 /* Code on this page soft-wraps like everywhere else on the site:
-   it never scrolls sideways. */
+   it never scrolls sideways. It also sits a step clear of the
+   paragraphs around it, like every other block on the page. */
 .code {
   white-space: pre-wrap;
   overflow-wrap: break-word;
+  margin-block: var(--step);
 }
 
 .music-text:focus-visible {
