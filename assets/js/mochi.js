@@ -141,12 +141,21 @@ const BAYER_2 = [
 // face sits inside the body band: no shade boundary crosses the eyes or
 // the smile.
 function bodyShade(x, y) {
+  // Portrait shading: the vertical slope pauses for two
+  // rows under the eyes, so every shade boundary below the face lands
+  // two rows lower than it used to. The smile keeps the lighter body
+  // shade around it, and the darker bands read as the underside of the
+  // round form instead of crowding the mouth. The effective row holds
+  // at 26 for rows 26 to 28, then resumes the same slope, so no band
+  // changes width except the body band under the face, which gains the
+  // two rows. Both vertical terms use the effective row.
+  const ey = y - Math.min(2, Math.max(0, y - 26));
   const light =
     10 -
-    (y - 12) * 0.62 -
+    (ey - 12) * 0.62 -
     Math.max(0, 18 - x) * 0.35 +
     Math.max(0, x - 34) * 0.3 -
-    Math.max(0, y - 33) * 0.55 +
+    Math.max(0, ey - 33) * 0.55 +
     Math.max(0, 7 - Math.abs(x - 26)) * 0.1;
   const jitter = (BAYER_2[y % 2][x % 2] - 1.5) * 0.5;
   const v = light + jitter;
