@@ -398,6 +398,12 @@
   white-space: nowrap;
 }
 
+/* The word is the readout, earned by a first tap on either scene.
+   Until then the control is the picture alone. */
+.theme-scene-current[hidden] {
+  display: none;
+}
+
 .theme-scene-button {
   display: block;
   flex: none;

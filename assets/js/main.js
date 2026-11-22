@@ -208,6 +208,11 @@ function setUp() {
   let themeScenes = [];
   let mode = storedMode();
   let sceneCycleStarted = false;
+  // The mode word beside each scene stays hidden until the first tap
+  // on either scene; from then on it is the readout of the active
+  // option. Per page view on purpose: an untapped control is the
+  // picture alone, even on a reload.
+  let sceneRevealed = false;
 
   const resolvedDark = () =>
     mode === "dark" || (mode === "system" && systemDark.matches);
@@ -255,11 +260,13 @@ function setUp() {
         `Switch to ${nextMode(mode)}.`
     );
 
-    // Both scene controls carry the current mode as their one visible
-    // word, and the scene button's name says where a click goes next,
-    // worked out live so the system first-click rule is in the name.
+    // Both scene controls carry the current mode as their word once
+    // a tap has revealed it, and the scene button's name says where a
+    // click goes next, worked out live so the system first-click rule
+    // is in the name, revealed or not.
     sceneCurrents.forEach((label) => {
       label.textContent = mode;
+      label.hidden = !sceneRevealed;
     });
     const sceneNext = nextSceneMode();
     sceneButtons.forEach((button) =>
@@ -292,6 +299,7 @@ function setUp() {
     button.addEventListener("click", () => {
       mode = nextSceneMode();
       sceneCycleStarted = true;
+      sceneRevealed = true;
       persistMode();
       applyMode();
     });
