@@ -21,147 +21,22 @@
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090d16" />
 
-    <!-- Same pre-paint theme script as the home page, so a saved theme
-         applies here too and never flashes the other one. -->
-    <script>
-      try {
-        const saved = localStorage.getItem("theme");
-        if (saved === "light" || saved === "dark") {
-          document.documentElement.dataset.theme = saved;
-        }
-      } catch {}
-    </script>
+    <!-- The shared chrome (assets/js/chrome.js): one definition of
+         the pieces every page carries. The pre-paint theme read and
+         the GoatCounter config run from its head; the boot screen,
+         both nav rows, the scene controls, the footer, and the keys
+         panel are rendered from it below. A plain script, not a
+         module: it has to be loaded before the body parses. -->
+    <script src="assets/js/chrome.js?v=20261122a"></script>
 
     <link rel="stylesheet" href="assets/css/fonts.css" />
 
     <link rel="stylesheet" href="assets/css/tokens.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/base.css?v=20261122h" />
     <link rel="stylesheet" href="assets/css/layout.css?v=20261122d" />
-    <link rel="stylesheet" href="assets/css/components.css?v=20261122h" />
+    <link rel="stylesheet" href="assets/css/components.css?v=20261122k" />
 
-    <style>
-      /* The portrait panel: the same page-rule frame the portrait and the
-         meadow use, with the subtle page wash behind the canvas so the
-         pixel backdrop sits on something quieter than the page itself. */
-      .mochi-figure {
-        border: 1px solid var(--page-rule);
-        background: var(--page-subtle);
-        padding: var(--step);
-      }
-
-      .mochi-figure canvas {
-        width: min(240px, 100%);
-        height: auto;
-        margin-inline: auto;
-        image-rendering: pixelated;
-      }
-
-      .mochi-figure figcaption {
-        margin-block-start: var(--step);
-        color: var(--muted-color);
-        font-size: var(--text-small);
-        text-align: center;
-      }
-
-      /* The portrait panel follows a paragraph, not a heading, so the
-         heading's margin never gives it its step; every gallery panel
-         gets one from its title, and this one needs its own. */
-      .section > p + .mochi-figure {
-        margin-block-start: var(--step);
-      }
-
-      /* The pixel lab: the map and its rendering side by side, then the
-         same map built again in steps. Same page-rule frame as the portrait. */
-      .lab {
-        display: flex;
-        flex-wrap: wrap;
-        gap: var(--step);
-        margin-block: var(--step);
-      }
-
-      .lab__fig { margin: 0; }
-
-      .lab__fig figcaption {
-        margin-block-start: calc(var(--step) / 2);
-        color: var(--muted-color);
-        font-size: var(--text-small);
-      }
-
-      .lab__map {
-        border: 1px solid var(--page-rule);
-        background: var(--page-subtle);
-        padding: calc(var(--step) / 2);
-        font-size: 10px;
-        line-height: 1.2;
-        letter-spacing: 2px;
-      }
-
-      .lab canvas {
-        width: 216px;
-        max-width: 100%;
-        height: auto;
-        border: 1px solid var(--page-rule);
-        image-rendering: pixelated;
-      }
-
-      .process {
-        border: 1px solid var(--page-rule);
-        background: var(--page-subtle);
-        padding: var(--step);
-        margin-block: var(--step);
-      }
-
-      .process canvas {
-        width: min(336px, 100%);
-        height: auto;
-        margin-inline: auto;
-        image-rendering: pixelated;
-      }
-
-      .process__meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px var(--step);
-        justify-content: space-between;
-        margin-block-start: var(--step);
-      }
-
-      .process__caption,
-      .process__step {
-        margin: 0;
-        color: var(--muted-color);
-        font-size: var(--text-small);
-      }
-
-      .process__list {
-        margin-block: var(--step) 0;
-        padding-inline-start: 1.5em;
-        color: var(--muted-color);
-        font-size: var(--text-small);
-      }
-
-      .code {
-        border: 1px solid var(--page-rule);
-        background: var(--page-subtle);
-        padding: calc(var(--step) / 2);
-        margin-block: var(--step);
-        font-family: inherit;
-        font-size: 12px;
-        line-height: 1.55;
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
-      }
-
-    </style>
-    <script>
-      window.goatcounter = {
-        path(p) {
-          if (location.hostname !== "benemdon.github.io") return null;
-          if (navigator.doNotTrack === "1" || navigator.globalPrivacyControl) return null;
-          return p;
-        },
-      };
-    </script>
+    <!-- Visit counting: GoatCounter; the config lives in chrome.js. -->
     <script
       data-goatcounter="https://benemdon.goatcounter.com/count"
       async
@@ -170,22 +45,8 @@
   </head>
 
   <body>
-    <!-- The boot screen. Ships hidden and empty: without JS it never appears,
-         and a crawler is handed the real page rather than a splash. boot.js
-         fills it and takes it away again. aria-hidden because it is theatre;
-         a screen reader should be reading the page below it, which is
-         already there. -->
-    <div class="boot" data-boot aria-hidden="true" hidden>
-      <div class="boot__inner">
-        <div data-boot-logo></div>
-        <div class="boot__row">
-          <div class="boot__icon" data-boot-icon></div>
-          <div class="boot__main">
-            <ul class="boot__log" data-boot-log></ul>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- The boot screen, rendered by the shared chrome. -->
+    <script>window.SiteChrome && SiteChrome.boot()</script>
 
     <main class="page">
       <header>
@@ -199,30 +60,11 @@
         </h1>
       </header>
 
-      <div class="theme-scene-control theme-scene-control--masthead" data-theme-scene-control>
-        <button
-          class="theme-scene-button"
-          type="button"
-          data-theme-scene-button
-          aria-label="Theme: system. Activate to switch to light"
-        >
-          <canvas
-            class="theme-scene"
-            data-theme-scene
-            width="24"
-            height="12"
-            aria-hidden="true"
-          ></canvas>
-        </button>
-        <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
-      </div>
+      <script>window.SiteChrome && SiteChrome.sceneControl(true)</script>
 
-      <nav class="pagenav" aria-label="Pages">
-        <a href="index.html">home</a>
-        <a href="music.html">music</a>
-        <a href="art.html" aria-current="page">art</a>
-        <a href="mochi.html">mochi</a>
-      </nav>
+      <!-- The page nav: one shared component (chrome.js), this row
+           and the one above the footer, on every page. -->
+      <script>window.SiteChrome && SiteChrome.nav("top")</script>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
@@ -431,67 +273,10 @@ function paint() {
         </p>
       </section>
 
-      <nav class="pagenav" aria-label="Pages (bottom)">
-        <a href="index.html">home</a>
-        <a href="music.html">music</a>
-        <a href="art.html" aria-current="page">art</a>
-        <a href="mochi.html">mochi</a>
-      </nav>
-      <footer class="footer">
-        <p>
-          Ottawa, ON<span class="clock" data-clock hidden
-            ><time class="clock__time" data-clock-time
-              ><span data-clock-hours>--</span
-              ><span class="clock__tick" aria-hidden="true">:</span
-              ><span data-clock-minutes>--</span></time
-            ></span
-          >
-        </p>
-        <div class="footer__controls">
-          <button
-            class="footer__button"
-            type="button"
-            data-keys-toggle
-            aria-expanded="false"
-            aria-controls="keys"
-          >
-            <kbd>?</kbd> keys
-          </button>
-          <div class="theme-scene-control" data-theme-scene-control>
-            <button
-              class="theme-scene-button"
-              type="button"
-              data-theme-scene-button
-              aria-label="Theme: system. Activate to switch to light"
-            >
-              <canvas
-                class="theme-scene"
-                data-theme-scene
-                width="24"
-                height="12"
-                aria-hidden="true"
-              ></canvas>
-            </button>
-            <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
-          </div>
-        </div>
-      </footer>
+      <script>window.SiteChrome && SiteChrome.nav("bottom")</script>
+      <script>window.SiteChrome && SiteChrome.footer()</script>
     </main>
-    <div class="keys" id="keys" data-keys hidden>
-      <ul class="keys__list">
-        <li><kbd data-cap="1">1</kbd><span class="keys__label">art</span></li>
-        <li><kbd data-cap="2">2</kbd><span class="keys__label">overworld</span></li>
-        <li><kbd data-cap="3">3</kbd><span class="keys__label">seaside</span></li>
-        <li><kbd data-cap="4">4</kbd><span class="keys__label">mountains</span></li>
-        <li><kbd data-cap="5">5</kbd><span class="keys__label">desktop</span></li>
-        <li><kbd data-cap="6">6</kbd><span class="keys__label">underwater</span></li>
-        <li><kbd data-cap="7">7</kbd><span class="keys__label">neon city</span></li>
-        <li><kbd data-cap="8">8</kbd><span class="keys__label">the court</span></li>
-        <li><kbd data-cap="9">9</kbd><span class="keys__label">highland</span></li>
-        <li><kbd data-cap="t">t</kbd><span class="keys__label">theme</span></li>
-        <li><kbd data-cap="?">?</kbd><span class="keys__label">this</span></li>
-      </ul>
-    </div>
+    <script>window.SiteChrome && SiteChrome.keys([["1","art"],["2","overworld"],["3","seaside"],["4","mountains"],["5","desktop"],["6","underwater"],["7","neon city"],["8","the court"],["9","highland"]])</script>
 
 
     <script type="module" src="assets/js/art.js?v=20261122j"></script>
