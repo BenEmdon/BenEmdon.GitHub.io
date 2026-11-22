@@ -66,7 +66,10 @@ const BOOT_HOLD_MS = 450;
 const BOOT_FLOOR_MS = 1500;
 
 // How long the finished spinner stays up before it is removed:
-// long enough to read the count and the total, no longer.
+// long enough to read the count and the total, no longer. The
+// removal itself waits for the painting too: the chip leaves
+// once the hold has run AND the fill has played out to whole,
+// whichever lands last (maybeFinishClosedBatch).
 const SPINNER_HOLD_MS = 1000;
 
 // The spinner's minimum time on screen, counted from the
@@ -478,6 +481,35 @@ const SPINNER_PAD = 4;
 const PANEL_CELL = 5;
 const ICON_TOTAL = ICON.reduce((n, row) => n + row.length, 0);
 
+// The fill's pacing (Ben, 2026-11-22, retimed): twenty steps
+// of 75 ms, thirteen cells a step, so a painting that has to
+// play out the whole way takes at most a second and a half,
+// and no single step moves more than a twentieth of the
+// picture. Live progress still leads as it always has; the
+// pacing only governs how the display catches up when the
+// target leaps (a fast batch closing, a retired chip
+// finishing, a panel opening on finished work).
+const LOADER_FILL_STEPS = 20;
+
+// The painting's base layer (Ben, 2026-11-22): the state of
+// zero is not an empty grid. The frame (every edge cell) and
+// the ground row the scene stands on (the interior of the
+// third row from the bottom) are the picture's structure,
+// and they are what a share of zero shows: 74 of the 256
+// cells. They lead the fill order, and the paced fill
+// completes the remaining cells from there.
+function isBaseCell(x, y, width, height) {
+  return (
+    x === 0 || y === 0 || x === width - 1 || y === height - 1 ||
+    (y === height - 3 && x > 0 && x < width - 1)
+  );
+}
+const ICON_BASE = ICON.reduce(
+  (n, row, y) =>
+    n + [...row].filter((ch, x) => isBaseCell(x, y, row.length, ICON.length)).length,
+  0
+);
+
 let loaderBatch = null;
 
 // A chip whose batch was replaced under it inside its
@@ -514,6 +546,7 @@ function openLoaderBatch(startedAt) {
     startedAt,
     tasks: [],
     closed: false,
+    holdElapsed: false, // the settle hold has run out (removal also waits on the painting)
     latency: null,
     coveredByBoot: false,
     chipMountedAt: null, // when the chip appeared, for its minimum
@@ -701,6 +734,10 @@ export function trackWork(promise, { label = "task", startedAt, timeout } = {}) 
 // The icon's cells, pre-built detached in grid order and then
 // shuffled with the boot fill's seed, so both loader icons fill
 // in the same scrambled order the full boot's picture does.
+// The base layer leads the order (its cells keep their
+// shuffled sequence among themselves, and so do the rest),
+// so the fill builds the frame and the ground row first and
+// the scene completes on top of them.
 function buildIconCells(cellClass, size, pad = 0) {
   const cells = [];
   ICON.forEach((row, y) => {
@@ -709,7 +746,10 @@ function buildIconCells(cellClass, size, pad = 0) {
       cell.className = `${cellClass} ${ICON_SHADE[ch]}`;
       cell.style.left = `${pad + x * size}px`;
       cell.style.top = `${pad + y * size}px`;
-      cells.push(cell);
+      cells.push({
+        cell,
+        base: isBaseCell(x, y, row.length, ICON.length),
+      });
     });
   });
   const rng = mulberry32(20261122);
@@ -717,7 +757,10 @@ function buildIconCells(cellClass, size, pad = 0) {
     const j = Math.floor(rng() * (i + 1));
     [cells[i], cells[j]] = [cells[j], cells[i]];
   }
-  return cells;
+  return [
+    ...cells.filter((c) => c.base),
+    ...cells.filter((c) => !c.base),
+  ].map((c) => c.cell);
 }
 
 function loaderSpan(className, text) {
@@ -788,13 +831,14 @@ function adoptSpinner(batch) {
 }
 
 // Step one icon toward the target, a batch of cells per tick
-// like the full boot's fill, in whichever direction the target
-// lies: a cell is either there, fully coloured, or not there,
-// and a reverted aggregate takes its last-filled cells back
-// in the order they came. Nothing slides and nothing fades.
+// at the loader's pacing (LOADER_FILL_STEPS), in whichever
+// direction the target lies: a cell is either there, fully
+// coloured, or not there, and a reverted aggregate takes its
+// last-filled cells back in the order they came. Nothing
+// slides and nothing fades.
 function stepIconFill(view, target) {
   if (!view) return;
-  const perStep = Math.ceil(ICON_TOTAL / 7);
+  const perStep = Math.ceil(ICON_TOTAL / LOADER_FILL_STEPS);
   let moved = 0;
   while (view.filled < target && moved < perStep) {
     view.icon.append(view.cells[view.filled]);
@@ -810,9 +854,14 @@ function stepIconFill(view, target) {
 }
 
 function stepLoaderFill(batch) {
+  // A running batch's target is its share of the scene above
+  // the base layer: at a share of zero the painting is the
+  // base layer itself, never an empty grid, and the fill
+  // completes the rest as the share grows. A closed batch's
+  // target is the whole picture.
   const target = batch.closed
     ? ICON_TOTAL
-    : Math.round(batchShare(batch) * ICON_TOTAL);
+    : ICON_BASE + Math.round(batchShare(batch) * (ICON_TOTAL - ICON_BASE));
   stepIconFill(batch.chip, target);
   // The panel's painting fills on the same step toward the
   // same target: one batch, one picture, two sizes.
@@ -823,6 +872,22 @@ function stepLoaderFill(batch) {
     clearInterval(batch.fillTimer);
     batch.fillTimer = null;
   }
+  maybeFinishClosedBatch(batch);
+}
+
+// A closed batch's chip leaves when both halves are done:
+// its hold has run out, and its painting has played out to
+// whole on the fill step. Whichever half lands last calls
+// this. On the retimed pacing a fast batch's play-out runs
+// past its hold (up to a second and a half from the mount),
+// so the hold alone no longer removes it; the two waits are
+// a maximum, never a sum, so nothing is stacked. While the
+// panel is open the batch stays, as it always has:
+// collapsing the panel ends it through teardown.
+function maybeFinishClosedBatch(batch) {
+  if (!batch.closed || !batch.holdElapsed || batch.panel) return;
+  if (batch.chip && batch.chip.filled < ICON_TOTAL) return;
+  teardownLoaderBatch(batch);
 }
 
 // The mount decision is deferred a frame: work that has
@@ -914,10 +979,22 @@ function finishRetiredChip(retired) {
 }
 
 function teardownLoaderBatch(batch, { keepChip = false } = {}) {
+  // Every timer field is nulled as it is cleared, not just
+  // stopped: a retired batch lives on past its teardown (its
+  // chip stays in the corner, its panel can still open), and
+  // buildLoaderPanel reads a null fillTimer as "no stepper
+  // running" and restarts one for the panel's painting. A
+  // stale handle left here once kept that restart from ever
+  // firing, so a retired batch's panel opened with its
+  // painting blank and no step ever painted it.
   if (batch.fillTimer) clearInterval(batch.fillTimer);
+  batch.fillTimer = null;
   if (batch.watchTimer) clearInterval(batch.watchTimer);
+  batch.watchTimer = null;
   if (batch.holdTimer) clearTimeout(batch.holdTimer);
+  batch.holdTimer = null;
   if (batch.spinTimer) clearInterval(batch.spinTimer);
+  batch.spinTimer = null;
   if (batch.panel) {
     batch.panel.el.remove();
     batch.panel = null;
@@ -1020,12 +1097,15 @@ function closeLoaderBatch(batch) {
   if (batch.panel) renderLoaderPanel(batch);
   updatePanelSpin(batch);
   // The hold runs only against the chip alone: a batch whose
-  // panel is open stays up until the panel is collapsed.
+  // panel is open stays up until the panel is collapsed. The
+  // hold expiring is one half of the removal; the other is
+  // the painting reaching whole, and whichever lands last
+  // finishes the batch (maybeFinishClosedBatch).
   if (!batch.panel) {
-    batch.holdTimer = setTimeout(
-      () => teardownLoaderBatch(batch),
-      SPINNER_HOLD_MS
-    );
+    batch.holdTimer = setTimeout(() => {
+      batch.holdElapsed = true;
+      maybeFinishClosedBatch(batch);
+    }, SPINNER_HOLD_MS);
   }
 }
 
