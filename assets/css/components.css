@@ -411,8 +411,7 @@ html[data-boot-hide] main {
 }
 
 .boot__icon,
-.boot-spin__icon,
-.boot-panel__icon {
+.boot-spin__icon {
   --icon-frame: light-dark(#d9a441, #b98a34);
   --icon-frame-lit: light-dark(#eec25e, #d9a441);
   --icon-frame-deep: light-dark(#a8742c, #7d5a24);
@@ -652,124 +651,38 @@ html[data-boot-hide] main {
   display: none;
 }
 
-/* The loader expanded: the boot screen's own arrangement in
-   an overlay panel under the chip. A header row at the top:
-   the framed painting at the left at the boot screen's
-   size, filling in over the batch in the boot's stepped
-   style, with the batch's count and latency stacked at its
-   right in the chip's own line style; then the tasks as
-   dotted-leader lines in the boot log's shape, one per
-   task. No progress
-   bar: the painting's fill is the progress, as it is on the
-   boot screen. The frame follows the key legend's card, the
-   site's other corner overlay: page background, an accent
-   border, and the same small type. The top offset clears
-   the chip's full stack (the corner inset, the 40px
-   picture, two 17px text lines, and the 3px gaps between
-   them: 92px in all), so the two surfaces never overlap
-   however many lines the chip wears. The panel shares the
-   chip's layer, above every page layer. */
-.boot-panel {
+/* The boot view: the bootloader itself, opened over the
+   page by the chip's tap. There is one detail UI, and it
+   is the boot screen's own component: boot.js builds the
+   view from the boot's parts (.boot, its inner, its row,
+   its painting, its log), so it wears the boot's styles as
+   they stand and no second layout exists to drift from
+   them. What is added here is only the presentation over
+   the page: fixed at the top across the page's width, its
+   height capped at the viewport with its own scroll when
+   a batch's lines run long, a rule under it where it
+   ends, and a layer above the page but below the chip,
+   so the chip stays visible and tappable as its toggle.
+   Unlike the boot screen it does not hide the page behind
+   it: it is an inspection view, not the ceremony. An
+   earlier panel layout (its own header of figures beside
+   the painting, its own line list) is retired; the
+   figures live in the view's lines and on the chip. The
+   insets repeat the body's own (its block start and its
+   gutter), which in flow are what position the boot
+   screen: as a fixed element the view sits outside that
+   padding, so it carries the same values itself and its
+   painting lands where the boot's lands. */
+.boot--view {
   position: fixed;
-  inset-block-start: calc(var(--step) * 4 + 8px);
-  inset-inline-end: calc(var(--step) / 2);
-  z-index: 100;
-  width: min(36rem, calc(100vw - var(--step)));
-  padding: var(--step-half) var(--step);
-  background: var(--page-background);
-  border: 1px solid var(--accent-color);
-}
-
-/* The header row: the painting at the left, the figures at
-   its right, the row's own spacing under it before the
-   task lines. */
-.boot-panel__header {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--step);
-  margin-block-end: var(--step-half);
-}
-
-/* The boot screen's painting at its own size, top-left:
-   the panel is the bootloader view, not a summary of it. */
-.boot-panel__icon {
-  position: relative;
-  flex: none;
-  width: 80px;
-  height: 80px;
-}
-
-.boot-panel__head {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: calc(var(--step) / 8);
-}
-
-/* The header's two lines, the chip's count and latency in
-   the chip's own shape: small type on one tight line, each
-   line on its own fitted backing, never one combined
-   line. */
-.boot-panel__count,
-.boot-panel__time {
-  padding: calc(var(--step) / 8) calc(var(--step) / 4);
-  background: var(--page-background);
-  color: var(--muted-color);
-  font-size: calc(var(--text-caption) * 0.875);
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.boot-panel__time[hidden] {
-  display: none;
-}
-
-/* The task lines, in the boot log's own shape: the mark in
-   its own box (Iosevka draws ✓ at two columns while its
-   advance is one), the name, a dotted leader filling what
-   space is left, and the value at the right edge. A line is
-   one line at any width: the leader is one long run of dots
-   that simply overflows and collapses as space runs out,
-   the name ellipsises before the dots do, and the value
-   never wraps. */
-.boot-panel__lines {
-  font-size: var(--text-small);
-  line-height: var(--step);
-}
-
-.boot-panel__line {
-  display: flex;
-}
-
-.boot-panel__mark {
-  flex: none;
-  width: 3ch;
-  color: var(--accent-color);
-  white-space: nowrap;
-}
-
-.boot-panel__task {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--muted-color);
-}
-
-.boot-panel__dots {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  color: var(--page-rule);
-}
-
-.boot-panel__status {
-  flex: none;
-  padding-inline-start: 1ch;
-  white-space: nowrap;
-  color: var(--page-color);
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: 99;
+  max-height: 100dvh;
+  overflow-y: auto;
+  padding-block-start: var(--step-2);
+  padding-inline: var(--page-gutter);
+  border-block-end: 1px solid var(--page-rule);
 }
 
 /* The home page music demo: Saria's Song as one piano roll with a

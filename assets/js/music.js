@@ -37,7 +37,7 @@
 import { createThemeScene } from "./theme-scene.js";
 import { animateWordmark, setUpStaticWordmark } from "./wordmark.js";
 import { renderCacheKey, readRender, writeRender, verifyRenderData } from "./render-cache.js";
-import { runBoot, registerTask } from "./boot.js?v=20261122o";
+import { runBoot, registerTask } from "./boot.js?v=20261122q";
 
 /* ---------- boot ---------- */
 
@@ -70,6 +70,11 @@ const nextMode = (mode) => MODES[(MODES.indexOf(mode) + 1) % MODES.length];
 function setUpThemeToggle() {
   const controlEls = document.querySelectorAll("[data-theme-scene-control]");
   if (!controlEls.length) return;
+  // The theme scenes' first paint is loader work, registered
+  // like every other scene on the site: the task completes
+  // when the setup below has painted them (the applyMode at
+  // the end of this function).
+  const sceneWork = registerTask("painting theme scene");
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
   let mode = storedMode();
   let sceneCycleStarted = false;
@@ -161,6 +166,7 @@ function setUpThemeToggle() {
   }
 
   applyMode();
+  sceneWork.complete();
 }
 
 /* ---------- clock ---------- */
@@ -1311,7 +1317,21 @@ function renderResult(song, buffer, renderMs) {
   };
 }
 
-async function renderSong(song) {
+// A no-op task handle for quiet renders. The proactive
+// catalogue pass (below, at the boot) reports one loader
+// line per song of its own, so a quiet render's per-step
+// tasks (the single render, the bins, the verification)
+// stand down rather than flood the batch with a dozen
+// songs' internals. The render itself runs exactly as it
+// did; only its reporting is muted.
+const QUIET_TASK = {
+  update() {},
+  status() {},
+  complete() {},
+  fail() {},
+};
+
+async function renderSong(song, quiet = false) {
   const sr = 44100;
   const ctx = buildOfflineGraph(
     song, song.channels.map((_, i) => i), sr, null);
@@ -1322,7 +1342,7 @@ async function renderSong(song) {
   // fallback, or the verification retry. The loader only
   // observes; the render runs exactly as it did, and a
   // failure reaches the handle before it propagates.
-  const work = registerTask("rendering " + songName(song));
+  const work = quiet ? QUIET_TASK : registerTask("rendering " + songName(song));
   try {
     const buffer = await ctx.startRendering();
     work.complete();
@@ -1440,15 +1460,14 @@ function mixBuffers(a, b, frames, sr) {
 
 // A bin's loader label: the song's name, then the channel
 // or channels the bin carries, by their letters, so the
-// loader's expanded panel reads as the steps the render
-// really took.
+// boot view reads as the steps the render really took.
 function binLabel(song, bin) {
   const letters = bin.map((ci) => song.channels[ci].letter);
   return songName(song) + " · channel" +
     (letters.length > 1 ? "s " : " ") + letters.join("+");
 }
 
-async function renderSongParallel(song) {
+async function renderSongParallel(song, quiet = false) {
   const sr = 44100;
   const stepDur = 60 / song.tempo / 4;
   const frames = Math.ceil(song.steps * stepDur * sr);
@@ -1463,7 +1482,8 @@ async function renderSongParallel(song) {
   // the render settles; a failed bin fails its task with
   // the reason and rethrows, so renderSongBest's fallback
   // sees the failure exactly as it did.
-  const binWork = bins.map((bin) => registerTask(binLabel(song, bin)));
+  const binWork = bins.map((bin) =>
+    quiet ? QUIET_TASK : registerTask(binLabel(song, bin)));
   // The pairwise mixdown chain: mixes run one at a time, in
   // arrival order, so the buffers alive at once stay at the
   // mixdown, the arriving bin and the mix being rendered. A
@@ -1508,17 +1528,17 @@ async function renderSongParallel(song) {
 // heavy songs, the plain single render otherwise, and the
 // single render again if anything in the parallel path
 // fails.
-async function renderSongBest(song) {
+async function renderSongBest(song, quiet = false) {
   const notes = song.channels.reduce((a, c) => a + c.notes.length, 0);
   if (notes >= PARALLEL_MIN_NOTES && planBins(song).length > 1) {
     try {
-      return await renderSongParallel(song);
+      return await renderSongParallel(song, quiet);
     } catch {
       // A failed context or a refused buffer falls back to
       // the single render for this song, as if never split.
     }
   }
-  return renderSong(song);
+  return renderSong(song, quiet);
 }
 
 /* ----- obtaining a render: the gate ----- */
@@ -1543,11 +1563,11 @@ async function renderSongBest(song) {
 // re-render while a loop is playing leaves the status alone.
 const rendersInFlight = new Map();
 
-async function obtainRender(song, { announce = true } = {}) {
+async function obtainRender(song, { announce = true, quiet = false } = {}) {
   const key = renderCacheKey(song);
   const shared = rendersInFlight.get(key);
   if (shared) return shared;
-  const pending = obtainVerifiedRender(song, key, announce);
+  const pending = obtainVerifiedRender(song, key, announce, quiet);
   rendersInFlight.set(key, pending);
   try {
     return await pending;
@@ -1558,7 +1578,7 @@ async function obtainRender(song, { announce = true } = {}) {
   }
 }
 
-async function obtainVerifiedRender(song, key, announce) {
+async function obtainVerifiedRender(song, key, announce, quiet = false) {
   // The gate registers no task of its own: each step of the
   // work reports itself to the corner loader as its own
   // task, so the batch for one render reads as the steps it
@@ -1568,7 +1588,11 @@ async function obtainVerifiedRender(song, key, announce) {
   // one inside renderSong, and verification registers its
   // own below. The loader only observes; the gate runs
   // exactly as it did, and each failure reaches the task
-  // that owns the step that failed.
+  // that owns the step that failed. A quiet render (the
+  // proactive catalogue pass) mutes every one of those
+  // per-step tasks through QUIET_TASK: the pass reports one
+  // line per song of its own, and the gate's steps are the
+  // same steps, unreported.
   if (announce && !samplesReady) setStatus("loading samples\u2026");
   await loadSamples();
   const hit = await readRender(key);
@@ -1578,7 +1602,7 @@ async function obtainVerifiedRender(song, key, announce) {
     // verification is the step that ran: its task completes
     // on the spot, carrying the honest label.
     const stepDur = 60 / song.tempo / 4;
-    const work = registerTask("verifying " + songName(song));
+    const work = quiet ? QUIET_TASK : registerTask("verifying " + songName(song));
     work.status("from cache");
     work.complete();
     return {
@@ -1588,8 +1612,8 @@ async function obtainVerifiedRender(song, key, announce) {
     };
   }
   if (announce) setStatus("rendering\u2026");
-  let rendered = await renderSongBest(song);
-  const work = registerTask("verifying " + songName(song));
+  let rendered = await renderSongBest(song, quiet);
+  const work = quiet ? QUIET_TASK : registerTask("verifying " + songName(song));
   if (announce) setStatus("verifying\u2026");
   let check = checkBuffer(rendered.buffer);
   if (!check.ok) {
@@ -1603,7 +1627,7 @@ async function obtainVerifiedRender(song, key, announce) {
     // the task fails with the check's reason, and the throw
     // tells every caller so.
     if (announce) setStatus("rendering\u2026");
-    rendered = await renderSong(song);
+    rendered = await renderSong(song, quiet);
     check = checkBuffer(rendered.buffer);
     if (!check.ok) {
       const err = verifyError(check.reason);
@@ -2925,6 +2949,49 @@ const renderTask = (async () => {
     renderMs: rendered.renderMs,
   };
 })();
+// The proactive catalogue pass: once the selected song's
+// own render has settled, every other song in the catalogue
+// renders in the background, in parallel, so a later switch
+// is a cache read instead of a wait. The selected song is
+// not in the set: it went first through the boot path
+// above, and its readiness never waits for this pass. Each
+// song is one loader line of its own, registered under its
+// name: the render runs quiet (its per-step tasks stand
+// down), the line completes when the song's render settles
+// and shows its measured duration, and a signature-verified
+// cache hit sets the line's status to "from cache" instead
+// of a render time it never spent. A song that fails to
+// parse is skipped, as the picker skips it; a render that
+// fails fails its line with the reason and leaves the song
+// to the ordinary path when it is picked. The renders run
+// through obtainRender like every other caller, so the
+// in-flight map still keeps one render per song, and an
+// edit's re-render keeps its own behaviour throughout.
+const proactivePass = renderTask.then(
+  () =>
+    Promise.all(
+      Object.keys(SONGS)
+        .filter((key) => key !== "storms")
+        .map(async (key) => {
+          const parsed = parseSong(SONGS[key].text + "\n");
+          if (!parsed.ok) return;
+          const work = registerTask("rendering " + songName(parsed));
+          try {
+            const rendered = await obtainRender(parsed, {
+              announce: false,
+              quiet: true,
+            });
+            if (rendered.fromCache) work.status("from cache");
+            work.complete();
+          } catch (err) {
+            work.fail(err && err.message ? err.message : "render failed");
+          }
+        })
+    ),
+  () => {}
+);
+void proactivePass;
+
 runBoot(
   [
     { label: "loading samples", promise: samplesTask, selfReports: true,
@@ -2935,6 +3002,11 @@ runBoot(
         : `rendered in ${Math.round(r.renderMs)} ms`) },
     { label: "syncing clock", promise: clockTask,
       format: (r) => r.value },
+    // A line for work nobody loads: the fonts arrive with
+    // the page itself, so the line says so instead of
+    // wearing an invented figure.
+    { label: "self-hosted fonts", promise: Promise.resolve(),
+      format: () => "loaded statically" },
   ],
   { t0: bootT0 }
 );

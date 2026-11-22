@@ -29,6 +29,8 @@
   finished scenes in one cut, no cover.
 */
 
+import { registerTask } from "./boot.js?v=20261122q";
+
 (() => {
   const panels = document.querySelectorAll("[data-gallery-dither]");
   if (!panels.length) return;
@@ -430,6 +432,14 @@
     const sceneCv = wrap.querySelector("[data-dither-scene]");
     const coverCv = wrap.querySelector("[data-dither-cover]");
     if (!sceneCv || !coverCv) return;
+    // The panel's first paint is loader work, like every
+    // other scene on the page: the task registers here and
+    // completes on that paint, below.
+    const sceneTask = registerTask(
+      wrap.dataset.galleryDither === "hill"
+        ? "painting parliament hill"
+        : "painting the rideau canal",
+      { timeout: 12000 });
     const scene = build();
     const blocks = layeredBlocks(scene, idx === 0 ? 1234567 : 7654321);
     const sCtx = sceneCv.getContext("2d");
@@ -444,6 +454,7 @@
       for (const b of blocks) if (b.t <= open) cCtx.clearRect(b.x, b.y, BLOCK, BLOCK);
     }
     paint();
+    sceneTask.complete();
     repainters.push(() => { frames = null; paint(); });
 
     let step = open;

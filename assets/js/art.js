@@ -20,7 +20,7 @@
 
 import { createThemeScene } from "./theme-scene.js";
 import { animateWordmark, setUpStaticWordmark } from "./wordmark.js";
-import { runBoot } from "./boot.js?v=20261122o";
+import { runBoot } from "./boot.js?v=20261122q";
 
 /* ---------- theme ---------- */
 
@@ -648,6 +648,19 @@ setUpKeys();
 runBoot(
   [
     {
+      // The gallery modules register their own per-scene
+      // tasks with the loader where they paint (the
+      // gallery-*.js modules). This aggregate still
+      // registers on the indicator: it is the batch's
+      // anchor, holding the batch open from here to
+      // DOMContentLoaded while the scenes join it one by
+      // one. Without it the batch fragments, each scene's
+      // task opening and closing inside its own module's
+      // evaluation, and no surface ever sees the work. On
+      // the boot screen the aggregate is the gallery's one
+      // line, as it always was; on the indicator it reads
+      // as the umbrella over the per-scene lines, its time
+      // the whole gallery's, theirs each scene's own.
       label: "painting gallery scenes",
       promise: galleryTask,
       format: (ms) => `${Math.round(ms)} ms`,
@@ -656,6 +669,14 @@ runBoot(
       label: "syncing clock",
       promise: clockTask,
       format: (r) => r.value,
+    },
+    // A line for work nobody loads: the fonts arrive with
+    // the page itself, so the line says so instead of
+    // wearing an invented figure.
+    {
+      label: "self-hosted fonts",
+      promise: Promise.resolve(),
+      format: () => "loaded statically",
     },
   ],
   { t0: bootT0 }

@@ -17,7 +17,7 @@
 
 import { createThemeScene } from "./theme-scene.js";
 import { animateWordmark, setUpStaticWordmark } from "./wordmark.js";
-import { runBoot } from "./boot.js?v=20261122o";
+import { runBoot } from "./boot.js?v=20261122q";
 
 /* ---------- theme ---------- */
 
@@ -658,6 +658,14 @@ runBoot(
       label: "syncing clock",
       promise: clockTask,
       format: (r) => r.value,
+    },
+    // A line for work nobody loads: the fonts arrive with
+    // the page itself, so the line says so instead of
+    // wearing an invented figure.
+    {
+      label: "self-hosted fonts",
+      promise: Promise.resolve(),
+      format: () => "loaded statically",
     },
   ],
   { t0: bootT0 }

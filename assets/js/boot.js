@@ -442,27 +442,26 @@ function runFullBoot(tasks) {
 // whole surface is removed in one step. No fades, the way
 // every pixel on the site behaves.
 //
-// Tapping the spinner expands it into an overlay panel: a
-// header carrying the painting with the chip's own count
-// (and latency, once closed) at its right, above a table
-// of the batch's tasks, one row per
-// task, its mark, its label, and its status right-aligned on
-// the same line, always: a row never wraps, and a long label
-// ellipsises rather than pushing its status down. One status
-// rule for every row: a status text the task set wins; a
-// completed task without one shows its own measured duration;
-// a running task shows its status text or its share; a failed
-// task shows its reason. The panel is the same registry seen
+// Tapping the spinner opens the boot view: the bootloader's
+// own component over the page, its painting at the boot's
+// size above the batch's task lines in the boot log's shape,
+// one line per task: its mark, its label, a dotted leader,
+// and its value at the right edge. One status rule for
+// every line: a status text the task set wins; a completed
+// task without one shows its own measured duration; a
+// running task shows its status text or its share; a failed
+// task shows its reason. The view is the same registry seen
 // closer, not a second state: it renders the current batch
 // only, and tasks that register while it is open gain their
-// row on the next report. Tapping the spinner again, or
-// anywhere outside the panel, collapses it back to the chip.
-// While the panel is open a closed batch stays up until it
-// is collapsed; the one-second hold runs only against the
-// chip alone.
+// line on the next report. Tapping the spinner again
+// collapses it back to the chip, and the view dismisses the
+// way the boot screen does: a tap on it, or any key, cuts
+// away. While the view is open a closed batch stays up
+// until it is dismissed; the one-second hold runs only
+// against the chip alone.
 //
 // Two suppressions, both honest: while the full boot screen is
-// up it is the surface, so the spinner waits (and the panel
+// up it is the surface, so the spinner waits (and the view
 // cannot open), and mounts when the screen clears if work is
 // still in flight; and a reduced-motion load shows neither
 // surface, as it shows no boot. The registry itself always
@@ -477,9 +476,10 @@ function runFullBoot(tasks) {
 // the grid plus twice the pad.
 const SPINNER_CELL = 2;
 const SPINNER_PAD = 4;
-// The panel's painting is the boot screen's own: its 5px
-// cells in its 80px box, so the two surfaces are one picture.
-const PANEL_CELL = 5;
+// The boot view's painting is the boot screen's own, built
+// at the boot's ICON_CELL size in its 80px box: the chip,
+// the view, and the boot screen are one picture at three
+// sizes, never separate drawings.
 const ICON_TOTAL = ICON.reduce((n, row) => n + row.length, 0);
 
 // The fill's pacing (Ben, 2026-11-22, retimed): twenty steps
@@ -489,7 +489,7 @@ const ICON_TOTAL = ICON.reduce((n, row) => n + row.length, 0);
 // picture. Live progress still leads as it always has; the
 // pacing only governs how the display catches up when the
 // target leaps (a fast batch closing, a retired chip
-// finishing, a panel opening on finished work).
+// finishing, a view opening on finished work).
 const LOADER_FILL_STEPS = 20;
 
 // The painting's base layer (Ben, 2026-11-22): the state of
@@ -524,7 +524,7 @@ let loaderBatch = null;
 // retires (a finished batch's picture completes as an
 // animation, never a snap), its count and latency are its
 // batch's final ones, and its tap still opens its own
-// batch's panel. The incoming batch adopts the element on
+// batch's view. The incoming batch adopts the element on
 // its mount frame (the usual case); the retirement timers
 // only ever fire for a batch nothing adopted.
 let retiredChip = null; // { view, batch, timer, fillTimer, gateElapsed }
@@ -546,6 +546,18 @@ function loaderFullBootOnScreen() {
   return !!boot && !boot.hidden;
 }
 
+// Whether an element is still in the document: walk its
+// parent chain to the body. A chip whose element has left
+// the document (the page's DOM was swapped out from under
+// the module) has no corner to retire in or be adopted
+// from; its retirement is moot and the corner is free.
+function elInDocument(el) {
+  for (let n = el; n; n = n.parentNode || n.parent || null) {
+    if (n === document.body) return true;
+  }
+  return false;
+}
+
 function openLoaderBatch(startedAt) {
   return {
     startedAt,
@@ -557,13 +569,13 @@ function openLoaderBatch(startedAt) {
     coveredByBoot: false,
     chipMountedAt: null, // when the chip appeared, for its minimum
     // The batch's one fill level: how many of the painting's
-    // cells are lit. The chip and the panel are two views of
+    // cells are lit. The chip and the view are two views of
     // this single state, never two animations: each step
     // moves the level, and every view renders the level, so
     // the two paintings show the same cells at every moment.
     filled: 0,
     chip: null, // { el, icon, count, time, cells, rendered, owner }
-    panel: null, // { el, icon, cells, rendered, head, count, time, lines, rows }
+    view: null, // { el, icon, cells, rendered, log, rows, onKey }
     fillTimer: null,
     holdTimer: null,
     watchTimer: null,
@@ -598,12 +610,12 @@ function batchShare(batch) {
   return sum / batch.tasks.length;
 }
 
-// The count both surfaces report: done/total, failures named
-// when there are any. The chip and the panel's header alike
-// stack it over the batch's measured latency, the latency
-// line joining once the batch has closed; the two pieces
-// never share a line. One source for the count, so the two
-// surfaces can never disagree.
+// The count the chip reports: done/total, failures named
+// when there are any. The chip stacks it over the batch's
+// measured latency, the latency line joining once the batch
+// has closed; the two pieces never share a line. The boot
+// view carries no figures of its own: its lines carry the
+// per-task values, and the count stays the chip's line.
 function countText(batch) {
   const { done, failed, total } = batchCounts(batch);
   let text = `${done}/${total}`;
@@ -675,7 +687,7 @@ function settleLoaderTask(batch, task, state, reason) {
 // caller's own fraction, 0 to 1, and may move it backwards:
 // the aggregate is recomputed from the reports, so a revert
 // shows. status() sets the task's own line of text, the one
-// the expanded panel shows beside its label. complete() and
+// the boot view shows beside its label. complete() and
 // fail() end the task; reports after the ending are ignored.
 function taskHandle(batch, task) {
   return {
@@ -807,7 +819,7 @@ function buildSpinner(batch) {
   // batch that adopted it. The element in the corner is
   // never a dead one.
   const view = { el: root, icon, count, time, cells, rendered: 0, owner: batch };
-  root.addEventListener("click", () => toggleLoaderPanel(view.owner));
+  root.addEventListener("click", () => toggleBootView(view.owner));
   batch.chip = view;
   batch.chipMountedAt = performance.now();
   batch.fillTimer = setInterval(() => stepLoaderFill(batch), 75);
@@ -823,7 +835,7 @@ function buildSpinner(batch) {
 // steps from there toward the new batch's share, in
 // whichever direction that lies (the display moves on the
 // step, never in a snap), and the tap opens the new batch's
-// panel. The minimum runs from the adoption, so the element
+// view. The minimum runs from the adoption, so the element
 // serves at least a second in the new batch's name too:
 // adoption only ever lengthens the surface's stay in the
 // corner, never shortens it.
@@ -870,7 +882,7 @@ function syncIconView(view, filled) {
 
 // Every painting a batch currently has: the chip's view
 // (the live chip, or the retired chip still in the corner
-// showing this batch), and the panel's, when it is open.
+// showing this batch), and the view's, when it is open.
 function batchIconViews(batch) {
   const views = [];
   if (batch.chip) views.push(batch.chip);
@@ -881,7 +893,7 @@ function batchIconViews(batch) {
   ) {
     views.push(retiredChip.view);
   }
-  if (batch.panel) views.push(batch.panel);
+  if (batch.view) views.push(batch.view);
   return views;
 }
 
@@ -889,7 +901,7 @@ function batchIconViews(batch) {
 // batch of cells per tick at the loader's pacing
 // (LOADER_FILL_STEPS), in whichever direction the target
 // lies, then render the level on every painting the batch
-// has. The chip and the panel are one picture at two
+// has. The chip and the view are one picture at two
 // sizes: they show the same cells at every moment by
 // construction, not by two animations kept in step.
 function stepBatchFill(batch, target) {
@@ -928,10 +940,10 @@ function stepLoaderFill(batch) {
 // past its hold (up to a second and a half from the mount),
 // so the hold alone no longer removes it; the two waits are
 // a maximum, never a sum, so nothing is stacked. While the
-// panel is open the batch stays, as it always has:
-// collapsing the panel ends it through teardown.
+// view is open the batch stays, as it always has:
+// dismissing the view ends it through teardown.
 function maybeFinishClosedBatch(batch) {
-  if (!batch.closed || !batch.holdElapsed || batch.panel) return;
+  if (!batch.closed || !batch.holdElapsed || batch.view) return;
   if (batch.chip && batch.filled < ICON_TOTAL) return;
   teardownLoaderBatch(batch);
 }
@@ -970,14 +982,21 @@ function ensureSpinner(batch) {
     }
     return;
   }
+  if (retiredChip && !elInDocument(retiredChip.view.el)) {
+    // The retired chip's element is gone from the document:
+    // its retirement is moot, and it bars nothing.
+    clearTimeout(retiredChip.timer);
+    if (retiredChip.fillTimer) clearInterval(retiredChip.fillTimer);
+    retiredChip = null;
+  }
   if (retiredChip) {
     // A retired chip is serving the rest of its second in
     // the corner. This batch adopts its element rather than
     // stacking a second chip on top of it or waiting behind
-    // it, unless the retired batch's panel is open and the
+    // it, unless the retired batch's view is open and the
     // visitor is reading it: then this chip waits for the
     // corner to clear, on a short poll, and mounts fresh.
-    if (!retiredChip.batch.panel) {
+    if (!retiredChip.batch.view) {
       adoptSpinner(batch);
       return;
     }
@@ -999,26 +1018,26 @@ function ensureSpinner(batch) {
 }
 
 // Every report lands here: the chip's count follows the
-// roll-up while the batch runs, and the panel, when it is
+// roll-up while the batch runs, and the view, when it is
 // open, redraws its rows from the same state.
 function renderLoader(batch) {
   if (batch.chip && !batch.closed) {
     batch.chip.count.textContent = countText(batch);
   }
-  if (batch.panel) renderLoaderPanel(batch);
+  if (batch.view) renderBootView(batch);
 }
 
 // A retired chip leaves the corner when both halves of its
 // retirement are done: the time it was owed has run out,
 // and its painting has played out to whole on the fill
 // step. Whichever half lands last calls this. While the
-// retired batch's panel is open the chip stays, as it
-// always has: collapsing the panel removes the chip with
+// retired batch's view is open the chip stays, as it
+// always has: dismissing the view removes the chip with
 // its batch, through teardown.
 function finishRetiredChip(retired) {
   if (retiredChip !== retired) return;
   if (!retired.gateElapsed || retired.batch.filled < ICON_TOTAL) return;
-  if (retired.batch.panel) return;
+  if (retired.batch.view) return;
   if (retired.fillTimer) clearInterval(retired.fillTimer);
   retired.view.el.remove();
   retiredChip = null;
@@ -1027,11 +1046,11 @@ function finishRetiredChip(retired) {
 function teardownLoaderBatch(batch, { keepChip = false } = {}) {
   // Every timer field is nulled as it is cleared, not just
   // stopped: a retired batch lives on past its teardown (its
-  // chip stays in the corner, its panel can still open), and
-  // buildLoaderPanel reads a null fillTimer as "no stepper
-  // running" and restarts one for the panel's painting. A
+  // chip stays in the corner, its view can still open), and
+  // buildBootView reads a null fillTimer as "no stepper
+  // running" and restarts one for the view's painting. A
   // stale handle left here once kept that restart from ever
-  // firing, so a retired batch's panel opened with its
+  // firing, so a retired batch's view opened with its
   // painting blank and no step ever painted it.
   if (batch.fillTimer) clearInterval(batch.fillTimer);
   batch.fillTimer = null;
@@ -1041,15 +1060,15 @@ function teardownLoaderBatch(batch, { keepChip = false } = {}) {
   batch.holdTimer = null;
   if (batch.spinTimer) clearInterval(batch.spinTimer);
   batch.spinTimer = null;
-  if (batch.panel) {
-    batch.panel.el.remove();
-    batch.panel = null;
-    document.removeEventListener("pointerdown", onLoaderOutsideTap);
+  if (batch.view) {
+    removeEventListener("keydown", batch.view.onKey);
+    batch.view.el.remove();
+    batch.view = null;
   }
   if (retiredChip && retiredChip.batch === batch) {
     // This batch's chip was retired under it earlier and is
-    // still in the corner (the path here is its panel being
-    // collapsed, the one teardown a retired batch can get):
+    // still in the corner (the path here is its view being
+    // dismissed, the one teardown a retired batch can get):
     // the element goes with its batch.
     clearTimeout(retiredChip.timer);
     if (retiredChip.fillTimer) clearInterval(retiredChip.fillTimer);
@@ -1095,7 +1114,7 @@ function teardownLoaderBatch(batch, { keepChip = false } = {}) {
         : batch.chipMountedAt + SPINNER_MIN_MS,
       batch.closedAt == null ? 0 : batch.closedAt + SPINNER_HOLD_MS
     );
-    if (keepChip && owedUntil > now) {
+    if (keepChip && owedUntil > now && elInDocument(view.el)) {
       const retired = {
         view,
         batch,
@@ -1106,7 +1125,7 @@ function teardownLoaderBatch(batch, { keepChip = false } = {}) {
       retiredChip = retired;
       // The retirement steps the batch's own level, like
       // every other fill: the retired chip's painting, and
-      // its panel's when the panel is opened from it, are
+      // its view's when the view is opened from it, are
       // the one state rendered at two sizes.
       stepBatchFill(batch, ICON_TOTAL);
       retired.fillTimer = setInterval(() => {
@@ -1162,14 +1181,14 @@ function closeLoaderBatch(batch) {
   batch.chip.count.textContent = countText(batch);
   batch.chip.time.textContent = `${batch.latency} ms`;
   batch.chip.time.hidden = false;
-  if (batch.panel) renderLoaderPanel(batch);
-  updatePanelSpin(batch);
+  if (batch.view) renderBootView(batch);
+  updateViewSpin(batch);
   // The hold runs only against the chip alone: a batch whose
-  // panel is open stays up until the panel is collapsed. The
+  // view is open stays up until the view is dismissed. The
   // hold expiring is one half of the removal; the other is
   // the painting reaching whole, and whichever lands last
   // finishes the batch (maybeFinishClosedBatch).
-  if (!batch.panel) {
+  if (!batch.view) {
     batch.holdTimer = setTimeout(() => {
       batch.holdElapsed = true;
       maybeFinishClosedBatch(batch);
@@ -1178,117 +1197,114 @@ function closeLoaderBatch(batch) {
 }
 
 // ----------------------------------------------------------------
-// The expanded panel: the boot screen's view of the registry's
-// current batch. The chip is the summary; tapping it opens
-// the full picture: a header row carrying the framed
-// painting at the left, filling in the boot's stepped style
-// over the batch, with the count and its latency stacked at
-// the painting's right (the chip's two lines in the chip's
-// own arrangement beside the picture, each on its own fitted
-// backing, never combined), then one line per task in the
-// boot log's own shape: the name, a dotted leader, and the
-// value at the right edge. No progress bar: the painting's
-// fill is the progress, as it is on the boot screen. The
-// panel holds no state of its own; every render rebuilds
-// its lines from the batch, and its painting renders the
-// batch's one fill level, so what it shows is the registry
-// as it stands, the chip's picture at the boot's size.
+// The boot view: the one detail UI, and it is the bootloader
+// itself. The chip is the summary; tapping it opens the
+// boot screen's own component over the page (the same
+// inner, the same logo slot with the wordmark clone, the
+// same row: the framed painting at the boot's size filling
+// in the boot's stepped style over the batch, and the log
+// of task lines in the boot's own shape: the mark, the
+// name, a dotted leader, and the value at the right edge),
+// presenting the batch the chip summarizes. There is no
+// second layout: an earlier panel design carried its own
+// header of figures beside the painting, and it is gone;
+// the figures live in the view's lines, and the count and
+// the latency stay the chip's own two lines. No progress
+// bar: the painting's fill is the progress, as it is on
+// the boot screen. The view holds no state of its own;
+// every render rebuilds its lines from the batch, and its
+// painting renders the batch's one fill level, so what it
+// shows is the registry as it stands, the chip's picture
+// at the boot's size. Dismissal is the boot screen's own
+// close behaviour: a tap on the view cuts away, and any
+// key cuts away; the chip's tap toggles it.
 // ----------------------------------------------------------------
 
-function toggleLoaderPanel(batch) {
+function toggleBootView(batch) {
   // The live batch, or the retired batch whose chip is still
   // in the corner showing it: either one's tap is real.
   if (loaderBatch !== batch && (!retiredChip || retiredChip.batch !== batch)) {
     return;
   }
-  if (batch.panel) {
-    destroyLoaderPanel(batch);
+  if (batch.view) {
+    destroyBootView(batch);
     return;
   }
   // The full boot is the surface while it is up, and a
-  // reduced-motion load has no surface at all: the panel
+  // reduced-motion load has no surface at all: the view
   // opens under neither, exactly like the chip.
   if (loaderReducedMotion() || loaderFullBootOnScreen()) return;
-  buildLoaderPanel(batch);
+  buildBootView(batch);
 }
 
-function elContains(root, node) {
-  for (let n = node; n; n = n.parentNode || n.parent || null) {
-    if (n === root) return true;
-  }
-  return false;
-}
-
-function onLoaderOutsideTap(event) {
-  // The panel in the page belongs to the live batch, or to
-  // the retired batch whose chip is still in the corner.
-  const batch =
-    retiredChip && retiredChip.batch.panel ? retiredChip.batch : loaderBatch;
-  if (!batch || !batch.panel) return;
-  if (batch.panel.el && elContains(batch.panel.el, event.target)) return;
-  const chipEl = batch.chip
-    ? batch.chip.el
-    : retiredChip && retiredChip.batch === batch
-      ? retiredChip.view.el
-      : null;
-  if (chipEl && elContains(chipEl, event.target)) return;
-  destroyLoaderPanel(batch);
-}
-
-function buildLoaderPanel(batch) {
-  // Opening the panel during the completion hold keeps the
+function buildBootView(batch) {
+  // Opening the view during the completion hold keeps the
   // batch up past it: the hold resumes its meaning only when
-  // the panel collapses again.
+  // the view is dismissed again.
   if (batch.holdTimer) {
     clearTimeout(batch.holdTimer);
     batch.holdTimer = null;
   }
   const root = document.createElement("div");
-  root.className = "boot-panel";
+  root.className = "boot boot--view";
+  root.dataset.bootView = "";
+  root.setAttribute("role", "button");
+  root.setAttribute("aria-label", "Hide loading details");
 
-  // The header row: the painting at the left, the boot
-  // screen's own at its own size, and the figures at its
-  // right. The painting is the chip's picture at the larger
-  // size, not a second animation: it renders the batch's
-  // one fill level, so it opens on exactly the cells the
-  // chip is showing at that instant and steps with it.
+  const inner = document.createElement("div");
+  inner.className = "boot__inner";
+
+  // The logo slot, filled the way the boot screen fills it:
+  // a clone of the page's wordmark, painted in when the
+  // block glyphs land.
+  const logoSlot = document.createElement("div");
+  logoSlot.className = "boot__logo";
+  const wordmark = document.querySelector(".wordmark");
+  if (wordmark) {
+    const logo = wordmark.cloneNode(true);
+    logoSlot.append(logo);
+    document.fonts.ready.then(() => logo.classList.add("is-booting"));
+  }
+
+  const row = document.createElement("div");
+  row.className = "boot__row";
+
+  // The painting: the chip's picture at the boot's size, not
+  // a second animation. It renders the batch's one fill
+  // level, so it opens on exactly the cells the chip is
+  // showing at that instant and steps with it.
   const icon = document.createElement("span");
-  icon.className = "boot-panel__icon";
-  const cells = buildIconCells("boot__cell", PANEL_CELL);
+  icon.className = "boot__icon";
+  const cells = buildIconCells("boot__cell", ICON_CELL);
 
-  const head = document.createElement("div");
-  head.className = "boot-panel__head";
-  // The figures are the chip's two lines in the same shape:
-  // the count, and the latency under it once the batch has
-  // closed, each on its own fitted backing.
-  const headCount = loaderSpan("boot-panel__count", countText(batch));
-  const headTime = loaderSpan("boot-panel__time", "");
-  headTime.hidden = true;
-  head.append(headCount, headTime);
+  const main = document.createElement("div");
+  main.className = "boot__main";
+  const log = document.createElement("ul");
+  log.className = "boot__log";
+  main.append(log);
 
-  const header = document.createElement("div");
-  header.className = "boot-panel__header";
-  header.append(icon, head);
-
-  const lines = document.createElement("div");
-  lines.className = "boot-panel__lines";
-
-  root.append(header, lines);
+  row.append(icon, main);
+  inner.append(logoSlot, row);
+  root.append(inner);
   document.body.append(root);
-  batch.panel = {
-    el: root, icon, cells, rendered: 0,
-    head, count: headCount, time: headTime, lines,
-    rows: new Map(),
-  };
-  // The panel's painting opens on the batch's level as it
+  const view = { el: root, icon, cells, rendered: 0, log, rows: new Map(), onKey: null };
+  batch.view = view;
+  // The boot screen's own close behaviour: any key or a tap
+  // on the view itself cuts away. The click listener leaves
+  // with the element; the keydown one is taken off by hand
+  // when the view goes, or it would outlive it.
+  view.onKey = () => destroyBootView(batch);
+  addEventListener("keydown", view.onKey);
+  root.addEventListener("click", () => destroyBootView(batch));
+  // The view's painting opens on the batch's level as it
   // stands, the chip's exact cells at this instant.
-  syncIconView(batch.panel, batch.filled);
+  syncIconView(view, batch.filled);
   // The batch's fill timer does the stepping while it runs,
   // and a retired batch's retirement timer steps the same
   // level. A batch with neither running and its painting
   // short of whole (its chip filled and stopped the timer,
-  // the panel only opening now) gets the timer restarted
-  // for the panel's sake, and stepLoaderFill stops it
+  // the view only opening now) gets the timer restarted
+  // for the view's sake, and stepLoaderFill stops it
   // again once the picture is whole.
   if (
     !batch.fillTimer &&
@@ -1298,26 +1314,25 @@ function buildLoaderPanel(batch) {
     batch.fillTimer = setInterval(() => stepLoaderFill(batch), 75);
     stepLoaderFill(batch);
   }
-  for (const task of batch.tasks) addPanelTask(batch, task);
-  document.addEventListener("pointerdown", onLoaderOutsideTap);
-  renderLoaderPanel(batch);
+  for (const task of batch.tasks) addViewTask(batch, task);
+  renderBootView(batch);
 }
 
-// One task's line, added when the panel opens and whenever
-// a task registers while it is open: the panel is a view of
+// One task's line, added when the view opens and whenever
+// a task registers while it is open: the view is a view of
 // the registry, not a snapshot of it. The line is the boot
 // log's own: mark, name, a dotted leader, and the value.
-function addPanelTask(batch, task) {
-  const panel = batch.panel;
-  const row = document.createElement("div");
-  row.className = "boot-panel__line";
-  const mark = loaderSpan("boot-panel__mark", SPINNER[batch.spinFrame]);
-  const label = loaderSpan("boot-panel__task", task.label);
-  const dots = loaderSpan("boot-panel__dots", ".".repeat(80));
-  const status = loaderSpan("boot-panel__status", "");
-  row.append(mark, label, dots, status);
-  panel.lines.append(row);
-  panel.rows.set(task, { row, mark, status });
+function addViewTask(batch, task) {
+  const view = batch.view;
+  const row = document.createElement("li");
+  row.className = "boot__line";
+  const mark = loaderSpan("boot__mark", SPINNER[batch.spinFrame]);
+  const label = loaderSpan("boot__task", task.label);
+  const dots = loaderSpan("boot__dots", ".".repeat(80));
+  const value = loaderSpan("boot__value", "");
+  row.append(mark, label, dots, value);
+  view.log.append(row);
+  view.rows.set(task, { row, mark, value });
 }
 
 // The one status rule every row follows: a status text the
@@ -1334,50 +1349,47 @@ function taskStatusText(task) {
   return task.statusText ?? `${task.durationMs} ms`;
 }
 
-function renderLoaderPanel(batch) {
-  const panel = batch.panel;
-  if (!panel) return;
+function renderBootView(batch) {
+  const view = batch.view;
+  if (!view) return;
   for (const task of batch.tasks) {
-    if (!panel.rows.has(task)) addPanelTask(batch, task);
+    if (!view.rows.has(task)) addViewTask(batch, task);
   }
   for (const task of batch.tasks) {
-    const { mark, status } = panel.rows.get(task);
+    const { mark, value } = view.rows.get(task);
     if (task.state === "done") mark.textContent = "✓";
     else if (task.state === "failed") mark.textContent = "×";
     else if (task.state === "expired") mark.textContent = "!";
     else mark.textContent = SPINNER[batch.spinFrame % SPINNER.length];
-    status.textContent = taskStatusText(task);
+    value.textContent = taskStatusText(task);
   }
-  panel.count.textContent = countText(batch);
-  panel.time.textContent = batch.closed ? `${batch.latency} ms` : "";
-  panel.time.hidden = !batch.closed;
-  updatePanelSpin(batch);
+  updateViewSpin(batch);
 }
 
-// The panel's marks turn while any of its tasks is running,
+// The view's marks turn while any of its tasks is running,
 // on the boot spinner's own 80 ms step; the timer lives only
-// while the panel does.
-function updatePanelSpin(batch) {
+// while the view does.
+function updateViewSpin(batch) {
   const anyRunning = batch.tasks.some((t) => t.state === "running");
-  if (batch.panel && anyRunning && !batch.spinTimer) {
+  if (batch.view && anyRunning && !batch.spinTimer) {
     batch.spinTimer = setInterval(() => {
       batch.spinFrame = (batch.spinFrame + 1) % SPINNER.length;
-      renderLoaderPanel(batch);
+      renderBootView(batch);
     }, 80);
-  } else if ((!batch.panel || !anyRunning) && batch.spinTimer) {
+  } else if ((!batch.view || !anyRunning) && batch.spinTimer) {
     clearInterval(batch.spinTimer);
     batch.spinTimer = null;
   }
 }
 
-function destroyLoaderPanel(batch) {
-  if (!batch.panel) return;
-  batch.panel.el.remove();
-  batch.panel = null;
-  document.removeEventListener("pointerdown", onLoaderOutsideTap);
-  updatePanelSpin(batch);
-  // Collapsing a closed batch ends it in one step: its hold
-  // was suspended for as long as the panel was open.
+function destroyBootView(batch) {
+  if (!batch.view) return;
+  removeEventListener("keydown", batch.view.onKey);
+  batch.view.el.remove();
+  batch.view = null;
+  updateViewSpin(batch);
+  // Dismissing a closed batch ends it in one step: its hold
+  // was suspended for as long as the view was open.
   if (batch.closed) teardownLoaderBatch(batch);
 }
 // The home page, for the boot rule that is its alone: the

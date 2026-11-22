@@ -43,9 +43,13 @@
   floodlights just on and warm, the crowd and kerbs a touch brighter.
 */
 
+import { registerTask } from "./boot.js?v=20261122q";
 (() => {
+  // The scene's first paint is loader work: the task
+  // registers here and completes on that paint, below.
+  const sceneTask = registerTask("painting grand prix", { timeout: 12000 });
   const canvas = document.querySelector('[data-gallery="grandprix"]');
-  if (!canvas) return;
+  if (!canvas) { sceneTask.complete(); return; }
   const ctx = canvas.getContext("2d");
 
   const W = 120;
@@ -527,6 +531,7 @@
 
   buildGrid();
   paintStill();
+  sceneTask.complete();
   frame();
 
   // A theme swap re-points the slots at the other palette and repaints.
