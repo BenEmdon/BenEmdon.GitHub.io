@@ -49,6 +49,18 @@
     <link rel="stylesheet" href="assets/css/components.css?v=20261114f" />
 
     <style>
+      /* Experiment badge: preview pages only, never production. */
+      .tag {
+        display: inline-block;
+        margin-block-end: var(--step);
+        padding: 0 0.5em;
+        border: 1px solid var(--accent-color);
+        color: var(--accent-color);
+        font-size: var(--text-small);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
       /* The portrait panel: the same page-rule frame the portrait and the
          meadow use, with the subtle page wash behind the canvas so the
          pixel backdrop sits on something quieter than the page itself. */
@@ -180,6 +192,7 @@
 
   <body>
     <main class="page">
+      <span class="tag">experiment</span>
       <header>
         <h1>
           <span class="sr-only">Mochi</span>
