@@ -398,8 +398,9 @@
   white-space: nowrap;
 }
 
-/* The word is the readout, earned by a first tap on either scene.
-   Until then the control is the picture alone. */
+/* The word is a tap's receipt: hidden until a tap shows it, gone
+   again about 2.5 seconds later. Between receipts the control is
+   the picture alone. */
 .theme-scene-current[hidden] {
   display: none;
 }
@@ -409,6 +410,10 @@
   flex: none;
   padding: 0;
   line-height: 0;
+  /* Repeated taps cycle the theme; they are a rhythm, not a zoom.
+     Manipulation keeps the taps and drops the double-tap zoom,
+     without touching the viewport, so pinch zoom still works. */
+  touch-action: manipulation;
 }
 
 .theme-scene-button:hover .theme-scene,
@@ -416,12 +421,15 @@
   border-color: var(--accent-color);
 }
 
-.theme-scene-button:hover {
+/* The ring hugs the picture, not the button box: on coarse pointers
+   the box is mostly invisible padding (below), and a ring around
+   the padding would float in empty space. */
+.theme-scene-button:hover .theme-scene {
   outline: 1px solid var(--accent-color);
   outline-offset: 3px;
 }
 
-.theme-scene-button:focus-visible {
+.theme-scene-button:focus-visible .theme-scene {
   outline: 2px solid var(--accent-color);
   outline-offset: 3px;
 }
@@ -432,6 +440,20 @@
   height: 24px;
   image-rendering: pixelated;
   border: 1px solid var(--page-rule);
+}
+
+/* A bigger tap target than the picture, a little past the 48px
+   floor the site's other controls use: the button grows by padding
+   and shrinks back by the same margins, so the tappable box is
+   72 by 60 while the layout footprint, and the picture inside it,
+   stay exactly where they were. The extra room reaches into the
+   gaps around the scene, 24px in the footer row and 12px beside
+   the masthead word, and the masthead scene keeps the right edge. */
+@media (max-width: 34rem), (pointer: coarse) {
+  .theme-scene-button {
+    padding: calc(var(--step) * 0.75) var(--step-half);
+    margin: calc(var(--step) * -0.75) calc(var(--step-half) * -1);
+  }
 }
 
 /* A keyboard hint is noise on a device with no keyboard. */

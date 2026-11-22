@@ -208,11 +208,13 @@ function setUp() {
   let themeScenes = [];
   let mode = storedMode();
   let sceneCycleStarted = false;
-  // The mode word beside each scene stays hidden until the first tap
-  // on either scene; from then on it is the readout of the active
-  // option. Per page view on purpose: an untapped control is the
-  // picture alone, even on a reload.
+  // The mode word beside each scene is a tap's receipt, not a
+  // permanent readout: a tap on either scene shows it, it stays for
+  // about 2.5 seconds, then it goes away and the control is the
+  // picture alone again. The theme itself does not revert when the
+  // word hides, and a fresh tap restarts the window.
   let sceneRevealed = false;
+  let sceneRevealTimer;
 
   const resolvedDark = () =>
     mode === "dark" || (mode === "system" && systemDark.matches);
@@ -260,10 +262,10 @@ function setUp() {
         `Switch to ${nextMode(mode)}.`
     );
 
-    // Both scene controls carry the current mode as their word once
-    // a tap has revealed it, and the scene button's name says where a
-    // click goes next, worked out live so the system first-click rule
-    // is in the name, revealed or not.
+    // Both scene controls carry the current mode as their word while
+    // the post-tap window is open, and the scene button's name says
+    // where a click goes next, worked out live so the system
+    // first-click rule is in the name, word showing or not.
     sceneCurrents.forEach((label) => {
       label.textContent = mode;
       label.hidden = !sceneRevealed;
@@ -302,6 +304,16 @@ function setUp() {
       sceneRevealed = true;
       persistMode();
       applyMode();
+      // The word is a receipt with a short life: restart its window
+      // on every tap, then let applyMode hide it when the window
+      // closes. Hiding only flips the labels' hidden flag in effect;
+      // the mode, and the scenes lit for it, stay as the tap left
+      // them.
+      clearTimeout(sceneRevealTimer);
+      sceneRevealTimer = setTimeout(() => {
+        sceneRevealed = false;
+        applyMode();
+      }, 2500);
     });
   });
 
