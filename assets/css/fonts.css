@@ -1,0 +1,41 @@
+/* Self-hosted fonts: the @font-face rules for every face the site
+   loads, served from assets/fonts on this origin. The files are the
+   same builds the CDNs served before 2026-11-22, and their licences
+   sit beside them in assets/fonts. */
+
+/* Body/UI text: Iosevka (SIL OFL), Fontsource's latin build of
+   @fontsource/iosevka@5.3.0, weights 400 and 700, the two weights
+   the pages use. */
+@font-face {
+  font-family: "Iosevka";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("../fonts/iosevka-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Iosevka";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("../fonts/iosevka-latin-700-normal.woff2") format("woff2");
+}
+
+/* The wordmark and the dividers are built from block glyphs that
+   aren't in Iosevka's or JetBrains Mono's default latin subsets, so
+   this face is JetBrains Mono (SIL OFL) subset to exactly those
+   glyphs: the same file fonts.googleapis.com generated for the
+   site, unicode-range and all, so it never claims another
+   character. display=block holds the art off-screen rather than
+   flashing a misaligned fallback first, since fallback fonts don't
+   share JetBrains Mono's advance width and the columns would
+   drift apart. */
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-display: block;
+  font-weight: 400;
+  src: url("../fonts/jetbrains-mono-blocks-400-normal.woff2") format("woff2");
+  unicode-range: U+20, U+2580, U+2584, U+2588, U+2591;
+}
