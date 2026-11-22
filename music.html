@@ -418,7 +418,24 @@ the new recording takes over</pre>
       </ul>
     </div>
 
-    <script type="module" src="assets/js/music.js?v=20261122-footer"></script>
+    <!-- The boot screen. Ships hidden and empty: without JS it never appears,
+         and a crawler is handed the real page rather than a splash. boot.js
+         fills it and takes it away again. aria-hidden because it is theatre;
+         a screen reader should be reading the page underneath it, which is
+         already there. -->
+    <div class="boot" data-boot aria-hidden="true" hidden>
+      <div class="boot__inner">
+        <div data-boot-logo></div>
+        <div class="boot__row">
+          <div class="boot__icon" data-boot-icon></div>
+          <div class="boot__main">
+            <ul class="boot__log" data-boot-log></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="assets/js/music.js?v=20261122-boot"></script>
     <script type="module" src="assets/js/keycaps.js"></script>
   </body>
 </html>

@@ -312,11 +312,11 @@
   margin-inline: auto;
 }
 
-/* The log gets a neighbour: a small spruce that builds beside it while the
-   lines resolve. The tree's colours are light-dark() pairs off the accent
-   family, the same trick the tokens use, so the mark follows the theme the
-   boot is busy restoring. Deep is the one new hex pair: the accent pushed
-   darker and cooler, the way a shade ramp shifts hue as it darkens. */
+/* The log gets a neighbour: the framed field, the favicon's little
+   painting, filling in beside it while the lines resolve. Its colours
+   are the favicon's own day and night pairs, carried as light-dark()
+   the way the tokens carry theirs, so the picture follows the theme
+   the boot is busy restoring. */
 .boot__row {
   display: flex;
   align-items: flex-end;
@@ -324,39 +324,79 @@
   margin-block-start: var(--step);
 }
 
-.boot__tree {
-  --tree-lit: light-dark(#6ea8e1, #a9cdf2);
-  --tree-mid: light-dark(#1e5aa8, #6ea8e1);
-  --tree-deep: light-dark(#173f73, #2c5d94);
-  --tree-trunk: light-dark(#52637c, #33415a);
+.boot__icon {
+  --icon-frame: light-dark(#d9a441, #b98a34);
+  --icon-frame-lit: light-dark(#eec25e, #d9a441);
+  --icon-frame-deep: light-dark(#a8742c, #7d5a24);
+  --icon-corner: light-dark(#54330f, #3a2410);
+  --icon-sky: light-dark(#9fd3f0, #16283f);
+  --icon-sky-lit: light-dark(#c8e9f7, #1f3a56);
+  --icon-sun: light-dark(#ffd94a, #e8f3ff);
+  --icon-cloud: light-dark(#ffffff, #33507a);
+  --icon-hill: light-dark(#8fce62, #3f7a3a);
+  --icon-field: light-dark(#57a047, #2c5c33);
+  --icon-field-deep: light-dark(#4e9b47, #26543a);
+  --icon-flower: light-dark(#e2543e, #ff8a5c);
   position: relative;
   flex: none;
-  width: 66px;
-  height: 78px;
+  width: 80px;
+  height: 80px;
 }
 
-/* Cells are placed once, fully coloured, and never move or fade: the build
-   is the set of cells present, growing by whole clusters per tick. */
-.boot__pix {
+/* Cells are placed once, fully coloured, and never move or fade: the
+   fill is the set of cells present, growing by whole batches per tick. */
+.boot__cell {
   position: absolute;
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
-.boot__pix.is-lit {
-  background: var(--tree-lit);
+.boot__cell.is-frame {
+  background: var(--icon-frame);
 }
 
-.boot__pix.is-mid {
-  background: var(--tree-mid);
+.boot__cell.is-frame-lit {
+  background: var(--icon-frame-lit);
 }
 
-.boot__pix.is-deep {
-  background: var(--tree-deep);
+.boot__cell.is-frame-deep {
+  background: var(--icon-frame-deep);
 }
 
-.boot__pix.is-trunk {
-  background: var(--tree-trunk);
+.boot__cell.is-corner {
+  background: var(--icon-corner);
+}
+
+.boot__cell.is-sky {
+  background: var(--icon-sky);
+}
+
+.boot__cell.is-sky-lit {
+  background: var(--icon-sky-lit);
+}
+
+.boot__cell.is-sun {
+  background: var(--icon-sun);
+}
+
+.boot__cell.is-cloud {
+  background: var(--icon-cloud);
+}
+
+.boot__cell.is-hill {
+  background: var(--icon-hill);
+}
+
+.boot__cell.is-field {
+  background: var(--icon-field);
+}
+
+.boot__cell.is-field-deep {
+  background: var(--icon-field-deep);
+}
+
+.boot__cell.is-flower {
+  background: var(--icon-flower);
 }
 
 .boot__main {
@@ -370,27 +410,6 @@
   /* Absolute, like everywhere else, so the log sits on the same 24px grid the
      page behind it does. */
   line-height: var(--step);
-}
-
-/* Progress as a row of pixel cells, the palette strip's own pattern: 4px
-   squares on an 8px pitch. A cell is either the track colour or the accent;
-   filling is a whole-cell swap on the tick, never a width sliding up. */
-.boot__progress {
-  position: relative;
-  height: 4px;
-  margin-block-start: var(--step-half);
-}
-
-.boot__pcell {
-  position: absolute;
-  top: 0;
-  width: 4px;
-  height: 4px;
-  background: var(--page-rule);
-}
-
-.boot__pcell.is-on {
-  background: var(--accent-color);
 }
 
 /* Fixed columns rather than padded strings. Iosevka draws ✓ at two columns
@@ -457,6 +476,50 @@
     max-width: 100%;
     overflow-wrap: anywhere;
   }
+}
+
+/* The indicator, the boot's small surface for every load after a
+   session's first: one slim row fixed to the top of the page. A
+   segmented pixel bar, one segment per task the page loads, each
+   segment a short run of cells that sit at the track colour until
+   their task finishes and swap to the accent in that one step.
+   The count beside the bar is the log's own small muted type. The
+   row overlays the page rather than pushing it down, so nothing
+   else moves while it is up, and it leaves the way its cells
+   filled: in one step, by removal, never a fade. */
+.boot-ind {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--step-half);
+  padding: calc(var(--step) / 4) var(--page-gutter);
+  background: var(--page-background);
+  pointer-events: none;
+}
+
+.boot-ind__seg {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.boot-ind__cell {
+  width: 6px;
+  height: 6px;
+  background: var(--page-rule);
+}
+
+.boot-ind__seg.is-on .boot-ind__cell {
+  background: var(--accent-color);
+}
+
+.boot-ind__text {
+  color: var(--muted-color);
+  font-size: var(--text-small);
+  line-height: var(--step);
 }
 
 /* The home page music demo: Saria's Song as one piano roll with a
