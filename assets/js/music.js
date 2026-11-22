@@ -1384,7 +1384,6 @@ function songChanged(parsed, { restart = false } = {}) {
 const textEl = document.querySelector("[data-song-text]");
 const gridEl = document.querySelector("[data-grid]");
 const panelEl = document.querySelector(".music-panel");
-const tabsEl = document.querySelector("[data-ptabs]");
 const statusEl = document.querySelector("[data-status]");
 const textStatusEl = document.querySelector("[data-text-status]");
 const playBtn = document.querySelector("[data-play]");
@@ -1444,38 +1443,23 @@ function currentChannel() {
   );
 }
 
-function buildTabs() {
-  tabsEl.innerHTML = "";
-  if (!player.song || player.song.channels.length < 2) {
-    tabsEl.hidden = true;
-    return;
-  }
-  tabsEl.hidden = false;
-  for (const ch of player.song.channels) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "music-btn";
-    const instName = INSTRUMENTS[ch.notes[0].inst].name;
-    btn.textContent = `${ch.letter} · ${instName}`;
-    btn.setAttribute("aria-pressed", String(ch === currentChannel()));
-    btn.addEventListener("click", () => {
-      gridState.letter = ch.letter;
-      buildTabs();
-      buildGrid();
-    });
-    tabsEl.appendChild(btn);
-  }
-}
-
+// Every channel gets its own grid, stacked in the one panel:
+// the whole song is visible at once, and because all the grids
+// live in the same scrolling panel, they share the one
+// scrollLeft and the playhead column lines up down the stack.
 function buildGrid() {
   gridEl.innerHTML = "";
   gridState.cellsByStep = new Map();
   gridState.lastCol = -1;
-  const ch = currentChannel();
-  if (!ch) return;
-  gridState.letter = ch.letter;
   const song = player.song;
+  if (!song) return;
+  if (!song.channels.some((c) => c.letter === gridState.letter)) {
+    gridState.letter = song.channels[0]?.letter ?? null;
+  }
+  for (const ch of song.channels) buildChannelGrid(ch, song);
+}
 
+function buildChannelGrid(ch, song) {
   const head = document.createElement("div");
   head.className = "gchan";
   const used = [...new Set(ch.notes.map((n) => n.inst))]
@@ -1489,6 +1473,13 @@ function buildGrid() {
   if (!pitches.length) return;
   const rows = [pitches[0] + 1, ...pitches, pitches[pitches.length - 1] - 1]
     .filter((m, i, a) => m >= 24 && m <= 96 && a.indexOf(m) === i);
+
+  // A step -> note index for this channel, so building a cell
+  // is a lookup, not a scan of every note in the channel.
+  const span = new Map();
+  for (const n of ch.notes) {
+    for (let s = n.step; s < n.step + n.len; s++) span.set(n.midi + ":" + s, n);
+  }
 
   const frag = document.createDocumentFragment();
   for (const midi of rows) {
@@ -1504,9 +1495,10 @@ function buildGrid() {
       cell.className = "cell" + (step % 4 === 0 && step > 0 ? " beat" : "");
       cell.dataset.step = step;
       cell.dataset.midi = midi;
-      cell.setAttribute("aria-label", `${pitchName(midi)}, step ${step + 1}`);
-      const note = ch.notes.find(
-        (n) => n.midi === midi && step >= n.step && step < n.step + n.len);
+      cell.dataset.letter = ch.letter;
+      cell.setAttribute("aria-label",
+        `${pitchName(midi)}, step ${step + 1}, channel ${ch.letter}`);
+      const note = span.get(midi + ":" + step);
       if (note) cell.classList.add(step === note.step ? "c-on" : "c-sus");
       if (!gridState.cellsByStep.has(step)) gridState.cellsByStep.set(step, []);
       gridState.cellsByStep.get(step).push(cell);
@@ -1531,12 +1523,17 @@ function clearPlayhead() {
 }
 
 function followPlayhead(step) {
-  // While a song plays, the grid panel follows the playhead.
-  // When the current step would leave the visible part of the
-  // panel, the panel jumps so the step sits 12 steps in from
-  // the panel's left edge, the same offset the home page demo
-  // uses. The jump is a plain scroll assignment: no animated
-  // scrolling, and the panel only ever moves sideways. When
+  // While a song plays, the grid panel follows the playhead the
+  // way the home page demo's window does: on every step the panel
+  // scrolls so the step sits 12 steps in from the panel's left
+  // edge, so the playhead holds still and the grid moves under
+  // it, one step at a time. (The old policy only scrolled when
+  // the step was about to leave the panel, which read as a long
+  // stillness and then a page-sized lurch.) The scroll is a
+  // plain assignment on the step change: no animated scrolling,
+  // and the panel only ever moves sideways. At the song's start
+  // and end the scroll clamps, and the playhead crosses the
+  // first or last stretch itself, again like the demo. When
   // playback stops the panel stays where it is.
   if (!panelEl || step < 0) return;
   const cells = gridState.cellsByStep.get(step);
@@ -1547,11 +1544,9 @@ function followPlayhead(step) {
   if (!w) return;
   const x = cellRect.left - panelRect.left + panelEl.scrollLeft;
   const lead = 12 * w;
-  const viewL = panelEl.scrollLeft;
-  const viewR = viewL + panelEl.clientWidth;
-  if (x < viewL + lead || x + w > viewR) {
-    panelEl.scrollLeft = Math.max(0, x - lead);
-  }
+  const maxScroll = Math.max(0, panelEl.scrollWidth - panelEl.clientWidth);
+  const target = Math.min(Math.max(0, x - lead), maxScroll);
+  if (panelEl.scrollLeft !== target) panelEl.scrollLeft = target;
 }
 
 function gridEdit(ch, step, midi) {
@@ -1610,8 +1605,13 @@ function gridEdit(ch, step, midi) {
 gridEl.addEventListener("click", (event) => {
   const cell = event.target.closest(".cell");
   if (!cell) return;
-  const ch = currentChannel();
+  // With every channel's grid on the page, the cell names its
+  // own channel; the edit lands there, whichever grid was tapped.
+  const ch =
+    player.song?.channels.find((c) => c.letter === cell.dataset.letter) ||
+    currentChannel();
   if (!ch) return;
+  gridState.letter = ch.letter;
   gridEdit(ch, Number(cell.dataset.step), Number(cell.dataset.midi));
 });
 
@@ -1623,7 +1623,6 @@ function adoptSong(parsed, { restart = false } = {}) {
       !parsed.channels.some((c) => c.letter === gridState.letter)) {
     gridState.letter = parsed.channels[0]?.letter ?? null;
   }
-  buildTabs();
   buildGrid();
   updateTempoUI();
   showIssues(parsed);
