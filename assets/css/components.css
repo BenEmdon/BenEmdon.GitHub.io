@@ -458,3 +458,57 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* The home page music demo: Saria's Song as one piano roll with a
+   play button. The button wears the music maker's own button style
+   (music.css .music-btn), restated here so this page does not have
+   to load the maker's stylesheet. The roll is a pixel grid like the
+   theme scene beside the footer toggle: fixed cells, pixelated. */
+.music-demo__roll {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  border: 1px solid var(--page-rule);
+  background: var(--page-subtle);
+}
+
+.music-demo__row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--step) / 2);
+}
+
+.music-demo__button {
+  font: inherit;
+  font-size: var(--text-small);
+  line-height: var(--step);
+  padding: 0 calc(var(--step) / 2);
+  background: var(--page-subtle);
+  color: var(--page-color);
+  border: 1px solid var(--page-rule);
+  cursor: pointer;
+}
+
+.music-demo__button:hover,
+.music-demo__button:focus-visible {
+  background: var(--accent-color);
+  color: var(--inverted-color);
+  border-color: var(--accent-color);
+}
+
+.music-demo__button[aria-pressed="true"] {
+  background: var(--accent-color);
+  color: var(--inverted-color);
+  border-color: var(--accent-color);
+}
+
+.music-demo__button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.music-demo__status {
+  font-size: var(--text-small);
+  color: var(--muted-color);
+}
