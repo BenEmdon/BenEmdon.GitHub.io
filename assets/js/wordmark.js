@@ -9,6 +9,78 @@
 // animation is a refresh scan: one column at a time, left to right, at
 // the same fixed tick. The original text remains the no-JS fallback; the
 // heading has its own label.
+
+const BLOCK_GLYPH = "█";
+
+// The grid width comes from the block glyph itself, never from a metric
+// named after a different character. The subset font loaded for the
+// wordmark contains no "0", so a ch-based width is a guess each engine
+// resolves through its own fallback fonts, and it lands differently
+// from the advance the glyphs are actually laid out with; raw text
+// advances are rounded by the shaper besides (at phone size the subset's
+// 0.6em advance lays out as a flat 4px). Measured instead: twenty block
+// glyphs set as plain text in the wordmark's own font at its current
+// size, divided by twenty. Whatever the engine really does to the art,
+// every column is then sized by that one number.
+function measureCellWidth(wordmark) {
+  const style = getComputedStyle(wordmark);
+  const probe = document.createElement("span");
+  probe.style.cssText =
+    "position:absolute;visibility:hidden;white-space:pre;" +
+    `font-family:${style.fontFamily};font-size:${style.fontSize};` +
+    `font-weight:${style.fontWeight};`;
+  probe.textContent = BLOCK_GLYPH.repeat(20);
+  document.body.append(probe);
+  const width = probe.getBoundingClientRect().width / 20;
+  probe.remove();
+  return width;
+}
+
+function sizeCells(wordmark) {
+  const width = measureCellWidth(wordmark);
+  if (width > 0) {
+    wordmark.style.setProperty("--wordmark-cell-w", `${width}px`);
+  }
+}
+
+// Split the art into one span per character: block glyphs get
+// .wordmark__cell, spaces get .wordmark__gap so they take the measured
+// width too, instead of whatever advance the surrounding text happens
+// to give them. Returns the lit-able cells grouped by column.
+function splitWordmark(wordmark) {
+  const rows = wordmark.textContent.split("\n");
+  const columnCount = Math.max(...rows.map((row) => [...row].length));
+  const columns = Array.from({ length: columnCount }, () => []);
+  const fragment = document.createDocumentFragment();
+
+  rows.forEach((row, y) => {
+    [...row].forEach((glyph, x) => {
+      const el = document.createElement("span");
+      el.className = glyph === " " ? "wordmark__gap" : "wordmark__cell";
+      el.textContent = glyph;
+      fragment.append(el);
+      if (glyph !== " ") columns[x].push(el);
+    });
+    if (y < rows.length - 1) fragment.append("\n");
+  });
+  wordmark.replaceChildren(fragment);
+  return columns;
+}
+
+// The touch-device split: no scan runs there, but the fixed cells are
+// still what keep the letters from merging in a phone browser. Like the
+// animated path, it waits for the font, so the split and the measured
+// cell width come from the loaded glyphs rather than a fallback, and it
+// re-measures when the viewport changes the wordmark's size.
+export async function setUpStaticWordmark(wordmark) {
+  if (!wordmark) return;
+  await document.fonts.ready;
+  if (!wordmark.isConnected) return;
+  splitWordmark(wordmark);
+  sizeCells(wordmark);
+  new ResizeObserver(() => sizeCells(wordmark)).observe(wordmark);
+}
+
 export async function animateWordmark(wordmark, reduced) {
   if (!wordmark || !matchMedia("(hover: hover)").matches) return;
   await document.fonts.ready;
@@ -17,24 +89,7 @@ export async function animateWordmark(wordmark, reduced) {
   const TICK = 75;
   const rows = wordmark.textContent.split("\n");
   const columnCount = Math.max(...rows.map((row) => [...row].length));
-  const columns = Array.from({ length: columnCount }, () => []);
-  const fragment = document.createDocumentFragment();
-
-  rows.forEach((row, y) => {
-    [...row].forEach((glyph, x) => {
-      if (glyph === " ") {
-        fragment.append(" ");
-        return;
-      }
-      const el = document.createElement("span");
-      el.className = "wordmark__cell";
-      el.textContent = glyph;
-      fragment.append(el);
-      columns[x].push(el);
-    });
-    if (y < rows.length - 1) fragment.append("\n");
-  });
-  wordmark.replaceChildren(fragment);
+  const columns = splitWordmark(wordmark);
 
   let cellWidth = 0;
   let litColumn = -1;
@@ -44,6 +99,7 @@ export async function animateWordmark(wordmark, reduced) {
 
   // Font metrics are measured once after loading, then only on resize.
   function measure() {
+    sizeCells(wordmark);
     const first = columns.flat().find(Boolean);
     if (first) cellWidth = first.getBoundingClientRect().width;
   }
