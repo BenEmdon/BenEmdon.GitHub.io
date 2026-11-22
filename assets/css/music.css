@@ -278,98 +278,118 @@
   color: light-dark(#b3261e, #f2b8b5);
 }
 
-.grow {
-  display: flex;
-  align-items: center;
-  gap: 1px;
-  margin-block-start: 1px;
-  /* Containment as on .gchan above: off-screen rows are
-     skipped under scroll. A row's settled height is its
-     label's line, one page step. */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 24px;
+.gstrip {
+  --cell: 14px;
+  --pitch: 15px;
+  --group: 64px;
+  position: relative;
+}
+
+/* The note layer: its background draws the grid the cells
+   used to draw, step lines on the step pitch with the wider
+   beat gap every four steps, lane lines on the lane pitch,
+   all of it tiled gradients, so an empty step costs no
+   element at all. The layer starts after the label column
+   and runs the song's full width; the blocks inside it are
+   the only per-note elements, and only the visible window's
+   worth of them exist. */
+.glayer {
+  position: absolute;
+  left: calc(3.4rem + 1px);
+  top: 0;
+  bottom: 0;
+  border-bottom: 1px solid var(--page-rule);
+  background-image:
+    linear-gradient(to right,
+      var(--page-rule) 0, var(--page-rule) 1px,
+      transparent 1px, transparent var(--pitch),
+      var(--page-rule) var(--pitch), var(--page-rule) calc(var(--pitch) + 1px),
+      transparent calc(var(--pitch) + 1px), transparent calc(var(--pitch) * 2),
+      var(--page-rule) calc(var(--pitch) * 2), var(--page-rule) calc(var(--pitch) * 2 + 1px),
+      transparent calc(var(--pitch) * 2 + 1px), transparent calc(var(--pitch) * 3),
+      var(--page-rule) calc(var(--pitch) * 3), var(--page-rule) calc(var(--pitch) * 3 + 1px),
+      transparent calc(var(--pitch) * 3 + 1px), transparent var(--group)),
+    repeating-linear-gradient(to bottom,
+      var(--page-rule) 0, var(--page-rule) 1px,
+      transparent 1px, transparent 25px);
+  background-size: var(--group) 100%, 100% 25px;
+  background-repeat: repeat-x, repeat-y;
 }
 
 .glabel {
-  flex: 0 0 3.4rem;
+  position: absolute;
+  left: 0;
+  width: 3.4rem;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   padding-inline-end: 0.5rem;
-  text-align: right;
   color: var(--muted-color);
   font-size: var(--text-caption);
 }
 
-.cell {
-  flex: 0 0 auto;
-  width: 14px;
-  height: 14px;
+/* One block per note: the head step wears the full accent,
+   as the note's first cell did, and the sustain runs behind
+   it at the sustain cells' opacity, as a gradient, so a
+   long note reads the way its cells did. */
+.gblock {
+  position: absolute;
+  height: var(--cell);
   padding: 0;
-  background: var(--page-background);
-  border: 1px solid var(--page-rule);
+  background: linear-gradient(to right,
+    var(--accent-color) 0, var(--accent-color) var(--cell),
+    color-mix(in srgb, var(--accent-color) 42%, transparent) var(--cell));
+  border: 1px solid var(--accent-color);
   cursor: pointer;
 }
 
-/* One beat of space between groups of four steps, so the eye can
-   count bars the way the text counts them with its | marks. */
-.cell.beat {
-  margin-inline-start: 4px;
+.gblock:hover {
+  outline: 1px solid var(--accent-color);
+  outline-offset: -1px;
 }
 
-.cell:hover {
-  border-color: var(--accent-color);
-}
-
-/* A filled outline, not just a border tint, so a keyboard user can
-   always see which cell they are standing on, lit or not. */
-.cell:focus-visible {
+/* A filled outline, not just a border tint, so a keyboard
+   user can always see which block they are standing on. */
+.gblock:focus-visible {
   outline: 2px solid var(--accent-color);
   outline-offset: -1px;
 }
 
-.cell.c-on {
-  background: var(--accent-color);
-  border-color: var(--accent-color);
-}
-
-.cell.c-sus {
-  background: var(--accent-color);
-  border-color: var(--accent-color);
-  opacity: 0.42;
-}
-
-/* Experiment (live note feedback): a note that has been edited
-   in but is not in the current render yet wears amber. It
-   clears only when the re-render actually swaps in. A note
-   deleted from the text but still sounding in the current
-   render shows as a dashed ghost until the same swap. */
+/* Experiment (live note feedback): a note that has been
+   edited in but is not in the current render yet wears
+   amber. It clears only when the re-render actually swaps
+   in. A note deleted from the text but still sounding in
+   the current render shows as a dashed ghost until the
+   same swap. */
 :root {
   --pending-color: light-dark(#b97e0e, #e0a83c);
 }
 
-.cell.c-pending {
+.gblock.c-pending {
   background: var(--pending-color);
   border-color: var(--pending-color);
 }
 
-.cell.c-ghost {
+.gblock.c-ghost {
   background: color-mix(in srgb, var(--muted-color) 38%, transparent);
   border-color: var(--muted-color);
   border-style: dashed;
 }
 
-.cell.is-now {
-  outline: 2px solid var(--accent-pulse-color);
-  outline-offset: -1px;
+/* The playhead: one line per strip over the note layer,
+   moved by transform, where the per-step cell outline
+   used to run down the stack. */
+.gplay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: var(--accent-pulse-color);
+  pointer-events: none;
 }
 
-.cell:disabled {
-  cursor: default;
-  opacity: 0.55;
-}
-
-.cell.c-on:disabled,
-.cell.c-sus:disabled {
-  opacity: 0.55;
-}
 
 .music-hint {
   margin-block-start: var(--step);
@@ -439,10 +459,12 @@
     padding-inline: calc(var(--step) / 2);
   }
 
-  .cell {
-    width: 22px;
-    height: 22px;
+  .gstrip {
+    --cell: 22px;
+    --pitch: 23px;
+    --group: 96px;
   }
+
 }
 
 /* The how-it-works explainer runs at the size the rest of this
