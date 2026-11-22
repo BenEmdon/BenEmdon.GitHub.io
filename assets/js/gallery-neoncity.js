@@ -33,7 +33,7 @@
   [data-gallery="neon-city"] and does nothing if there is none.
 */
 
-import { registerTask } from "./boot.js?v=20261122q";
+import { registerTask } from "./boot.js?v=20261122r";
 const W = 120;
 const H = 45;
 

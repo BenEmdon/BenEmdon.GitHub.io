@@ -47,7 +47,7 @@
   no timers.
 */
 
-import { registerTask } from "./boot.js?v=20261122q";
+import { registerTask } from "./boot.js?v=20261122r";
 (() => {
   // The scene's first paint is loader work: the task
   // registers here and completes on that paint, below.

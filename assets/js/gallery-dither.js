@@ -29,7 +29,7 @@
   finished scenes in one cut, no cover.
 */
 
-import { registerTask } from "./boot.js?v=20261122q";
+import { registerTask } from "./boot.js?v=20261122r";
 
 (() => {
   const panels = document.querySelectorAll("[data-gallery-dither]");
