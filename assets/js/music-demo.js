@@ -908,8 +908,24 @@ if (roll && playButton) {
     else play();
   }
 
-  playButton.addEventListener("click", togglePlayPause);
-  restartButton?.addEventListener("click", restart);
+  // A pointer press leaves the button holding the focus, and the
+  // focus fill then outstays the press (Ben, 2026-11-22: both
+  // buttons stayed lit after a tap). A click with a detail count
+  // came from a pointer, so it hands the focus back once handled;
+  // a keyboard click has detail 0 and keeps the focus, so the
+  // focus-visible fill stays honest for keyboard users.
+  function releasePointerFocus(event) {
+    if (event.detail > 0) event.currentTarget.blur();
+  }
+
+  playButton.addEventListener("click", (event) => {
+    togglePlayPause();
+    releasePointerFocus(event);
+  });
+  restartButton?.addEventListener("click", (event) => {
+    restart();
+    releasePointerFocus(event);
+  });
 
   // Repaint when the theme flips, from the toggle or the OS.
   // The picture keeps whatever step it is showing, so a flip
