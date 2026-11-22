@@ -2,10 +2,11 @@
   The boot, shared by the home, Mochi, and music pages.
 
   One sequence, two surfaces. The full boot screen (the log and
-  the framed field filling in beside it) shows once per session,
-  on whichever page the visit lands on first, in its own block in
-  the layout at the top of the page. Every later load in the same
-  session, and every piece of async work after that on any load,
+  the framed field filling in beside it) shows on the first page
+  a session lands on, whichever page that is, and on the home
+  page on every load after that, however the home page is
+  reached. Every other load in the same session, and every piece
+  of async work after that on any load,
   reports to the loader instead: a small spinner in the top right
   corner, the favicon's framed field at 32px, overlaying the page
   and reserving no space in it. Its cells fill in place as work
@@ -68,24 +69,34 @@ const BOOT_FLOOR_MS = 1500;
 // long enough to read the count and the total, no longer.
 const SPINNER_HOLD_MS = 1000;
 
+// The spinner's minimum time on screen, counted from the
+// moment it appears: a batch that settles in a blink still
+// gets its second, so the surface never just flashes. The
+// numbers it shows stay the ones the work really measured;
+// only the removal waits. A batch slower than the minimum
+// removes on the hold above alone, never the two waits
+// stacked.
+const SPINNER_MIN_MS = 1000;
+
 // Which surface a load gets, as a pure decision so it can be
 // exercised outside a browser: badge pages always boot in full,
 // reduced motion never boots, the home page boots in full on
-// every arrival from outside the site and never on an arrival
-// through one of the site's own links (the corner loader
-// reports those loads instead), a session that has already
-// seen the full boot gets the indicator, and anything else
-// boots in full.
+// every load however it is reached (refresh and internal link
+// included; there is no referrer test, because a refresh
+// carries the page itself as its referrer and read as an
+// internal arrival under the old rule, which is why refreshed
+// home pages stopped booting), a session that has already
+// seen the full boot gets the indicator on any other page,
+// and anything else boots in full.
 export function decideBootSurface({
   experimental,
   reducedMotion,
   sessionSeen,
   home = false,
-  internal = false,
 }) {
   if (experimental) return "full";
   if (reducedMotion) return "none";
-  if (home) return internal ? "indicator" : "full";
+  if (home) return "full";
   return sessionSeen ? "indicator" : "full";
 }
 
@@ -469,6 +480,12 @@ const ICON_TOTAL = ICON.reduce((n, row) => n + row.length, 0);
 
 let loaderBatch = null;
 
+// A chip element still serving its minimum after its batch
+// was replaced under it: the element stays in the corner
+// until its second is up, and the next batch's chip waits
+// for the corner to clear before it mounts.
+let lingeringChip = null; // { el, timer }
+
 // Promise-identity dedupe for the adapter: a promise with a
 // live task already is that task, whoever asks again.
 const trackedPromises = new Map();
@@ -493,6 +510,7 @@ function openLoaderBatch(startedAt) {
     closed: false,
     latency: null,
     coveredByBoot: false,
+    chipMountedAt: null, // when the chip appeared, for its minimum
     chip: null, // { el, icon, count, time, cells, filled }
     panel: null, // { el, head, body, rows }
     fillTimer: null,
@@ -544,13 +562,14 @@ function countText(batch) {
 
 // The batch a registration joins: the live one, a fresh one
 // when the registry is idle, and a fresh one again when the
-// previous batch is sitting in its completion hold (the
-// finished surface goes in one step and the new work gets its
-// own counts and its own latency).
+// previous batch has closed (the new work gets its own counts
+// and its own latency; the finished chip, if it has not yet
+// had its second on screen, stays up for the rest of it while
+// its batch is replaced under it).
 function currentLoaderBatch(startedAt) {
   let batch = loaderBatch;
   if (batch && batch.closed) {
-    teardownLoaderBatch(batch);
+    teardownLoaderBatch(batch, { keepChip: true });
     batch = null;
   }
   if (!batch) {
@@ -723,6 +742,7 @@ function buildSpinner(batch) {
   root.append(icon, count, time);
   document.body.append(root);
   batch.chip = { el: root, icon, count, time, cells, filled: 0 };
+  batch.chipMountedAt = performance.now();
   batch.fillTimer = setInterval(() => stepLoaderFill(batch), 75);
   stepLoaderFill(batch);
 }
@@ -799,6 +819,25 @@ function ensureSpinner(batch) {
     }
     return;
   }
+  if (lingeringChip) {
+    // A replaced chip is still serving its minimum in the
+    // corner: this batch's chip waits for the corner to
+    // clear, on a short poll, rather than stacking a second
+    // chip on top of it.
+    if (!batch.watchTimer) {
+      batch.watchTimer = setInterval(() => {
+        if (loaderBatch !== batch || batch.closed) {
+          clearInterval(batch.watchTimer);
+          batch.watchTimer = null;
+        } else if (!lingeringChip) {
+          clearInterval(batch.watchTimer);
+          batch.watchTimer = null;
+          ensureSpinner(batch);
+        }
+      }, 100);
+    }
+    return;
+  }
   buildSpinner(batch);
 }
 
@@ -812,7 +851,7 @@ function renderLoader(batch) {
   if (batch.panel) renderLoaderPanel(batch);
 }
 
-function teardownLoaderBatch(batch) {
+function teardownLoaderBatch(batch, { keepChip = false } = {}) {
   if (batch.fillTimer) clearInterval(batch.fillTimer);
   if (batch.watchTimer) clearInterval(batch.watchTimer);
   if (batch.holdTimer) clearTimeout(batch.holdTimer);
@@ -822,7 +861,31 @@ function teardownLoaderBatch(batch) {
     batch.panel = null;
     document.removeEventListener("pointerdown", onLoaderOutsideTap);
   }
-  if (batch.chip) batch.chip.el.remove();
+  if (batch.chip) {
+    const el = batch.chip.el;
+    batch.chip = null;
+    // A chip replaced inside its minimum (keepChip, the
+    // currentLoaderBatch path) stays on screen for the rest
+    // of its second: the batch is gone, but its finished
+    // surface is not cut short. Every other removal (the
+    // hold expiring, the visitor collapsing the panel) takes
+    // the chip in one step, as it always has.
+    const shownFor =
+      batch.chipMountedAt == null
+        ? SPINNER_MIN_MS
+        : performance.now() - batch.chipMountedAt;
+    if (keepChip && shownFor < SPINNER_MIN_MS) {
+      lingeringChip = {
+        el,
+        timer: setTimeout(() => {
+          el.remove();
+          lingeringChip = null;
+        }, SPINNER_MIN_MS - shownFor),
+      };
+    } else {
+      el.remove();
+    }
+  }
   if (loaderBatch === batch) loaderBatch = null;
 }
 
@@ -838,10 +901,13 @@ function closeLoaderBatch(batch) {
     // covered that outlived the screen and closed after it
     // cleared. It gets a completion-only mount, the finished
     // picture shown whole, because the work it reports is done.
+    // A replaced chip still serving its minimum also bars the
+    // mount: the corner is occupied until its second is up.
     if (
       !batch.coveredByBoot ||
       loaderReducedMotion() ||
-      loaderFullBootOnScreen()
+      loaderFullBootOnScreen() ||
+      lingeringChip
     ) {
       teardownLoaderBatch(batch);
       return;
@@ -1050,26 +1116,6 @@ function isHomePage() {
   return path === "/" || path.endsWith("/index.html");
 }
 
-// An arrival through one of the site's own links: the referrer
-// is a page of this site. A typed address, a bookmark, a search
-// result, or a link from anywhere else leaves an empty or
-// foreign referrer, and counts as outside. The staging site
-// shares this origin but is not this site: an arrival from a
-// staging page counts as outside, or hopping from an experiment
-// back to the real home page would silently eat its boot.
-function isInternalArrival() {
-  const ref = document.referrer;
-  if (!ref) return false;
-  try {
-    const url = new URL(ref);
-    if (url.origin !== window.location.origin) return false;
-    return url.pathname !== "/staging" &&
-      !url.pathname.startsWith("/staging/");
-  } catch {
-    return false;
-  }
-}
-
 // A full boot keeps the page behind the screen until the
 // screen clears, on every page, the way the boot worked
 // before it moved into the flow: runBoot marks the document,
@@ -1097,13 +1143,11 @@ export function runBoot(tasks, { t0 = performance.now() } = {}) {
     "(prefers-reduced-motion: reduce)"
   ).matches;
   const home = isHomePage();
-  const internal = home && isInternalArrival();
   const surface = decideBootSurface({
     experimental,
     reducedMotion,
     sessionSeen: experimental ? false : sessionBootSeen(),
     home,
-    internal,
   });
 
   if (surface === "none" || tasks.length === 0) return surface;
