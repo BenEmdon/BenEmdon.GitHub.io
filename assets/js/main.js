@@ -214,20 +214,37 @@ function setUp() {
 
   /* ---------- theme ---------- */
 
-  const sceneButton = document.querySelector("[data-theme-scene-button]");
-  const sceneCurrent = document.querySelector("[data-theme-scene-current]");
   let mode = storedMode();
   let sceneCycleStarted = false;
-  // The mode word beside the scene is a tap's receipt, not a permanent
-  // readout: a tap shows it, it stays for about 2.5 seconds, then it
-  // goes away and the control is the picture alone again. The theme
-  // itself does not revert when the word hides, and a fresh tap
-  // restarts the window.
-  let sceneRevealed = false;
-  let sceneRevealTimer;
 
   const resolvedDark = () =>
     mode === "dark" || (mode === "system" && systemDark.matches);
+
+  // The scene lives twice on the page: the masthead, and the footer
+  // system line where it sat before the masthead had one. One mode
+  // drives both. Each control keeps its own painter and its own word
+  // window: the mode word beside a scene is a tap's receipt, not a
+  // permanent readout, and the receipt shows where the tap landed. A
+  // tap shows it, it stays for about 2.5 seconds, then it goes away
+  // and the control is the picture alone again. The theme itself does
+  // not revert when the word hides, and a fresh tap restarts the
+  // window on the control that was tapped.
+  const sceneControls = [
+    ...document.querySelectorAll("[data-theme-scene-control]"),
+  ].map((controlEl) => {
+    const canvas = controlEl.querySelector("[data-theme-scene]");
+    return {
+      button: controlEl.querySelector("[data-theme-scene-button]"),
+      current: controlEl.querySelector("[data-theme-scene-current]"),
+      scene: canvas
+        ? createThemeScene(canvas, { dark: resolvedDark() })
+        : null,
+      revealed: false,
+      revealTimer: undefined,
+    };
+  });
+  // The t key works the same control it always did: the first one.
+  const sceneButton = sceneControls[0]?.button ?? null;
 
   function persistMode() {
     try {
@@ -261,58 +278,55 @@ function setUp() {
       document.documentElement.dataset.theme = mode;
     }
 
-    // The scene carries the current mode as its word while the post-tap
-    // window is open, and the button's name says where a click goes
-    // next, worked out live so the system first-click rule is in the
-    // name, word showing or not.
-    if (sceneCurrent) {
-      sceneCurrent.textContent = mode;
-      sceneCurrent.hidden = !sceneRevealed;
+    // Each scene carries the current mode as its word while its own
+    // post-tap window is open, and each button's name says where a
+    // click goes next, worked out live so the system first-click rule
+    // is in the name, word showing or not.
+    for (const control of sceneControls) {
+      if (control.current) {
+        control.current.textContent = mode;
+        control.current.hidden = !control.revealed;
+      }
+      control.button?.setAttribute(
+        "aria-label",
+        `Theme: ${mode}. Activate to switch to ${nextSceneMode()}`
+      );
+
+      // The little landscape re-lights to match: day in light, night
+      // in dark, stepped cell by cell unless reduced motion is on.
+      control.scene?.setDark(resolvedDark(), reduced.matches);
     }
-    sceneButton?.setAttribute(
-      "aria-label",
-      `Theme: ${mode}. Activate to switch to ${nextSceneMode()}`
-    );
 
     // The dither reads its two colours back out of CSS, so it has to be
     // redrawn whenever the resolved theme could have moved under it.
     repaints.forEach((repaint) => repaint());
-
-    // The little landscape re-lights to match: day in light, night in
-    // dark, stepped cell by cell unless reduced motion is on.
-    themeScene?.setDark(resolvedDark(), reduced.matches);
   }
 
   // The picture is the control. The swap is whole and instant, and the
   // button is never hidden or replaced, so focus stays on it.
-  sceneButton?.addEventListener("click", () => {
-    mode = nextSceneMode();
-    sceneCycleStarted = true;
-    sceneRevealed = true;
-    persistMode();
-    applyMode();
-    // The word is a receipt with a short life: restart its window on
-    // every tap, then let applyMode hide it when the window closes.
-    // Hiding only flips the label's hidden flag; the mode, and the
-    // scene lit for it, stay as the tap left them.
-    clearTimeout(sceneRevealTimer);
-    sceneRevealTimer = setTimeout(() => {
-      sceneRevealed = false;
+  for (const control of sceneControls) {
+    control.button?.addEventListener("click", () => {
+      mode = nextSceneMode();
+      sceneCycleStarted = true;
+      control.revealed = true;
+      persistMode();
       applyMode();
-    }, 2500);
-  });
+      // The word is a receipt with a short life: restart its window
+      // on every tap, then let applyMode hide it when the window
+      // closes. Hiding only flips the label's hidden flag; the mode,
+      // and the scenes lit for it, stay as the tap left them.
+      clearTimeout(control.revealTimer);
+      control.revealTimer = setTimeout(() => {
+        control.revealed = false;
+        applyMode();
+      }, 2500);
+    });
+  }
 
   // Only in system mode does the OS still get a vote.
   systemDark.addEventListener("change", () => {
     if (mode === "system") applyMode();
   });
-
-  // The scene starts on whichever state the page loaded in, drawn in one
-  // cut; only changes after this earn the stepped swap.
-  const sceneCanvas = document.querySelector("[data-theme-scene]");
-  const themeScene = sceneCanvas
-    ? createThemeScene(sceneCanvas, { dark: resolvedDark() })
-    : null;
 
   applyMode();
 

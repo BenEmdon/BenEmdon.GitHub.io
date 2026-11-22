@@ -338,14 +338,16 @@
 }
 
 /* The theme scene is the theme control (Ben's call, 2026-11-22): a
-   24x12 landscape at 2px cells, exactly one --step tall. It sits in the
-   masthead of every page, anchored to the right edge with its word on
-   the left, so the scene itself never moves. Clicking it advances the
-   mode in one whole step: no slide, no fade, the new state is simply
-   there. The word beside it is a tap's receipt, not a permanent
-   readout: a tap shows it, it stays for about 2.5 seconds, then the
-   control is the picture alone again. The footer text toggle it
-   replaced is gone. */
+   24x12 landscape at 2px cells, exactly one --step tall. It lives
+   twice on every page: in the masthead, anchored to the right edge
+   with its word on the left, and in the footer system line, where
+   the word sits on its right so the scene keeps its place there
+   too. One mode drives both, and clicking either advances the mode
+   in one whole step: no slide, no fade, the new state is simply
+   there. The word beside a scene is a tap's receipt, not a permanent
+   readout: a tap shows it on the control that was tapped, it stays
+   for about 2.5 seconds, then the control is the picture alone
+   again. There is no text theme toggle anywhere. */
 
 .theme-scene-control {
   display: inline-flex;

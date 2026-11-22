@@ -425,6 +425,23 @@
           >
             <kbd>?</kbd> keys
           </button>
+          <div class="theme-scene-control" data-theme-scene-control>
+            <button
+              class="theme-scene-button"
+              type="button"
+              data-theme-scene-button
+              aria-label="Theme: system. Activate to switch to light"
+            >
+              <canvas
+                class="theme-scene"
+                data-theme-scene
+                width="24"
+                height="12"
+                aria-hidden="true"
+              ></canvas>
+            </button>
+            <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
+          </div>
         </div>
       </footer>
 
@@ -463,7 +480,7 @@
       </div>
     </div>
 
-    <script type="module" src="assets/js/main.js?v=20261122-scene"></script>
+    <script type="module" src="assets/js/main.js?v=20261122-footer"></script>
     <script type="module" src="assets/js/meadow.js"></script>
     <script type="module" src="assets/js/keycaps.js"></script>
     <script type="module" src="assets/js/music-demo.js"></script>
