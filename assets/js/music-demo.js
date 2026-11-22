@@ -16,8 +16,12 @@
   column at a time, on the fixed grid, and the playhead moves
   the way everything on this site moves, one 16th step at a
   time. Under reduced motion the window and the picture jump
-  by whole bars instead. The controls are play and restart,
-  and the status line says what the render cost and that the
+  by whole bars instead. The controls are play, pause, and
+  restart: pause holds the playback offset (the source stops,
+  the position is remembered, and play resumes from exactly
+  there, roll and sound reading from the same tracked
+  position), while restart goes back to step zero and plays.
+  The status line says what the render cost and that the
   song loops.
 
   The render comes from the persistent cache the maker uses
@@ -571,10 +575,11 @@ async function obtainRender(song, onRendering) {
 
 const roll = document.querySelector("[data-music-demo-roll]");
 const playButton = document.querySelector("[data-music-demo-play]");
+const pauseButton = document.querySelector("[data-music-demo-pause]");
 const restartButton = document.querySelector("[data-music-demo-restart]");
 const status = document.querySelector("[data-music-demo-status]");
 
-if (roll && playButton) {
+if (roll && playButton && pauseButton) {
   const song = parseSong(SARIA_TEXT);
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
@@ -665,9 +670,15 @@ if (roll && playButton) {
 
   // The maker's segment maths, minus the swap machinery: the
   // song never changes here, so one segment serves the visit.
+  // A segment records the buffer-timeline offset it started
+  // at, which is what makes pause possible: pausing reads the
+  // current offset out of the segment before stopping the
+  // source, and resuming starts a fresh segment at that
+  // offset. pausedPos holds it between the two.
   const demo = {
     ctx: null, out: null, src: null, seg: null,
     rendered: null, renderPromise: null, playing: false, rendering: false, raf: 0,
+    pausedPos: null,
   };
 
   // The one road to a rendered loop, shared by the background
@@ -690,13 +701,36 @@ if (roll && playButton) {
     return demo.renderPromise;
   }
 
-  function stepAt(now) {
-    const { startCtxTime, rendered } = demo.seg;
-    const elapsed = now - startCtxTime;
+  // The position on the buffer's own timeline, in seconds:
+  // the segment's start offset plus however long it has been
+  // sounding, wrapped inside the loop once past the intro.
+  // Sound and picture both read from this, so they cannot
+  // disagree, playing or paused.
+  function positionAt(now) {
+    const { startCtxTime, offsetSec, rendered } = demo.seg;
+    const t = offsetSec + Math.max(0, now - startCtxTime);
     const introDur = rendered.loopStart;
-    if (elapsed < introDur) return Math.floor(elapsed / rendered.stepDur);
-    const inLoop = (elapsed - introDur) % rendered.loopDur;
-    return song.loopStep + Math.floor(inLoop / rendered.stepDur);
+    if (t < introDur) return t;
+    return introDur + ((t - introDur) % rendered.loopDur);
+  }
+
+  function stepFromPosition(pos) {
+    const { rendered } = demo.seg || { rendered: demo.rendered };
+    if (pos < rendered.loopStart) return Math.floor(pos / rendered.stepDur);
+    return song.loopStep + Math.floor((pos - rendered.loopStart) / rendered.stepDur);
+  }
+
+  function stepAt(now) {
+    return stepFromPosition(positionAt(now));
+  }
+
+  // The step the page should show right now: the live step
+  // while playing, the held step while paused, and -1 (no
+  // playhead) before the first play.
+  function currentStep() {
+    if (demo.playing && demo.seg) return stepAt(demo.ctx.currentTime);
+    if (demo.pausedPos !== null) return stepFromPosition(demo.pausedPos);
+    return -1;
   }
 
   function runPlayhead() {
@@ -718,10 +752,25 @@ if (roll && playButton) {
     tick();
   }
 
-  function setButton(text, pressed, disabled) {
-    playButton.textContent = text;
-    playButton.setAttribute("aria-pressed", String(pressed));
-    playButton.disabled = disabled;
+  // The three controls, kept honest about the state: play is
+  // pressed while sounding and rests while paused, pause is
+  // pressed while holding and only enabled while sounding,
+  // and during a render all three wait.
+  function updateControls() {
+    if (demo.rendering) {
+      playButton.textContent = "rendering…";
+      playButton.setAttribute("aria-pressed", "false");
+      playButton.disabled = true;
+      pauseButton.disabled = true;
+      if (restartButton) restartButton.disabled = true;
+      return;
+    }
+    playButton.textContent = "play";
+    playButton.setAttribute("aria-pressed", String(demo.playing));
+    playButton.disabled = demo.playing;
+    pauseButton.setAttribute("aria-pressed", String(!demo.playing && demo.pausedPos !== null));
+    pauseButton.disabled = !demo.playing;
+    if (restartButton) restartButton.disabled = false;
   }
 
   function renderNote() {
@@ -732,7 +781,7 @@ if (roll && playButton) {
     }
   }
 
-  function startSource() {
+  function startSource(offsetSec) {
     if (demo.src) {
       try { demo.src.stop(); } catch { /* already stopped */ }
       demo.src.disconnect();
@@ -746,11 +795,12 @@ if (roll && playButton) {
     src.loopEnd = demo.rendered.dur;
     src.connect(demo.out);
     const startCtxTime = demo.ctx.currentTime + 0.08;
-    src.start(startCtxTime);
+    src.start(startCtxTime, offsetSec);
     demo.src = src;
-    demo.seg = { startCtxTime, rendered: demo.rendered };
+    demo.seg = { startCtxTime, offsetSec, rendered: demo.rendered };
     demo.playing = true;
-    setButton("stop", true, false);
+    demo.pausedPos = null;
+    updateControls();
     renderNote();
     runPlayhead();
   }
@@ -764,6 +814,9 @@ if (roll && playButton) {
 
   async function play() {
     if (demo.rendering || demo.playing) return;
+    // Resuming from a pause starts where the pause held;
+    // a first play starts at the top.
+    const from = demo.pausedPos !== null ? demo.pausedPos : 0;
     if (demo.rendered) {
       // The background preload can land a buffer before any press of
       // play, in which case the playback context does not exist yet:
@@ -771,11 +824,15 @@ if (roll && playButton) {
       // preloaded demo threw inside startSource instead of playing.
       ensureCtx();
       await demo.ctx.resume();
-      startSource();
+      // A press of restart that landed while the context woke
+      // has already started from the top; do not override it
+      // with the resume this press was asked for.
+      if (demo.playing) return;
+      startSource(from);
       return;
     }
     demo.rendering = true;
-    setButton("rendering…", false, true);
+    updateControls();
     try {
       ensureCtx();
       await demo.ctx.resume();
@@ -786,15 +843,20 @@ if (roll && playButton) {
       }
     } catch {
       demo.rendering = false;
-      setButton("play", false, false);
+      updateControls();
       if (status) status.textContent = "the loop did not render";
       return;
     }
     demo.rendering = false;
-    startSource();
+    startSource(0);
   }
 
-  function stop() {
+  // Pause holds the position: the offset is read out of the
+  // segment before the source stops, the roll freezes on the
+  // held step, and the next play resumes from that offset.
+  function pause() {
+    if (!demo.playing) return;
+    demo.pausedPos = positionAt(demo.ctx.currentTime);
     if (demo.src) {
       try { demo.src.stop(); } catch { /* already stopped */ }
       demo.src.disconnect();
@@ -802,28 +864,35 @@ if (roll && playButton) {
     }
     demo.playing = false;
     cancelAnimationFrame(demo.raf);
-    setButton("play", false, false);
-    renderNote();
-    paint(-1);
+    updateControls();
+    paint(stepFromPosition(demo.pausedPos));
   }
 
-  playButton.addEventListener("click", () => {
-    if (demo.playing) stop();
-    else play();
-  });
-  restartButton?.addEventListener("click", () => {
-    // Back to step 0 and playing from the top. Before the
-    // first render this is simply play, which starts at 0 too.
-    // Play covers both cases, and it builds the context a preloaded
-    // buffer still needs before startSource can touch it.
+  async function restart() {
     if (demo.rendering) return;
-    play();
-  });
+    // Back to step 0 and playing from the top, from any state.
+    // Before the first render this is simply play, which starts
+    // at 0 too, and it builds the context a preloaded buffer
+    // still needs before startSource can touch it.
+    if (!demo.rendered) {
+      play();
+      return;
+    }
+    ensureCtx();
+    await demo.ctx.resume();
+    startSource(0);
+  }
+
+  playButton.addEventListener("click", play);
+  pauseButton.addEventListener("click", pause);
+  restartButton?.addEventListener("click", restart);
 
   // Repaint when the theme flips, from the toggle or the OS.
-  new MutationObserver(() => { paintNotes(); paint(-1); })
+  // The picture keeps whatever step it is showing, so a flip
+  // mid-play or mid-pause does not lose the position.
+  new MutationObserver(() => { paintNotes(); paint(currentStep()); })
     .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  systemDark.addEventListener("change", () => { paintNotes(); paint(-1); });
+  systemDark.addEventListener("change", () => { paintNotes(); paint(currentStep()); });
 
   paintNotes();
   paint(-1);
@@ -866,8 +935,8 @@ if (roll && playButton) {
     get playing() { return demo.playing; },
     get ctx() { return demo.ctx; },
     get out() { return demo.out; },
-    stepNow: () => (demo.seg ? stepAt(demo.ctx.currentTime) : -1),
-    winNow: () => windowStart(demo.seg && demo.playing ? stepAt(demo.ctx.currentTime) : -1),
+    stepNow: () => currentStep(),
+    winNow: () => windowStart(currentStep()),
     windowStart,
   };
 }
