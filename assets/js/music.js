@@ -286,7 +286,7 @@ const INSTRUMENTS = [
   { name: "flute", kind: "sample", verb: 0.45,
     files: [[81, "flute-81.mp3"], [84, "flute-84.mp3"]] },
   { name: "strings", kind: "sample", verb: 0.6,
-    files: [[72, "strings-72.mp3"]] },
+    files: [[55, "strings-55.mp3"], [62, "strings-62.mp3"], [69, "strings-69.mp3"], [72, "strings-72.mp3"]] },
   { name: "cello", kind: "sample", verb: 0.5,
     files: [[60, "cello-60.mp3"]] },
   { name: "harp", kind: "sample", verb: 0.35,
