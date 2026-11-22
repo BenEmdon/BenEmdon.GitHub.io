@@ -1660,9 +1660,20 @@ function renderFailureText(err, tail) {
 // the buffer after the intro (loopStep), and swaps re-base the
 // segment at the boundary so the formula never changes shape.
 const player = {
-  ctx: null, src: null, seg: null, playing: false,
+  ctx: null, src: null, outSrc: null, seg: null, playing: false,
   rendered: null, song: null, dirty: true, pending: null, raf: 0,
 };
+
+// A start is async: it waits on samples and a render before
+// it can make a sound, so a stop pressed mid-start cannot
+// reach it through the source alone. The generation is the
+// latest word on whether sound may exist at all: a start
+// takes the next number, stopPlayback raises it, and a start
+// that resumes from a wait to find its number stale stands
+// down instead of starting. A stop therefore lands in every
+// state, and nothing already in flight can produce sound
+// after it; the next sound needs a fresh start.
+let playGeneration = 0;
 
 function stepAt(now) {
   const { startCtxTime, rendered, song } = player.seg;
@@ -1674,11 +1685,15 @@ function stepAt(now) {
 }
 
 async function startPlayback() {
+  const gen = ++playGeneration;
   if (!player.ctx) player.ctx = new AudioContext();
   await player.ctx.resume();
   await loadSamples();
+  if (gen !== playGeneration) return; // a stop landed while starting
   if (player.dirty || !player.rendered) {
-    player.rendered = await obtainRender(player.song);
+    const rendered = await obtainRender(player.song);
+    if (gen !== playGeneration) return; // a stop landed while rendering
+    player.rendered = rendered;
     player.dirty = false;
     player.pending = null;
     renderedKeys = keySetOf(player.song);
@@ -1709,9 +1724,18 @@ function stopSource() {
     player.src.disconnect();
     player.src = null;
   }
+  // A swap keeps the outgoing source reachable until its
+  // boundary: a stop inside that window silences it at once
+  // too, instead of letting it play out to the boundary.
+  if (player.outSrc) {
+    try { player.outSrc.stop(); } catch { /* already stopped */ }
+    player.outSrc.disconnect();
+    player.outSrc = null;
+  }
 }
 
 function stopPlayback() {
+  playGeneration++;
   stopSource();
   player.pending = null;
   player.playing = false;
@@ -1744,6 +1768,7 @@ function maybeSwap() {
   src.connect(player.ctx.destination);
   src.start(boundary, next.loopStart);
   player.src.stop(boundary);
+  player.outSrc = player.src;
   player.src = src;
   player.rendered = next;
   renderedKeys = pendingRenderKeys;
@@ -2673,12 +2698,17 @@ for (const btn of document.querySelectorAll("[data-song]")) {
 
 let starting = false;
 playBtn.addEventListener("click", async () => {
-  if (player.playing) { stopPlayback(); return; }
-  if (starting) return;
+  // While a start is still in flight the button reads stop,
+  // and pressing it is a stop like any other: the generation
+  // bump in stopPlayback stands the pending start down, so
+  // no sound follows a stop press, ever.
+  if (player.playing || starting) { stopPlayback(); return; }
   starting = true;
+  setPlayUI(true);
   try {
     await startPlayback();
   } catch (err) {
+    setPlayUI(false);
     setStatus(renderFailureText(err, "so nothing was played."), true);
   }
   starting = false;
