@@ -113,109 +113,540 @@ function setUp() {
       .catch(() => resolvePortrait(false));
   }
 
-  /* ---------- hiring sparkle ---------- */
+  /* ---------- hiring bloom ---------- */
 
   // Display-style pixels, driven by the pointer rather than a loop. Cells
-  // sit on a fixed 8px grid inside the block, behind the text. Each is a
-  // 4px square, so lit cells stay separate sparkles instead of merging
-  // into a smear, and they only ever snap lit or unlit in place. Pointer
-  // speed widens the lit area and stretches how many decay steps a cell
-  // survives, so a fast pass leaves a longer trail of lit neighbours than
-  // a slow one. Decay ticks every 75ms, the site's own --motion-step, so
-  // cells step off rather than fade.
+  // sit on a fixed 8px grid inside the block, behind the text, and each
+  // cell fills its whole grid square, so neighbouring lit cells merge
+  // into clusters instead of staying the separate sparkles the old effect
+  // kept. A 4x4 Bayer threshold table, tiled over the grid, decides which
+  // cells join a bloom at which strength: the fringe breaks into teeth
+  // and single cells, the core packs solid, and the same pointer path
+  // grows the same bloom every time, because nothing here is random.
+  //
+  // A cell carries a level, one of three solid shades stepped from the
+  // block's ground toward the accent. The tick moves every cell one level
+  // toward its target, never more, so a bloom ignites cluster by cluster
+  // while the pointer lingers and steps back down in place when it
+  // leaves. Nothing drifts and nothing fades: a cell is swapped whole, on
+  // the 75ms tick, the site's own --motion-step.
+  //
+  // The pointer's speed shapes the bloom, the way it shaped the sparkle
+  // before it: pointer velocity is the input, the pixels stay put. A fast
+  // pass keeps a bloom source's energy low, so only a few low-threshold
+  // cells scatter behind it. Resting or creeping builds the energy, the
+  // radius widens, and the core deepens through the shades. Touch gets
+  // the same bloom under a press or drag, and a tap leaves a pulse that
+  // swells and settles. Keyboard focus parks a gentle bloom behind the
+  // label. Reduced motion gets one still bloom, drawn once, never ticked.
+  //
+  // Second pass, on Ben's word: the bloom answers movement, not only
+  // stillness. Energy builds eagerly at any creep, a fast pass keeps a
+  // floor instead of scattering bare, trail pulses drop along the
+  // pointer's path so clusters ignite along the way, and ignition steps
+  // two levels at a time while the hand is travelling. A pixel lens
+  // flare rides the primary source: bright core, a horizontal streak,
+  // blocky halo rings, and a ghost cluster, all whole cells stepping in
+  // place. In dark mode the palette turns to green crystal light (the
+  // shades are data in components.css): the distance math leans angular
+  // so clusters grow facets, and single glint cells on cluster edges
+  // switch as the pointer travels, light catching the crystal.
   const hiring = document.querySelector("[data-hiring]");
 
-  if (hiring && window.matchMedia("(hover: hover)").matches) {
+  if (hiring) {
     const CELL = 8;
+    const BAYER = [
+      0, 8, 2, 10,
+      12, 4, 14, 6,
+      3, 11, 1, 9,
+      15, 7, 13, 5,
+    ];
+    const bayerAt = (col, row) => BAYER[((row & 3) << 2) + (col & 3)] / 16;
+    // The threshold a bloom has to beat to claim a cell: mostly the
+    // Bayer value of the cell's 2x2 block, so a bloom grows cluster by
+    // cluster as whole blocks ignite together, with the cell's own value
+    // mixed in to keep the cluster edges toothed instead of squared off.
+    const thresholdAt = (col, row) =>
+      0.6 * bayerAt(col >> 1, row >> 1) + 0.4 * bayerAt(col, row);
+
+    // The resolved theme, read live on every tick: the crystal
+    // treatment keys off dark mode, and the mode can change while the
+    // page is open.
+    const isDark = () => {
+      const t = document.documentElement.dataset.theme;
+      if (t === "dark") return true;
+      if (t === "light") return false;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    };
+
     const lit = new Map();
-    let decayTimer = 0;
+    const sources = new Set();
+    let tickTimer = 0;
+    let pointerSource = null;
+    let touchSource = null;
+    let focusSource = null;
+    let pointerSpeed = 0;
+    let trailX = null;
+    let trailY = null;
+    let glintTravel = 0;
     let lastX = null;
     let lastY = null;
-    let lastT = 0;
+    let lastMoveT = 0;
 
-    function tick() {
-      for (const [key, cell] of lit) {
-        cell.steps -= 1;
-        if (cell.steps <= 0) {
+    // The level a cell is heading for: the strongest claim any bloom
+    // source makes on it. Strength falls with distance from the source
+    // and rises with its energy; the Bayer threshold textures the claim,
+    // so equal strength still breaks into clusters instead of a disc.
+    function targetLevel(col, row) {
+      let best = 0;
+      const dark = isDark();
+      for (const s of sources) {
+        const dx = col - s.col;
+        const dy = row - s.row;
+        let dist = Math.hypot(dx, dy);
+        let thr = thresholdAt(col, row);
+        if (dark) {
+          // Facets: the distance leans on the Chebyshev measure, so
+          // cluster edges run at angles instead of rounding, and the
+          // threshold steps by angular sector around the source, so a
+          // dark bloom grows as cut crystal rather than a soft disc.
+          dist = 0.62 * dist + 0.38 * Math.max(Math.abs(dx), Math.abs(dy));
+          const sector =
+            Math.floor((Math.atan2(dy, dx) + Math.PI) / (Math.PI / 4)) % 8;
+          thr += ((sector * 37) % 5) * 0.035;
+        }
+        const radius = 1.5 + s.energy * 5;
+        if (dist > radius + 1) continue;
+        const strength = (1 - dist / (radius + 1)) * (0.35 + 0.65 * s.energy);
+        const score = strength * 1.25 - thr * 0.7;
+        const level = score > 0.62 ? 3 : score > 0.38 ? 2 : score > 0.14 ? 1 : 0;
+        if (level > best) best = level;
+      }
+      return best;
+    }
+
+    function setLevel(key, col, row, level) {
+      const cell = lit.get(key);
+      if (level === 0) {
+        if (cell) {
           cell.el.remove();
           lit.delete(key);
         }
-      }
-      if (lit.size === 0) {
-        clearInterval(decayTimer);
-        decayTimer = 0;
-      }
-    }
-
-    function light(col, row, steps) {
-      const key = `${col},${row}`;
-      const existing = lit.get(key);
-      if (existing) {
-        existing.steps = Math.max(existing.steps, steps);
         return;
       }
-      const el = document.createElement("span");
-      el.className = "hiring__pixel is-lit";
-      el.style.insetInlineStart = `${col * CELL}px`;
-      el.style.insetBlockStart = `${row * CELL}px`;
-      hiring.append(el);
-      lit.set(key, { el, steps });
-      if (!decayTimer) decayTimer = setInterval(tick, 75);
+      if (!cell) {
+        const el = document.createElement("span");
+        el.className = "hiring__bloom";
+        el.style.insetInlineStart = `${col * CELL}px`;
+        el.style.insetBlockStart = `${row * CELL}px`;
+        el.dataset.level = level;
+        hiring.append(el);
+        lit.set(key, { el, level, glint: false });
+        return;
+      }
+      cell.level = level;
+      cell.el.dataset.level = level;
     }
 
-    function burst(x, y, speed, rect) {
-      // Radius is counted in 8px cells. Only one checkerboard parity
-      // lights, so neighbouring squares never merge into a blob behind
-      // the copy; a burst reads as a fine dotted texture, not a smear.
-      const radius = speed > 1.2 ? 4 : speed > 0.45 ? 3 : 2;
-      const col = Math.floor(x / CELL);
-      const row = Math.floor(y / CELL);
+    // The lens flare, drawn in whole cells on the same grid: a bright
+    // core, a horizontal streak stepping down in shade both ways, one
+    // or two blocky halo rings gated by the Bayer table so they break
+    // into teeth, and a smaller ghost cluster mirrored across the
+    // block's centre. Hard edges and solid shades only: a flare drawn
+    // in pixels, never a glow. Its cells live in their own map and
+    // step one level per tick toward the wanted set, the bloom's own
+    // discipline, so the flare grows and settles in place too.
+    const flareLit = new Map();
 
-      for (let dc = -radius; dc <= radius; dc++) {
-        for (let dr = -radius; dr <= radius; dr++) {
-          const dist = Math.abs(dc) + Math.abs(dr);
-          if (dist > radius + 1) continue;
-          const c = col + dc;
-          const r = row + dr;
-          if ((c + r) % 2 !== 0) continue;
-          // Sparse at the edges, so it sparkles instead of flooding.
-          if (dist > 2 && Math.random() < 0.35) continue;
-          if (c < 0 || r < 0 || c * CELL >= rect.width || r * CELL >= rect.height) continue;
-          const steps = Math.ceil((radius + 2 - dist) / 2) * (speed > 0.45 ? 2 : 1);
-          light(c, r, Math.max(1, Math.min(4, steps)));
+    function setFlareLevel(key, col, row, level) {
+      const cell = flareLit.get(key);
+      if (level === 0) {
+        if (cell) {
+          cell.el.remove();
+          flareLit.delete(key);
         }
+        return;
+      }
+      if (!cell) {
+        const el = document.createElement("span");
+        el.className = "hiring__flare";
+        el.style.insetInlineStart = `${col * CELL}px`;
+        el.style.insetBlockStart = `${row * CELL}px`;
+        el.dataset.level = level;
+        hiring.append(el);
+        flareLit.set(key, { el, level });
+        return;
+      }
+      cell.level = level;
+      cell.el.dataset.level = level;
+    }
+
+    function flareTargets(cx, cy, intensity, cols, rows) {
+      const want = new Map();
+      if (intensity < 0.3) return want;
+      const put = (c, r, level) => {
+        if (c < 0 || r < 0 || c >= cols || r >= rows || level <= 0) return;
+        const key = `${c},${r}`;
+        if ((want.get(key) ?? 0) < level) want.set(key, level);
+      };
+      const cc = Math.round(cx);
+      const cr = Math.round(cy);
+      // The core: one bright cell, a cross at full strength, corners
+      // as the flare peaks.
+      put(cc, cr, 3);
+      if (intensity > 0.45) {
+        put(cc - 1, cr, 2);
+        put(cc + 1, cr, 2);
+        put(cc, cr - 1, 2);
+        put(cc, cr + 1, 2);
+      }
+      if (intensity > 0.65) {
+        put(cc - 1, cr - 1, 1);
+        put(cc + 1, cr - 1, 1);
+        put(cc - 1, cr + 1, 1);
+        put(cc + 1, cr + 1, 1);
+      }
+      // The streak: single cells running both ways along the core's
+      // row, stepping down in shade as they leave it.
+      const reach = Math.round(3 + intensity * 8);
+      for (let d = 1; d <= reach; d++) {
+        const level = d <= 1 ? 3 : d <= 3 ? 2 : 1;
+        put(cc - d, cr, level);
+        put(cc + d, cr, level);
+      }
+      // Halo rings: Chebyshev squares around the core, Bayer-gated so
+      // they read as broken blocky rings, never circles. The second
+      // ring sits offset, the way real flare artefacts never quite
+      // centre.
+      const ring = (rcx, rcy, radius, gate) => {
+        for (let c = rcx - radius; c <= rcx + radius; c++) {
+          for (let r = rcy - radius; r <= rcy + radius; r++) {
+            if (Math.max(Math.abs(c - rcx), Math.abs(r - rcy)) !== radius)
+              continue;
+            if (bayerAt(c, r) < gate) put(c, r, 1);
+          }
+        }
+      };
+      if (intensity > 0.5) ring(cc, cr, 3, 0.55);
+      if (intensity > 0.7) ring(cc + 2, cr - 1, 5, 0.32);
+      // The ghost: a smaller cluster mirrored across the block's
+      // centre and pulled toward it, dimmer than the core.
+      if (intensity > 0.5) {
+        const gx = Math.round(cols / 2 + (cols / 2 - cx) * 0.55);
+        const gy = Math.round(rows / 2 + (rows / 2 - cy) * 0.55);
+        put(gx, gy, 2);
+        put(gx - 1, gy, 1);
+        put(gx + 1, gy, 1);
+        put(gx, gy - 1, 1);
+        put(gx, gy + 1, 1);
+      }
+      return want;
+    }
+
+    // Glints: in dark mode a few single cells on cluster edges burn
+    // at the brightest crystal shade, and which cells glint steps as
+    // the pointer travels, so the crystal seems to catch the light as
+    // the hand moves. The choice is a hash of the cell's position
+    // against a phase driven by accumulated pointer travel:
+    // deterministic, never random, and capped so the block sparkles
+    // at a few points rather than everywhere.
+    function applyGlints(on, phase) {
+      const chosen = new Set();
+      if (on) {
+        for (const [key, cell] of lit) {
+          if (chosen.size >= 6) break;
+          if (cell.level < 2) continue;
+          const comma = key.indexOf(",");
+          const c = Number(key.slice(0, comma));
+          const r = Number(key.slice(comma + 1));
+          const edge =
+            !lit.has(`${c + 1},${r}`) ||
+            !lit.has(`${c - 1},${r}`) ||
+            !lit.has(`${c},${r + 1}`) ||
+            !lit.has(`${c},${r - 1}`);
+          if (!edge) continue;
+          if ((c * 31 + r * 17) % 6 !== phase % 6) continue;
+          chosen.add(key);
+        }
+      }
+      for (const [key, cell] of lit) {
+        const g = chosen.has(key);
+        if (cell.glint === g) continue;
+        cell.glint = g;
+        if (g) cell.el.dataset.glint = "1";
+        else delete cell.el.dataset.glint;
       }
     }
 
-    hiring.addEventListener("pointermove", (event) => {
-      if (reduced.matches || event.pointerType === "touch") return;
-
-      const rect = hiring.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
+    function tick() {
       const now = performance.now();
-
-      let speed = 0;
-      if (lastX !== null) {
-        const dt = Math.max(now - lastT, 1);
-        speed = Math.hypot(x - lastX, y - lastY) / dt;
-        // Fill the path between events, so a fast pass leaves a trail
-        // along its direction instead of separate bursts with gaps.
-        const gap = Math.hypot(x - lastX, y - lastY);
-        const fills = Math.min(Math.floor(gap / CELL), 24);
-        for (let i = 1; i < fills; i++) {
-          burst(lastX + ((x - lastX) * i) / fills, lastY + ((y - lastY) * i) / fills, speed, rect);
+      // Stillness is dwelling: when no move events are arriving, the
+      // speed decays away and the pointer's energy gets to build.
+      if (pointerSource && now - lastMoveT > 90) pointerSpeed = 0;
+      for (const s of sources) {
+        if (s.kind === "pointer") {
+          // Eager energy: resting and creeping build fast, a slow
+          // sweep still builds, and even a fast pass keeps a floor,
+          // so the bloom answers movement instead of only stillness.
+          if (pointerSpeed < 0.25) {
+            s.energy = Math.min(1, s.energy + 0.16);
+          } else if (pointerSpeed < 0.9) {
+            s.energy = Math.min(1, s.energy + 0.05);
+          } else {
+            s.energy = Math.max(0.3, s.energy - 0.1);
+          }
+        } else if (s.kind === "touch") {
+          s.energy = Math.min(0.9, s.energy + 0.12);
+        } else if (s.kind === "focus") {
+          s.energy = Math.min(0.55, s.energy + 0.06);
+        } else if (s.kind === "pulse") {
+          if (s.rising) {
+            s.energy += 0.25;
+            if (s.energy >= s.cap) {
+              s.energy = s.cap;
+              s.rising = false;
+            }
+          } else {
+            s.energy -= 0.07;
+            if (s.energy <= 0) sources.delete(s);
+          }
         }
       }
-      burst(x, y, speed, rect);
-      lastX = x;
-      lastY = y;
-      lastT = now;
-    });
 
-    hiring.addEventListener("pointerleave", () => {
-      lastX = null;
-    });
+      const cols = Math.ceil(hiring.clientWidth / CELL);
+      const rows = Math.ceil(hiring.clientHeight / CELL);
+      const candidates = new Set(lit.keys());
+      for (const s of sources) {
+        const reach = Math.ceil(2.5 + s.energy * 5) + 1;
+        const cc = Math.floor(s.col);
+        const cr = Math.floor(s.row);
+        for (let c = cc - reach; c <= cc + reach; c++) {
+          for (let r = cr - reach; r <= cr + reach; r++) {
+            if (c >= 0 && r >= 0 && c < cols && r < rows) {
+              candidates.add(`${c},${r}`);
+            }
+          }
+        }
+      }
+      const travelling = pointerSource !== null && now - lastMoveT < 160;
+      for (const key of candidates) {
+        const comma = key.indexOf(",");
+        const col = Number(key.slice(0, comma));
+        const row = Number(key.slice(comma + 1));
+        const target = targetLevel(col, row);
+        const level = lit.get(key)?.level ?? 0;
+        const diff = target - level;
+        if (diff === 0) continue;
+        // While the pointer is travelling, ignition steps two levels
+        // at a time so clusters catch up with the hand; decay always
+        // steps one, so the settle stays gradual.
+        const step = diff > 1 && travelling ? 2 : 1;
+        setLevel(
+          key,
+          col,
+          row,
+          level + Math.sign(diff) * Math.min(step, Math.abs(diff)),
+        );
+      }
+
+      // The flare rides the primary source: the pointer first, then a
+      // held touch, then focus. Its cells step one level toward the
+      // wanted set each tick, the bloom's own discipline.
+      const primary = pointerSource || touchSource || focusSource;
+      const want = primary
+        ? flareTargets(primary.col, primary.row, primary.energy, cols, rows)
+        : new Map();
+      const flareKeys = new Set([...flareLit.keys(), ...want.keys()]);
+      for (const key of flareKeys) {
+        const target = want.get(key) ?? 0;
+        const level = flareLit.get(key)?.level ?? 0;
+        if (level === target) continue;
+        const comma = key.indexOf(",");
+        setFlareLevel(
+          key,
+          Number(key.slice(0, comma)),
+          Number(key.slice(comma + 1)),
+          level + Math.sign(target - level),
+        );
+      }
+
+      applyGlints(isDark(), Math.floor(glintTravel / 18));
+
+      if (lit.size === 0 && sources.size === 0 && flareLit.size === 0) {
+        clearInterval(tickTimer);
+        tickTimer = 0;
+      }
+    }
+
+    function startTick() {
+      if (!tickTimer) tickTimer = setInterval(tick, 75);
+    }
+
+    function release(source) {
+      // A held source lets go as a pulse, so its bloom settles in place
+      // instead of cutting out.
+      if (!source) return;
+      source.kind = "pulse";
+      source.rising = false;
+      source.cap = source.energy;
+    }
+
+    if (reduced.matches) {
+      // The still state: three seeded clusters at fixed spots, levels set
+      // outright from the same target math, drawn once and never ticked.
+      const cols = Math.ceil(hiring.clientWidth / CELL);
+      const rows = Math.ceil(hiring.clientHeight / CELL);
+      sources.add({ col: 6, row: 2, energy: 0.85 });
+      sources.add({ col: cols - 7, row: rows - 3, energy: 0.7 });
+      sources.add({ col: Math.floor(cols / 2), row: rows - 2, energy: 0.55 });
+      for (let c = 0; c < cols; c++) {
+        for (let r = 0; r < rows; r++) {
+          const level = targetLevel(c, r);
+          if (level > 0) setLevel(`${c},${r}`, c, r, level);
+        }
+      }
+      // The flare in its still form, centred on the middle cluster,
+      // and in dark mode a few fixed glints on the cluster edges.
+      const stillFlare = flareTargets(
+        Math.floor(cols / 2),
+        rows - 2,
+        0.85,
+        cols,
+        rows,
+      );
+      for (const [key, level] of stillFlare) {
+        const comma = key.indexOf(",");
+        setFlareLevel(
+          key,
+          Number(key.slice(0, comma)),
+          Number(key.slice(comma + 1)),
+          level,
+        );
+      }
+      if (isDark()) applyGlints(true, 2);
+      sources.clear();
+    } else {
+      hiring.addEventListener("pointermove", (event) => {
+        const rect = hiring.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        if (event.pointerType === "touch") {
+          if (touchSource) {
+            touchSource.col = x / CELL;
+            touchSource.row = y / CELL;
+          }
+          return;
+        }
+        const now = performance.now();
+        if (lastX !== null) {
+          const dt = Math.max(now - lastMoveT, 1);
+          const travelled = Math.hypot(x - lastX, y - lastY);
+          pointerSpeed = travelled / dt;
+          glintTravel += travelled;
+        }
+        lastX = x;
+        lastY = y;
+        lastMoveT = now;
+        if (!pointerSource) {
+          pointerSource = { col: x / CELL, row: y / CELL, energy: 0.3, kind: "pointer" };
+          sources.add(pointerSource);
+          trailX = x;
+          trailY = y;
+        } else {
+          pointerSource.col = x / CELL;
+          pointerSource.row = y / CELL;
+          // Trail pulses: as the pointer travels, pulses drop along
+          // the segment behind it, one every 10px, so clusters ignite
+          // along the path and not only where the pointer stops. A
+          // slow sweep drops stronger pulses than a fast one; each
+          // swells and settles like a tap pulse.
+          if (trailX === null) {
+            trailX = x;
+            trailY = y;
+          } else {
+            const cap = pointerSpeed < 0.9 ? 0.55 : 0.34;
+            let guard = 0;
+            while (
+              Math.hypot(x - trailX, y - trailY) >= 10 &&
+              guard < 8 &&
+              sources.size < 40
+            ) {
+              const d = Math.hypot(x - trailX, y - trailY);
+              trailX += ((x - trailX) / d) * 10;
+              trailY += ((y - trailY) / d) * 10;
+              sources.add({
+                col: trailX / CELL,
+                row: trailY / CELL,
+                energy: 0.05,
+                rising: true,
+                cap,
+                kind: "pulse",
+              });
+              guard += 1;
+            }
+          }
+        }
+        startTick();
+      });
+
+      hiring.addEventListener("pointerdown", (event) => {
+        if (event.pointerType !== "touch" || touchSource) return;
+        const rect = hiring.getBoundingClientRect();
+        touchSource = {
+          col: (event.clientX - rect.left) / CELL,
+          row: (event.clientY - rect.top) / CELL,
+          energy: 0.3,
+          kind: "touch",
+        };
+        sources.add(touchSource);
+        startTick();
+      });
+
+      const endTouch = () => {
+        release(touchSource);
+        touchSource = null;
+      };
+      hiring.addEventListener("pointerup", (event) => {
+        if (event.pointerType === "touch") endTouch();
+      });
+      hiring.addEventListener("pointercancel", (event) => {
+        if (event.pointerType === "touch") endTouch();
+      });
+
+      hiring.addEventListener("pointerleave", (event) => {
+        if (event.pointerType === "touch") {
+          endTouch();
+          return;
+        }
+        if (pointerSource) {
+          sources.delete(pointerSource);
+          pointerSource = null;
+        }
+        lastX = null;
+        lastY = null;
+        trailX = null;
+        trailY = null;
+        pointerSpeed = 0;
+      });
+
+      hiring.addEventListener("focus", () => {
+        if (focusSource) return;
+        const cols = Math.ceil(hiring.clientWidth / CELL);
+        const rows = Math.ceil(hiring.clientHeight / CELL);
+        focusSource = {
+          col: cols / 2,
+          row: Math.min(2, rows - 1),
+          energy: 0.1,
+          kind: "focus",
+        };
+        sources.add(focusSource);
+        startTick();
+      });
+      hiring.addEventListener("blur", () => {
+        release(focusSource);
+        focusSource = null;
+      });
+    }
   }
 
   /* ---------- theme ---------- */
