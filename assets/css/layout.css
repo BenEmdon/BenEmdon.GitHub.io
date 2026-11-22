@@ -81,7 +81,21 @@
   white-space: pre;
 }
 
-.wordmark__cell.is-lit {
+/* The pool ladder: three solid shades between the resting ink and the
+   accent, interpolated within the site's own blue family so the name
+   stays one hue at every distance. Rung 3, the pool's core, is the
+   accent itself; rungs 2 and 1 step down toward the ink, two thirds
+   and one third of the way. wordmark.js assigns rungs by distance on
+   the tick; a cell only ever swaps whole colours in place. */
+.wordmark__cell.is-pool-1 {
+  color: light-dark(#142a4a, #bfd5ee);
+}
+
+.wordmark__cell.is-pool-2 {
+  color: light-dark(#194277, #95bee7);
+}
+
+.wordmark__cell.is-pool-3 {
   color: var(--accent-color);
 }
 
