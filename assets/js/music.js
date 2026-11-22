@@ -36,7 +36,7 @@
 
 import { createThemeScene } from "./theme-scene.js";
 import { animateWordmark, setUpStaticWordmark } from "./wordmark.js";
-import { renderCacheKey, readRender, writeRender } from "./render-cache.js";
+import { renderCacheKey, readRender, writeRender, verifyRenderData } from "./render-cache.js";
 import { runBoot } from "./boot.js";
 
 /* ---------- boot ---------- */
@@ -935,6 +935,7 @@ function songToText(song) {
 // [rootMidi, buffer]; a voice picks the nearest root and shifts.
 const sampleSets = new Map();
 let samplesPromise = null;
+let samplesReady = false;
 
 function loadSamples() {
   if (samplesPromise) return samplesPromise;
@@ -955,6 +956,7 @@ function loadSamples() {
   });
   samplesPromise = Promise.all(jobs).then(() => {
     for (const set of sampleSets.values()) set.sort((a, b) => a[0] - b[0]);
+    samplesReady = true;
   });
   return samplesPromise;
 }
@@ -1392,19 +1394,48 @@ async function renderSongBest(song) {
   return renderSong(song);
 }
 
-/* ----- obtaining a render: cache first ----- */
+/* ----- obtaining a render: the gate ----- */
 
-// A render, from wherever it comes: the persistent cache if
-// this exact song has been rendered on an earlier visit, a
-// fresh render (written through to the cache) otherwise.
+// Every playable buffer passes through here, and a buffer is
+// playable only when all three are true: the samples have
+// loaded, the render promise has fully settled, and the
+// result passes verifyRenderData. A cache hit is gated the
+// same way as a fresh render (readRender has already checked
+// its stored signature; the sanity band is re-run here), so
+// nothing reaches the player, or the cache, on the strength
+// of having been stored once.
+//
+// One render at a time per song: the boot preload, the play
+// button and the background re-render after an edit all ask
+// through this map, keyed by the cache key, so a heavy song
+// is never rendered twice at once however many callers ask.
+//
 // The status line hears the difference through the result's
 // fromCache flag, so a cache hit never claims a render time.
 // announce is for the foreground play path; a background
 // re-render while a loop is playing leaves the status alone.
+const rendersInFlight = new Map();
+
 async function obtainRender(song, { announce = true } = {}) {
   const key = renderCacheKey(song);
+  const shared = rendersInFlight.get(key);
+  if (shared) return shared;
+  const pending = obtainVerifiedRender(song, key, announce);
+  rendersInFlight.set(key, pending);
+  try {
+    return await pending;
+  } finally {
+    if (rendersInFlight.get(key) === pending) {
+      rendersInFlight.delete(key);
+    }
+  }
+}
+
+async function obtainVerifiedRender(song, key, announce) {
+  if (announce && !samplesReady) setStatus("loading samples\u2026");
+  await loadSamples();
   const hit = await readRender(key);
-  if (hit) {
+  if (hit && verifyBuffer(hit.buffer)) {
     const stepDur = 60 / song.tempo / 4;
     return {
       buffer: hit.buffer, dur: hit.dur, stepDur,
@@ -1412,11 +1443,33 @@ async function obtainRender(song, { announce = true } = {}) {
       renderMs: 0, fromCache: true,
     };
   }
-  if (announce) setStatus("rendering…");
-  const rendered = await renderSongBest(song);
+  if (announce) setStatus("rendering\u2026");
+  let rendered = await renderSongBest(song);
+  if (announce) setStatus("verifying\u2026");
+  if (!verifyBuffer(rendered.buffer)) {
+    // A wrong-but-complete render, the failure the parallel
+    // path can produce without throwing, earns exactly one
+    // retry through the plain single render. If that fails
+    // verification too, nothing is stored and nothing plays,
+    // and the throw tells every caller so.
+    if (announce) setStatus("rendering\u2026");
+    rendered = await renderSong(song);
+    if (!verifyBuffer(rendered.buffer)) {
+      if (announce) {
+        setStatus("The render did not check out, so nothing was played.", true);
+      }
+      throw new Error("render failed verification");
+    }
+  }
   writeRender(key, rendered);
   return rendered;
 }
+
+function verifyBuffer(buffer) {
+  return verifyRenderData(
+    [buffer.getChannelData(0), buffer.getChannelData(1)]).ok;
+}
+
 
 /* ---------- player ---------- */
 
@@ -1463,6 +1516,7 @@ async function startPlayback() {
   player.seg = { startCtxTime, rendered: player.rendered, song: player.song };
   player.playing = true;
   setPlayUI(true);
+  refreshPlayGate();
   setStatus(readyText());
   runPlayhead();
 }
@@ -1482,6 +1536,7 @@ function stopPlayback() {
   cancelAnimationFrame(player.raf);
   setPlayUI(false);
   clearPlayhead();
+  refreshPlayGate();
   setStatus(readyText());
 }
 
@@ -1538,6 +1593,7 @@ function runPlayhead() {
 function songChanged(parsed, { restart = false } = {}) {
   player.song = parsed;
   player.dirty = true;
+  refreshPlayGate();
   if (!player.playing) {
     // Experiment (live note feedback): while stopped, still
     // render in the background, so a note wearing the pending
@@ -1554,10 +1610,18 @@ function songChanged(parsed, { restart = false } = {}) {
           pendingRenderKeys = null;
           window.__lastRender = rendered;
           refreshNoteStates();
+          refreshPlayGate();
           setStatus(readyText());
         }
       })
-      .catch(() => { /* a failed background render leaves the notes pending, which is the truth */ });
+      .catch(() => {
+        // A failed background render leaves the notes pending
+        // and the play gate closed, which is the truth; the
+        // status line says so too.
+        if (player.song === parsed && !player.playing) {
+          setStatus("The render did not check out, so this song cannot play yet.", true);
+        }
+      });
     return;
   }
   if (restart) {
@@ -1570,7 +1634,7 @@ function songChanged(parsed, { restart = false } = {}) {
       pendingRenderKeys = keySetOf(parsed);
       window.__lastRender = rendered;
     }
-  });
+  }).catch(() => { /* a render that fails the gate simply never swaps in */ });
 }
 
 /* ---------- page ---------- */
@@ -1585,6 +1649,9 @@ const factKeyEl = document.querySelector("[data-fact-key]");
 const statusEl = document.querySelector("[data-status]");
 const textStatusEl = document.querySelector("[data-text-status]");
 const playBtn = document.querySelector("[data-play]");
+// The gate starts closed: no render is staged yet, so there
+// is nothing a press of play could honestly start.
+playBtn.disabled = true;
 const tempoValueEl = document.querySelector("[data-tempo-value]");
 
 function setStatus(msg, isError = false) {
@@ -1616,6 +1683,18 @@ function showIssues(parsed) {
   setStatus(readyText());
 }
 
+// The play gate: while stopped, play is enabled only when
+// a verified render is staged for the current song and the
+// song has not been edited since. Every staging path calls
+// this when a render lands, and every adoption calls it when
+// it dirties the song, so the button always tells the truth
+// about whether pressing it could play.
+function refreshPlayGate() {
+  playBtn.disabled = player.playing
+    ? false
+    : !(player.rendered && !player.dirty);
+}
+
 function setPlayUI(playing) {
   playBtn.textContent = playing ? "stop" : "play";
   playBtn.setAttribute("aria-pressed", String(playing));
@@ -1645,7 +1724,25 @@ function currentChannel() {
 // the whole song is visible at once, and because all the grids
 // live in the same scrolling panel, they share the one
 // scrollLeft and the playhead column lines up down the stack.
+//
+// The build runs in slices: each slice spends a few
+// milliseconds building rows, then yields, so even the
+// heaviest song never blocks the page's first paint or a
+// scroll. A build a newer song supersedes stops at its next
+// slice, by token; note states refresh when the last slice
+// lands.
+let gridBuildToken = 0;
+
+function scheduleGridSlice(fn) {
+  if (window.requestIdleCallback) {
+    window.requestIdleCallback(() => fn(), { timeout: 60 });
+  } else {
+    setTimeout(fn, 0);
+  }
+}
+
 function buildGrid() {
+  const token = ++gridBuildToken;
   gridEl.innerHTML = "";
   gridState.cellsByStep = new Map();
   gridState.lastCol = -1;
@@ -1654,11 +1751,29 @@ function buildGrid() {
   if (!song.channels.some((c) => c.letter === gridState.letter)) {
     gridState.letter = song.channels[0]?.letter ?? null;
   }
-  for (const ch of song.channels) buildChannelGrid(ch, song);
-  refreshNoteStates();
+  const builders = song.channels.map((ch) => channelGridSteps(ch, song));
+  let idx = 0;
+  const slice = () => {
+    if (token !== gridBuildToken) return;
+    const t0 = performance.now();
+    while (idx < builders.length && performance.now() - t0 < 12) {
+      if (builders[idx].next().done) idx++;
+    }
+    if (idx < builders.length) {
+      scheduleGridSlice(slice);
+      return;
+    }
+    refreshNoteStates();
+  };
+  slice();
 }
 
-function buildChannelGrid(ch, song) {
+// One channel's grid, built as a generator: the header first,
+// then one row per step of the generator, so buildGrid's
+// slices cut across rows and channels alike. The rows
+// accumulate in a fragment and land together when the channel
+// is done, as they did when this was one synchronous pass.
+function* channelGridSteps(ch, song) {
   const head = document.createElement("div");
   head.className = "gchan";
   const used = [...new Set(ch.notes.map((n) => n.inst))]
@@ -1704,6 +1819,7 @@ function buildChannelGrid(ch, song) {
       row.appendChild(cell);
     }
     frag.appendChild(row);
+    yield;
   }
   gridEl.appendChild(frag);
 }
@@ -2189,6 +2305,7 @@ const renderTask = (async () => {
     player.dirty = false;
     window.__lastRender = rendered;
   }
+  refreshPlayGate();
   return {
     fromCache: rendered.fromCache === true,
     ms: wallMs,
