@@ -33,7 +33,7 @@
 
 import { renderCacheKey, readRender, writeRender } from "./render-cache.js";
 import { announceBootTask } from "./boot-tasks.js";
-import { registerTask } from "./boot.js";
+import { registerTask } from "./boot.js?v=20261122g";
 
 /* ---------- instruments ---------- */
 

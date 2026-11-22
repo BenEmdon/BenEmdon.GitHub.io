@@ -2,7 +2,7 @@ import { attach } from "./dither.js";
 import { animateWordmark } from "./wordmark.js";
 import { createThemeScene } from "./theme-scene.js";
 import { announceBootTask, whenBootTask } from "./boot-tasks.js";
-import { runBoot } from "./boot.js";
+import { runBoot } from "./boot.js?v=20261122g";
 
 const THEME_KEY = "theme";
 // The cycle the scene control walks. "system" is where everyone starts, and it is
@@ -465,6 +465,11 @@ function setUp() {
       {
         label: "rendering music",
         promise: whenBootTask("music"),
+        // The demo registers its own render task with the
+        // loader where the work runs (music-demo.js), so this
+        // entry is for the boot screen only: runBoot does not
+        // register the same work a second time.
+        selfReports: true,
         format: (r) =>
           r.fromCache
             ? `from cache · ${Math.round(r.ms)} ms`

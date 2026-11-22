@@ -341,7 +341,8 @@ html[data-boot-hide] main {
 }
 
 .boot__icon,
-.boot-spin__icon {
+.boot-spin__icon,
+.boot-panel__icon {
   --icon-frame: light-dark(#d9a441, #b98a34);
   --icon-frame-lit: light-dark(#eec25e, #d9a441);
   --icon-frame-deep: light-dark(#a8742c, #7d5a24);
@@ -519,30 +520,38 @@ html[data-boot-hide] main {
    muted type, and the measured latency on a line of its own
    once the batch closes. There is no backing slab behind the
    stack: each line, the picture included, carries its own
-   page background fitted to exactly that line's content, so
+   page background fitted to that line's content, with a
+   small margin of background around the content itself, so
    every piece stays readable over whatever scrolls beneath
    it and nothing sticks out past any piece's edges. The icon
    wears the boot icon's palette (the shared --icon-*
    properties above) and its cells the boot cells' shades, so
    the little painting is the same one in both surfaces, only
-   smaller. */
+   smaller. The stack's layer sits above every layer the
+   pages themselves use (theirs top out at 10), the wordmark
+   included: the loader is the one surface no page content
+   may ever paint over. */
 .boot-spin {
   position: fixed;
   inset-block-start: calc(var(--step) / 2);
   inset-inline-end: calc(var(--step) / 2);
-  z-index: 10;
+  z-index: 100;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: calc(var(--step) / 4);
+  gap: calc(var(--step) / 8);
   cursor: pointer;
 }
 
+/* The picture's own line: the 32px grid sits 4px inside the
+   box on every side (boot.js offsets the cells by the same
+   4px), so its background carries a margin around the
+   painting, like the text lines' padding below. */
 .boot-spin__icon {
   position: relative;
   flex: none;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   background: var(--page-background);
 }
 
@@ -554,12 +563,18 @@ html[data-boot-hide] main {
   height: 2px;
 }
 
+/* The chip is a summary, so its type is compact: smaller
+   than the site's caption size, on a single tight line, so
+   the stack reads as one small block in the corner rather
+   than three spread-out lines. The padding is the lines'
+   background margin, as on the picture above them. */
 .boot-spin__count,
 .boot-spin__time {
+  padding: calc(var(--step) / 8) calc(var(--step) / 4);
   background: var(--page-background);
   color: var(--muted-color);
-  font-size: var(--text-small);
-  line-height: var(--step);
+  font-size: calc(var(--text-caption) * 0.875);
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -567,25 +582,40 @@ html[data-boot-hide] main {
   display: none;
 }
 
-/* The loader expanded: an overlay panel under the chip with
-   the batch's count in a header and the batch's tasks as a
-   table under it, one row per task. No progress bar and no
-   picture: the chip above already carries the favicon, and
-   the table is the whole story. The frame follows the key
-   legend's card, the site's other corner overlay: page
-   background, an accent border, and the same small type. The
-   top offset clears the chip's full stack (picture, count,
-   and the latency line that joins at the close), so the two
-   surfaces never overlap however many lines the chip wears. */
+/* The loader expanded: the boot screen's own arrangement in
+   an overlay panel under the chip. The framed painting at
+   the top left at the boot screen's size, filling in over
+   the batch in the boot's stepped style; the batch's count
+   in a header under it; then the tasks as dotted-leader
+   lines in the boot log's shape, one per task. No progress
+   bar: the painting's fill is the progress, as it is on the
+   boot screen. The frame follows the key legend's card, the
+   site's other corner overlay: page background, an accent
+   border, and the same small type. The top offset clears
+   the chip's full stack (the corner inset, the 40px
+   picture, two 17px text lines, and the 3px gaps between
+   them: 92px in all), so the two surfaces never overlap
+   however many lines the chip wears. The panel shares the
+   chip's layer, above every page layer. */
 .boot-panel {
   position: fixed;
-  inset-block-start: calc(var(--step) * 4 + 14px);
+  inset-block-start: calc(var(--step) * 4 + 8px);
   inset-inline-end: calc(var(--step) / 2);
-  z-index: 10;
+  z-index: 100;
   width: min(36rem, calc(100vw - var(--step)));
   padding: var(--step-half) var(--step);
   background: var(--page-background);
   border: 1px solid var(--accent-color);
+}
+
+/* The boot screen's painting at its own size, top-left:
+   the panel is the bootloader view, not a summary of it. */
+.boot-panel__icon {
+  position: relative;
+  display: block;
+  width: 80px;
+  height: 80px;
+  margin-block-end: var(--step-half);
 }
 
 .boot-panel__head {
@@ -595,40 +625,61 @@ html[data-boot-hide] main {
   line-height: var(--step);
 }
 
-/* The task table: fixed columns in the boot log's spirit, the
-   mark in its own box (Iosevka draws ✓ at two columns while
-   its advance is one), the status right-aligned, and the
-   label taking whatever room is left. A row is one line at
-   any width: mark and status never wrap, and the label
-   ellipsises in its column rather than pushing the status
-   onto a second line. */
-.boot-panel__table {
-  width: 100%;
-  border-collapse: collapse;
+/* The header's two lines, the chip's count and latency in
+   the same stacked shape: never one combined line. */
+.boot-panel__count,
+.boot-panel__time {
+  display: block;
+}
+
+.boot-panel__time[hidden] {
+  display: none;
+}
+
+/* The task lines, in the boot log's own shape: the mark in
+   its own box (Iosevka draws ✓ at two columns while its
+   advance is one), the name, a dotted leader filling what
+   space is left, and the value at the right edge. A line is
+   one line at any width: the leader is one long run of dots
+   that simply overflows and collapses as space runs out,
+   the name ellipsises before the dots do, and the value
+   never wraps. */
+.boot-panel__lines {
   font-size: var(--text-small);
   line-height: var(--step);
 }
 
+.boot-panel__line {
+  display: flex;
+}
+
 .boot-panel__mark {
+  flex: none;
   width: 3ch;
-  padding: 0;
   color: var(--accent-color);
   white-space: nowrap;
 }
 
 .boot-panel__task {
-  max-width: 0;
-  padding: 0;
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--muted-color);
 }
 
+.boot-panel__dots {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--page-rule);
+}
+
 .boot-panel__status {
-  padding: 0;
-  padding-inline-start: var(--step);
-  text-align: end;
+  flex: none;
+  padding-inline-start: 1ch;
   white-space: nowrap;
   color: var(--page-color);
 }
