@@ -51,6 +51,10 @@ button {
   cursor: pointer;
 }
 
+button {
+  touch-action: manipulation;
+}
+
 h1,
 h2,
 p {

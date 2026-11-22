@@ -60,7 +60,7 @@ import { announceBootTask } from "./boot-tasks.js";
 
 // The boot log's zero for this module: the scene task it announces
 // below is measured from here, so the duration it reports covers the
-// whole build that follows, geometry and first paint alike.
+// whole build that follows, geometry through the reveal's last step.
 const bootT0 = performance.now();
 
 /* ---------- anchor ---------- */
@@ -1087,7 +1087,10 @@ function paint(ctx, frame, revealed, fx) {
 
 /* ---------- wiring ---------- */
 
-const REVEAL_STEPS = 14;
+// Seven steps on the site's 75 ms tick: the scene generates in about
+// half a second. It was fourteen steps, a full second and change,
+// which outlasted the boot screen the scene reports to.
+const REVEAL_STEPS = 7;
 const STEP_MS = 75; // the site's --motion-step
 const WEATHER_TICK_MS = 120;
 const REST_MS = 2500; // the pause before the first gust
@@ -1157,10 +1160,20 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
 
   applyTheme();
 
-  // The scene is built and its first frame is painted: the boot log's
-  // scene task can resolve. (The reveal itself still waits for the
-  // figure to scroll into view, as it always has.)
-  announceBootTask("meadow", Promise.resolve({ ms: performance.now() - bootT0 }));
+  // The boot log's scene task resolves when the scene has finished
+  // generating, not at first paint. When the figure is on screen the
+  // reveal's last step resolves it; when the figure is off-screen
+  // nothing is generating (the reveal still waits for the figure to
+  // scroll into view, as it always has), so the watcher's first report
+  // resolves it on the first paint it already had. Under reduced
+  // motion the scene stands complete in one cut from the start, so
+  // it resolves here.
+  let resolveSceneTask;
+  const sceneTask = new Promise((resolve) => {
+    resolveSceneTask = resolve;
+  });
+  announceBootTask("meadow", sceneTask);
+  if (reduced.matches) resolveSceneTask({ ms: performance.now() - bootT0 });
 
   // The weather's timetable: cross, rest, cross. Timeouts rather than
   // an interval for the rests, so at rest the scene costs nothing at
@@ -1333,6 +1346,7 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
       paint(ctx, frame, revealed, fx);
       if (step >= REVEAL_STEPS) {
         clearInterval(timer);
+        resolveSceneTask({ ms: performance.now() - bootT0 });
         schedule(REST_MS, startGust);
         // The first shadow comes later, on its own schedule, so the
         // two systems are never in step.
@@ -1348,11 +1362,18 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
     }, STEP_MS);
   }
 
+  let watcherReported = false;
   const watcher = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
         onScreen = entry.isIntersecting;
         if (onScreen) reveal();
+        else if (!watcherReported) {
+          // Off-screen at load: nothing is generating, so the boot
+          // task resolves on the first paint it already had.
+          resolveSceneTask({ ms: performance.now() - bootT0 });
+        }
+        watcherReported = true;
       }
     },
     { threshold: 0.3 }
