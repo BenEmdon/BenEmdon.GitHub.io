@@ -2,7 +2,7 @@ import { attach } from "./dither.js";
 import { animateWordmark } from "./wordmark.js";
 import { createThemeScene } from "./theme-scene.js";
 import { announceBootTask, whenBootTask } from "./boot-tasks.js";
-import { runBoot } from "./boot.js?v=20261122m";
+import { runBoot } from "./boot.js?v=20261122n";
 
 const THEME_KEY = "theme";
 // The cycle the scene control walks. "system" is where everyone starts, and it is

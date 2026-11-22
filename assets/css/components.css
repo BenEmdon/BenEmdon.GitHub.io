@@ -583,11 +583,13 @@ html[data-boot-hide] main {
 }
 
 /* The loader expanded: the boot screen's own arrangement in
-   an overlay panel under the chip. The framed painting at
-   the top left at the boot screen's size, filling in over
-   the batch in the boot's stepped style; the batch's count
-   in a header under it; then the tasks as dotted-leader
-   lines in the boot log's shape, one per task. No progress
+   an overlay panel under the chip. A header row at the top:
+   the framed painting at the left at the boot screen's
+   size, filling in over the batch in the boot's stepped
+   style, with the batch's count and latency stacked at its
+   right in the chip's own line style; then the tasks as
+   dotted-leader lines in the boot log's shape, one per
+   task. No progress
    bar: the painting's fill is the progress, as it is on the
    boot screen. The frame follows the key legend's card, the
    site's other corner overlay: page background, an accent
@@ -608,28 +610,44 @@ html[data-boot-hide] main {
   border: 1px solid var(--accent-color);
 }
 
+/* The header row: the painting at the left, the figures at
+   its right, the row's own spacing under it before the
+   task lines. */
+.boot-panel__header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--step);
+  margin-block-end: var(--step-half);
+}
+
 /* The boot screen's painting at its own size, top-left:
    the panel is the bootloader view, not a summary of it. */
 .boot-panel__icon {
   position: relative;
-  display: block;
+  flex: none;
   width: 80px;
   height: 80px;
-  margin-block-end: var(--step-half);
 }
 
 .boot-panel__head {
-  margin-block-end: var(--step-half);
-  color: var(--muted-color);
-  font-size: var(--text-small);
-  line-height: var(--step);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--step) / 8);
 }
 
 /* The header's two lines, the chip's count and latency in
-   the same stacked shape: never one combined line. */
+   the chip's own shape: small type on one tight line, each
+   line on its own fitted backing, never one combined
+   line. */
 .boot-panel__count,
 .boot-panel__time {
-  display: block;
+  padding: calc(var(--step) / 8) calc(var(--step) / 4);
+  background: var(--page-background);
+  color: var(--muted-color);
+  font-size: calc(var(--text-caption) * 0.875);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .boot-panel__time[hidden] {

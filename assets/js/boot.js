@@ -443,8 +443,9 @@ function runFullBoot(tasks) {
 // every pixel on the site behaves.
 //
 // Tapping the spinner expands it into an overlay panel: a
-// header carrying the chip's own count (and latency, once
-// closed) above a table of the batch's tasks, one row per
+// header carrying the painting with the chip's own count
+// (and latency, once closed) at its right, above a table
+// of the batch's tasks, one row per
 // task, its mark, its label, and its status right-aligned on
 // the same line, always: a row never wraps, and a long label
 // ellipsises rather than pushing its status down. One status
@@ -550,8 +551,14 @@ function openLoaderBatch(startedAt) {
     latency: null,
     coveredByBoot: false,
     chipMountedAt: null, // when the chip appeared, for its minimum
-    chip: null, // { el, icon, count, time, cells, filled }
-    panel: null, // { el, head, body, rows }
+    // The batch's one fill level: how many of the painting's
+    // cells are lit. The chip and the panel are two views of
+    // this single state, never two animations: each step
+    // moves the level, and every view renders the level, so
+    // the two paintings show the same cells at every moment.
+    filled: 0,
+    chip: null, // { el, icon, count, time, cells, rendered, owner }
+    panel: null, // { el, icon, cells, rendered, head, count, time, lines, rows }
     fillTimer: null,
     holdTimer: null,
     watchTimer: null,
@@ -794,7 +801,7 @@ function buildSpinner(batch) {
   // the batch it shows, and an adopted chip speaks for the
   // batch that adopted it. The element in the corner is
   // never a dead one.
-  const view = { el: root, icon, count, time, cells, filled: 0, owner: batch };
+  const view = { el: root, icon, count, time, cells, rendered: 0, owner: batch };
   root.addEventListener("click", () => toggleLoaderPanel(view.owner));
   batch.chip = view;
   batch.chipMountedAt = performance.now();
@@ -823,6 +830,11 @@ function adoptSpinner(batch) {
   view.owner = batch;
   batch.chip = view;
   batch.chipMountedAt = performance.now();
+  // The new batch's fill level starts where the painting
+  // actually is: the element keeps the cells it has, and
+  // the level steps from there toward the new batch's
+  // share, in whichever direction that lies.
+  batch.filled = view.rendered;
   view.count.textContent = countText(batch);
   view.time.textContent = "";
   view.time.hidden = true;
@@ -830,26 +842,60 @@ function adoptSpinner(batch) {
   stepLoaderFill(batch);
 }
 
-// Step one icon toward the target, a batch of cells per tick
-// at the loader's pacing (LOADER_FILL_STEPS), in whichever
-// direction the target lies: a cell is either there, fully
-// coloured, or not there, and a reverted aggregate takes its
-// last-filled cells back in the order they came. Nothing
-// slides and nothing fades.
-function stepIconFill(view, target) {
+// Render one painting's element at the batch's fill level:
+// append or remove whole cells until the element shows
+// exactly the level's first cells, in the fill order. A
+// cell is either there, fully coloured, or not there, and
+// a level stepping down takes its last-filled cells back
+// in the order they came. Nothing slides and nothing
+// fades. The view's own count is only how much of the
+// level it has rendered so far, never a state of its own.
+function syncIconView(view, filled) {
   if (!view) return;
-  const perStep = Math.ceil(ICON_TOTAL / LOADER_FILL_STEPS);
-  let moved = 0;
-  while (view.filled < target && moved < perStep) {
-    view.icon.append(view.cells[view.filled]);
-    view.filled += 1;
-    moved += 1;
+  while (view.rendered < filled) {
+    view.icon.append(view.cells[view.rendered]);
+    view.rendered += 1;
   }
-  while (view.filled > target && moved < perStep) {
+  while (view.rendered > filled) {
     const last = view.icon.children[view.icon.children.length - 1];
     if (last) last.remove();
-    view.filled -= 1;
-    moved += 1;
+    view.rendered -= 1;
+  }
+}
+
+// Every painting a batch currently has: the chip's view
+// (the live chip, or the retired chip still in the corner
+// showing this batch), and the panel's, when it is open.
+function batchIconViews(batch) {
+  const views = [];
+  if (batch.chip) views.push(batch.chip);
+  if (
+    retiredChip &&
+    retiredChip.batch === batch &&
+    retiredChip.view !== batch.chip
+  ) {
+    views.push(retiredChip.view);
+  }
+  if (batch.panel) views.push(batch.panel);
+  return views;
+}
+
+// Step the batch's one fill level toward the target, a
+// batch of cells per tick at the loader's pacing
+// (LOADER_FILL_STEPS), in whichever direction the target
+// lies, then render the level on every painting the batch
+// has. The chip and the panel are one picture at two
+// sizes: they show the same cells at every moment by
+// construction, not by two animations kept in step.
+function stepBatchFill(batch, target) {
+  const perStep = Math.ceil(ICON_TOTAL / LOADER_FILL_STEPS);
+  if (batch.filled < target) {
+    batch.filled = Math.min(target, batch.filled + perStep);
+  } else if (batch.filled > target) {
+    batch.filled = Math.max(target, batch.filled - perStep);
+  }
+  for (const view of batchIconViews(batch)) {
+    syncIconView(view, batch.filled);
   }
 }
 
@@ -862,13 +908,8 @@ function stepLoaderFill(batch) {
   const target = batch.closed
     ? ICON_TOTAL
     : ICON_BASE + Math.round(batchShare(batch) * (ICON_TOTAL - ICON_BASE));
-  stepIconFill(batch.chip, target);
-  // The panel's painting fills on the same step toward the
-  // same target: one batch, one picture, two sizes.
-  if (batch.panel) stepIconFill(batch.panel, target);
-  const chipDone = !batch.chip || batch.chip.filled >= ICON_TOTAL;
-  const panelDone = !batch.panel || batch.panel.filled >= ICON_TOTAL;
-  if (batch.closed && chipDone && panelDone && batch.fillTimer) {
+  stepBatchFill(batch, target);
+  if (batch.closed && batch.filled >= ICON_TOTAL && batch.fillTimer) {
     clearInterval(batch.fillTimer);
     batch.fillTimer = null;
   }
@@ -886,7 +927,7 @@ function stepLoaderFill(batch) {
 // collapsing the panel ends it through teardown.
 function maybeFinishClosedBatch(batch) {
   if (!batch.closed || !batch.holdElapsed || batch.panel) return;
-  if (batch.chip && batch.chip.filled < ICON_TOTAL) return;
+  if (batch.chip && batch.filled < ICON_TOTAL) return;
   teardownLoaderBatch(batch);
 }
 
@@ -971,7 +1012,7 @@ function renderLoader(batch) {
 // its batch, through teardown.
 function finishRetiredChip(retired) {
   if (retiredChip !== retired) return;
-  if (!retired.minElapsed || retired.view.filled < ICON_TOTAL) return;
+  if (!retired.minElapsed || retired.batch.filled < ICON_TOTAL) return;
   if (retired.batch.panel) return;
   if (retired.fillTimer) clearInterval(retired.fillTimer);
   retired.view.el.remove();
@@ -1041,10 +1082,14 @@ function teardownLoaderBatch(batch, { keepChip = false } = {}) {
         minElapsed: false,
       };
       retiredChip = retired;
-      stepIconFill(view, ICON_TOTAL);
+      // The retirement steps the batch's own level, like
+      // every other fill: the retired chip's painting, and
+      // its panel's when the panel is opened from it, are
+      // the one state rendered at two sizes.
+      stepBatchFill(batch, ICON_TOTAL);
       retired.fillTimer = setInterval(() => {
-        stepIconFill(view, ICON_TOTAL);
-        if (view.filled >= ICON_TOTAL) {
+        stepBatchFill(batch, ICON_TOTAL);
+        if (batch.filled >= ICON_TOTAL) {
           clearInterval(retired.fillTimer);
           retired.fillTimer = null;
           finishRetiredChip(retired);
@@ -1112,17 +1157,19 @@ function closeLoaderBatch(batch) {
 // ----------------------------------------------------------------
 // The expanded panel: the boot screen's view of the registry's
 // current batch. The chip is the summary; tapping it opens
-// the full picture, the same arrangement the boot screen
-// itself uses: the framed painting at the top left, filling
-// in the boot's stepped style over the batch, then the count
-// with its latency on the line under it once the batch has
-// closed (the chip's two lines, stacked the same way, never
-// combined), then one line per task in the boot log's own
-// shape: the name, a dotted leader, and the value at the
-// right edge. No progress bar: the painting's fill is the
-// progress, as it is on the boot screen. The panel holds no
-// state of its own; every render rebuilds its lines from the
-// batch, so what it shows is the registry as it stands.
+// the full picture: a header row carrying the framed
+// painting at the left, filling in the boot's stepped style
+// over the batch, with the count and its latency stacked at
+// the painting's right (the chip's two lines in the chip's
+// own arrangement beside the picture, each on its own fitted
+// backing, never combined), then one line per task in the
+// boot log's own shape: the name, a dotted leader, and the
+// value at the right edge. No progress bar: the painting's
+// fill is the progress, as it is on the boot screen. The
+// panel holds no state of its own; every render rebuilds
+// its lines from the batch, and its painting renders the
+// batch's one fill level, so what it shows is the registry
+// as it stands, the chip's picture at the boot's size.
 // ----------------------------------------------------------------
 
 function toggleLoaderPanel(batch) {
@@ -1176,44 +1223,55 @@ function buildLoaderPanel(batch) {
   const root = document.createElement("div");
   root.className = "boot-panel";
 
-  // The painting, the boot screen's own at its own size,
-  // top-left above everything else in the panel. Its cells
-  // fill on the loader's step toward the batch's share, like
-  // the chip's smaller copy of the same picture.
+  // The header row: the painting at the left, the boot
+  // screen's own at its own size, and the figures at its
+  // right. The painting is the chip's picture at the larger
+  // size, not a second animation: it renders the batch's
+  // one fill level, so it opens on exactly the cells the
+  // chip is showing at that instant and steps with it.
   const icon = document.createElement("span");
   icon.className = "boot-panel__icon";
   const cells = buildIconCells("boot__cell", PANEL_CELL);
 
   const head = document.createElement("div");
   head.className = "boot-panel__head";
-  // The header is the chip's two lines in the same shape: the
-  // count, and the latency under it once the batch has closed.
+  // The figures are the chip's two lines in the same shape:
+  // the count, and the latency under it once the batch has
+  // closed, each on its own fitted backing.
   const headCount = loaderSpan("boot-panel__count", countText(batch));
   const headTime = loaderSpan("boot-panel__time", "");
   headTime.hidden = true;
   head.append(headCount, headTime);
 
+  const header = document.createElement("div");
+  header.className = "boot-panel__header";
+  header.append(icon, head);
+
   const lines = document.createElement("div");
   lines.className = "boot-panel__lines";
 
-  root.append(icon, head, lines);
+  root.append(header, lines);
   document.body.append(root);
   batch.panel = {
-    el: root, icon, cells, filled: 0,
+    el: root, icon, cells, rendered: 0,
     head, count: headCount, time: headTime, lines,
     rows: new Map(),
   };
-  // The painting fills on the loader's step toward the
-  // batch's share, like the chip's smaller copy of the same
-  // picture: opened on a finished batch it plays in to
-  // whole rather than arriving whole. The batch's fill
-  // timer does the stepping while it runs; a batch whose
-  // timer already stopped (its chip filled and stopped it,
-  // the panel only opening now; or a retired batch, whose
-  // chip lives outside the batch) gets one restarted for
-  // the panel's sake, and stepLoaderFill stops it again
-  // once both pictures are whole.
-  if (!batch.fillTimer) {
+  // The panel's painting opens on the batch's level as it
+  // stands, the chip's exact cells at this instant.
+  syncIconView(batch.panel, batch.filled);
+  // The batch's fill timer does the stepping while it runs,
+  // and a retired batch's retirement timer steps the same
+  // level. A batch with neither running and its painting
+  // short of whole (its chip filled and stopped the timer,
+  // the panel only opening now) gets the timer restarted
+  // for the panel's sake, and stepLoaderFill stops it
+  // again once the picture is whole.
+  if (
+    !batch.fillTimer &&
+    batch.filled < ICON_TOTAL &&
+    !(retiredChip && retiredChip.batch === batch)
+  ) {
     batch.fillTimer = setInterval(() => stepLoaderFill(batch), 75);
     stepLoaderFill(batch);
   }
