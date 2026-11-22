@@ -1704,19 +1704,30 @@ function clearPlayhead() {
   gridState.lastCol = -1;
 }
 
+// How far in from the panel's left edge the playhead sits
+// while the grid follows it, as a fraction of the visible
+// panel: a quarter in, the same spot the home page demo's
+// playhead holds (12 of its 48 window steps). A fraction,
+// not a step count, because this grid's cells change width
+// with the window (wider cells on a phone), so no fixed
+// step count holds the quarter at every size. In steps it
+// works out to about 4 on a phone and about 10 on desktop.
+const PLAYHEAD_LEAD_FRACTION = 0.25;
+
 function followPlayhead(step) {
   // While a song plays, the grid panel follows the playhead the
   // way the home page demo's window does: on every step the panel
-  // scrolls so the step sits 12 steps in from the panel's left
-  // edge, so the playhead holds still and the grid moves under
-  // it, one step at a time. (The old policy only scrolled when
-  // the step was about to leave the panel, which read as a long
-  // stillness and then a page-sized lurch.) The scroll is a
-  // plain assignment on the step change: no animated scrolling,
-  // and the panel only ever moves sideways. At the song's start
-  // and end the scroll clamps, and the playhead crosses the
-  // first or last stretch itself, again like the demo. When
-  // playback stops the panel stays where it is.
+  // scrolls so the step sits PLAYHEAD_LEAD_FRACTION of the
+  // visible panel in from its left edge, so the playhead holds
+  // still and the grid moves under it, one step at a time. (The
+  // old policy only scrolled when the step was about to leave
+  // the panel, which read as a long stillness and then a page-
+  // sized lurch.) The scroll is a plain assignment on the step
+  // change: no animated scrolling, and the panel only ever
+  // moves sideways. At the song's start and end the scroll
+  // clamps, and the playhead crosses the first or last stretch
+  // itself, again like the demo. When playback stops the panel
+  // stays where it is.
   if (!panelEl || step < 0) return;
   const cells = gridState.cellsByStep.get(step);
   if (!cells || !cells.length) return;
@@ -1725,7 +1736,7 @@ function followPlayhead(step) {
   const w = cellRect.width;
   if (!w) return;
   const x = cellRect.left - panelRect.left + panelEl.scrollLeft;
-  const lead = 12 * w;
+  const lead = PLAYHEAD_LEAD_FRACTION * panelEl.clientWidth;
   const maxScroll = Math.max(0, panelEl.scrollWidth - panelEl.clientWidth);
   const target = Math.min(Math.max(0, x - lead), maxScroll);
   if (panelEl.scrollLeft !== target) panelEl.scrollLeft = target;
