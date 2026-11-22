@@ -204,11 +204,10 @@ function setUp() {
   const toggle = document.querySelector("[data-theme-toggle]");
   const themeLabel = toggle.querySelector("[data-theme-label]");
   const sceneButtons = [...document.querySelectorAll("[data-theme-scene-button]")];
-  const sceneOptions = [...document.querySelectorAll("[data-theme-scene-options]")];
-  const choiceButtons = [...document.querySelectorAll("[data-theme-choice]")];
+  const sceneCurrents = [...document.querySelectorAll("[data-theme-scene-current]")];
   let themeScenes = [];
-  let sceneExpanded = false;
   let mode = storedMode();
+  let sceneCycleStarted = false;
 
   const resolvedDark = () =>
     mode === "dark" || (mode === "system" && systemDark.matches);
@@ -221,17 +220,18 @@ function setUp() {
     }
   }
 
-  // One shared expanded state for both scene controls: opening or
-  // closing one moves the other too. The swap is whole and instant, a
-  // single step on the grid rather than a slide.
-  function setSceneExpanded(next) {
-    sceneExpanded = next;
-    sceneButtons.forEach((button) =>
-      button.setAttribute("aria-expanded", String(next))
-    );
-    sceneOptions.forEach((options) => {
-      options.hidden = !next;
-    });
+  // Where a scene click goes. The plain cycle is light, dark, system,
+  // and back to light, which is nextMode's order read from light. One
+  // exception: the first scene click out of system mode jumps to the
+  // opposite of whatever system is currently resolving to, so the
+  // click always lands on a visible change. After that first jump the
+  // plain cycle runs from wherever it landed, even when the cycle
+  // comes back around to system.
+  function nextSceneMode() {
+    if (!sceneCycleStarted && mode === "system") {
+      return resolvedDark() ? "light" : "dark";
+    }
+    return nextMode(mode);
   }
 
   // Only light and dark pin [data-theme]. System mode removes it, which is the
@@ -255,10 +255,18 @@ function setUp() {
         `Switch to ${nextMode(mode)}.`
     );
 
-    // The expanded scene controls mark the current mode on their word
-    // buttons, in both instances, so they agree with the text toggle.
-    choiceButtons.forEach((button) =>
-      button.setAttribute("aria-pressed", String(button.dataset.themeChoice === mode))
+    // Both scene controls carry the current mode as their one visible
+    // word, and the scene button's name says where a click goes next,
+    // worked out live so the system first-click rule is in the name.
+    sceneCurrents.forEach((label) => {
+      label.textContent = mode;
+    });
+    const sceneNext = nextSceneMode();
+    sceneButtons.forEach((button) =>
+      button.setAttribute(
+        "aria-label",
+        `Theme: ${mode}. Activate to switch to ${sceneNext}`
+      )
     );
 
     // The dither reads its two colours back out of CSS, so it has to be
@@ -276,27 +284,16 @@ function setUp() {
     applyMode();
   });
 
-  // The picture is the closed state of a control. Clicking it opens
-  // both instances to the three mode words; clicking it again closes
-  // them without touching the theme. The scene button itself is never
-  // hidden or replaced, so focus stays on it across the swap.
+  // The picture is the control. Clicking either instance advances the
+  // one shared cycle; both words, both scenes, and the text toggle all
+  // re-read the same mode in applyMode. The swap is whole and instant,
+  // and the button is never hidden or replaced, so focus stays on it.
   sceneButtons.forEach((button) => {
-    button.addEventListener("click", () => setSceneExpanded(!sceneExpanded));
-  });
-
-  // Picking a word sets the mode, collapses both instances, and returns
-  // focus to the scene button of the control that was used, since the
-  // word button it was on is about to be hidden.
-  choiceButtons.forEach((button) => {
     button.addEventListener("click", () => {
-      mode = button.dataset.themeChoice;
+      mode = nextSceneMode();
+      sceneCycleStarted = true;
       persistMode();
       applyMode();
-      setSceneExpanded(false);
-      button
-        .closest("[data-theme-scene-control]")
-        ?.querySelector("[data-theme-scene-button]")
-        ?.focus();
     });
   });
 
@@ -311,7 +308,6 @@ function setUp() {
     (canvas) => createThemeScene(canvas, { dark: resolvedDark() })
   );
 
-  setSceneExpanded(false);
   applyMode();
 
   /* ---------- section in view ---------- */
@@ -385,15 +381,7 @@ function setUp() {
     } else if (event.key === "?") {
       showKeys(keys.hidden);
     } else if (event.key === "Escape") {
-      if (sceneExpanded) {
-        // Close the scene control and keep focus inside it: back on its
-        // scene button, which never left the page.
-        const control = el.closest?.("[data-theme-scene-control]");
-        setSceneExpanded(false);
-        control?.querySelector("[data-theme-scene-button]")?.focus();
-      } else {
-        showKeys(false);
-      }
+      showKeys(false);
     } else {
       return;
     }

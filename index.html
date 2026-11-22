@@ -142,9 +142,7 @@
           class="theme-scene-button"
           type="button"
           data-theme-scene-button
-          aria-label="Theme"
-          aria-expanded="false"
-          aria-controls="theme-scene-options-top"
+          aria-label="Theme: system. Activate to switch to light"
         >
           <canvas
             class="theme-scene"
@@ -154,16 +152,7 @@
             aria-hidden="true"
           ></canvas>
         </button>
-        <span
-          class="theme-scene-options"
-          id="theme-scene-options-top"
-          data-theme-scene-options
-          hidden
-        >
-          <button class="theme-scene-choice" type="button" data-theme-choice="system" aria-pressed="true">system</button>
-          <button class="theme-scene-choice" type="button" data-theme-choice="light" aria-pressed="false">light</button>
-          <button class="theme-scene-choice" type="button" data-theme-choice="dark" aria-pressed="false">dark</button>
-        </span>
+        <span class="theme-scene-current" data-theme-scene-current>system</span>
       </div>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
@@ -452,9 +441,7 @@
               class="theme-scene-button"
               type="button"
               data-theme-scene-button
-              aria-label="Theme"
-              aria-expanded="false"
-              aria-controls="theme-scene-options-footer"
+              aria-label="Theme: system. Activate to switch to light"
             >
               <canvas
                 class="theme-scene"
@@ -464,16 +451,7 @@
                 aria-hidden="true"
               ></canvas>
             </button>
-            <span
-              class="theme-scene-options"
-              id="theme-scene-options-footer"
-              data-theme-scene-options
-              hidden
-            >
-              <button class="theme-scene-choice" type="button" data-theme-choice="system" aria-pressed="true">system</button>
-              <button class="theme-scene-choice" type="button" data-theme-choice="light" aria-pressed="false">light</button>
-              <button class="theme-scene-choice" type="button" data-theme-choice="dark" aria-pressed="false">dark</button>
-            </span>
+            <span class="theme-scene-current" data-theme-scene-current>system</span>
           </span>
         </div>
       </footer>

@@ -363,12 +363,12 @@
 }
 
 /* The theme scene is a 24x12 landscape at 2px cells, exactly one --step
-   tall so the footer row keeps its rhythm. Experiment: the picture is
-   the closed state of a theme control, duplicated in the masthead and
-   the footer. Clicking it reveals the three mode words in one whole
-   step: no slide, no fade, the new state is simply there. The masthead
-   control is anchored to the right edge and grows leftward, so the
-   scene itself never moves; the footer control grows rightward. */
+   tall so the footer row keeps its rhythm. Experiment: the picture is a
+   cycling theme control, duplicated in the masthead and the footer, with
+   one word beside it naming the active mode. Clicking it advances the
+   mode in one whole step: no slide, no fade, the new state is simply
+   there. The masthead control is anchored to the right edge with its
+   word on the left, so the scene itself never moves. */
 
 .theme-scene-control {
   display: inline-flex;
@@ -382,40 +382,20 @@
   justify-content: flex-end;
 }
 
-/* The masthead scene stays first in the tab order, ahead of its words,
-   and CSS order puts the words on its left where the expansion goes. */
+/* The masthead word sits on the scene's left, so the scene keeps the
+   right edge however long the active mode word is. */
 .theme-scene-control--masthead .theme-scene-button {
   order: 2;
 }
 
-.theme-scene-control--masthead .theme-scene-options {
+.theme-scene-control--masthead .theme-scene-current {
   order: 1;
 }
 
-.theme-scene-options {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--step-half);
-}
-
-.theme-scene-options[hidden] {
-  display: none;
-}
-
-.theme-scene-choice {
-  padding: 0;
+.theme-scene-current {
   color: var(--muted-color);
   line-height: var(--step);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.theme-scene-choice:hover,
-.theme-scene-choice:focus-visible,
-.theme-scene-choice[aria-pressed="true"] {
-  background: var(--accent-color);
-  color: var(--inverted-color);
-  text-decoration: none;
+  white-space: nowrap;
 }
 
 .theme-scene-button {
