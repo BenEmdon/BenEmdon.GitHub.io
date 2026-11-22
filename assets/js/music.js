@@ -1738,7 +1738,7 @@ function updateTempoUI() {
 
 /* ----- grid ----- */
 
-const gridState = { letter: null, cellsByStep: new Map(), lastCol: -1 };
+const gridState = { letter: null };
 
 const pitchName = (midi) =>
   PC_NAME[midi % 12].replace(/^./, (c) => c.toUpperCase()) +
@@ -1752,17 +1752,155 @@ function currentChannel() {
   );
 }
 
-// Every channel gets its own grid, stacked in the one panel:
-// the whole song is visible at once, and because all the grids
-// live in the same scrolling panel, they share the one
-// scrollLeft and the playhead column lines up down the stack.
+/* ----- the grid view: blocks in a sliding window ----- */
+
+// The song data is the state; this view is a projection of it.
+// Nothing here reads state back from the page: a note's block
+// gets its position and its state class from the song and the
+// render key sets at the moment it is materialised, and the
+// playhead step and the window live in JS variables, never in
+// the DOM. The grid used to build one button per step per
+// pitch row, about 100,000 elements for the longest song,
+// which is what smeared and blanked this page on a phone.
+// Now the strip's background draws the step and lane lines,
+// one block element stands for each note, and only the notes
+// inside the visible window, plus a buffer on each side, get
+// elements at all. The strip keeps the song's full width, so
+// the panel scrolls exactly as far as it did.
 //
-// The build runs in slices: each slice spends a few
-// milliseconds building rows, then yields, so even the
-// heaviest song never blocks the page's first paint or a
-// scroll. A build a newer song supersedes stops at its next
-// slice, by token; note states refresh when the last slice
-// lands.
+// The geometry constants mirror music.css (the .gstrip
+// vars): a cell is 14px, or 22px under the coarse-pointer
+// media query, with a 1px gap after each step and 4px more
+// before each beat step; lanes sit on a 25px pitch over a
+// 24px line. The pure functions take the cell size as an
+// argument so the test harness can run them without a page.
+
+/* [view-math: pure] */
+const LANE_H = 24;
+const LANE_PITCH = 25;
+const WINDOW_BUFFER_STEPS = 24;
+const WINDOW_SLACK_STEPS = 8;
+
+function cellPitch(cell) { return cell + 1; }
+function groupWidth(cell) { return 4 * cellPitch(cell) + 4; }
+
+// The left edge of a step, in px from the note layer's left.
+function stepX(step, cell) {
+  return cellPitch(cell) * step + 4 * Math.floor(step / 4);
+}
+
+// The step a layer x falls in: the inverse of stepX. The
+// wider gap before a beat step belongs to the step before it.
+function stepAtX(x, cell) {
+  if (x <= 0) return 0;
+  const g = Math.floor(x / groupWidth(cell));
+  const r = x - g * groupWidth(cell);
+  return g * 4 + Math.min(3, Math.floor(r / cellPitch(cell)));
+}
+
+// A note's block: left edge and width in px. The width runs
+// to the note's last step's right edge, so the gaps inside a
+// long note are part of the block, as they were part of its
+// cells.
+function noteSpan(note, cell) {
+  const left = stepX(note.step, cell);
+  return { left, width: stepX(note.step + note.len - 1, cell) + cell - left };
+}
+
+// A block's top edge within its strip: lanes sit on the
+// pitch, each lane's line is LANE_H tall, and the block
+// centres in it.
+function blockTop(lane, cell) {
+  return lane * LANE_PITCH + 1 + (LANE_H - cell) / 2;
+}
+
+// The pitch lanes of a channel, highest first, with one
+// spare lane above and below the used pitches: the same rows
+// the cell grid built.
+function laneRows(ch) {
+  const pitches = [...new Set(ch.notes.map((n) => n.midi))].sort((a, b) => b - a);
+  if (!pitches.length) return [];
+  return [pitches[0] + 1, ...pitches, pitches[pitches.length - 1] - 1]
+    .filter((m, i, a) => m >= 24 && m <= 96 && a.indexOf(m) === i);
+}
+
+// The steps the viewport shows, as [lo, hi): originX is the
+// note layer's left edge in the panel's scroll coordinates.
+function visibleSteps(originX, scrollLeft, clientWidth, cell) {
+  return [
+    stepAtX(scrollLeft - originX, cell),
+    stepAtX(scrollLeft - originX + clientWidth, cell) + 1,
+  ];
+}
+
+// The window to materialise, or null when the visible steps
+// sit comfortably inside the one already built: the window
+// recentres only when the view nears its edge, so ordinary
+// scrolling and the playhead's follow do not rebuild blocks
+// on every step.
+function materialWindow(win, originX, scrollLeft, clientWidth, steps, cell, force) {
+  const [lo, hi] = visibleSteps(originX, scrollLeft, clientWidth, cell);
+  if (!force && win.start >= 0 &&
+      lo >= win.start + WINDOW_SLACK_STEPS && hi <= win.end - WINDOW_SLACK_STEPS) {
+    return null;
+  }
+  return [
+    Math.max(0, lo - WINDOW_BUFFER_STEPS),
+    Math.min(steps, hi + WINDOW_BUFFER_STEPS),
+  ];
+}
+
+// Ghost spans: notes in the sounding render but no longer
+// in the song, rebuilt from their keys. A key is
+// letter|midi|step|len|inst|vol (see noteKey).
+function ghostSpans(rendered, current) {
+  const spans = [];
+  if (!rendered) return spans;
+  for (const k of rendered) {
+    if (current.has(k)) continue;
+    const [letter, midi, step, len] = k.split("|");
+    spans.push({ letter, midi: Number(midi), step: Number(step), len: Number(len) });
+  }
+  return spans;
+}
+/* [/view-math: pure] */
+
+// The view's own state, all of it JS: the strips built for
+// the current song, the materialised window, the note
+// layer's left edge in scroll coordinates, and the playhead
+// step on show.
+const view = {
+  strips: [],
+  start: -1,
+  end: -1,
+  originX: 0,
+  step: -1,
+  framed: false,
+};
+
+// A block's note, held in JS: a keyboard press on a block
+// arrives with no coordinates, so the block's identity comes
+// from here, never from the element.
+const blockNote = new WeakMap();
+
+// The cell size follows the same media query the CSS vars
+// follow; the size is a fact about the environment, read
+// from the query, never measured off an element.
+const coarseCells = window.matchMedia("(max-width: 34rem), (pointer: coarse)");
+function cellSize() { return coarseCells.matches ? 22 : 14; }
+
+// Every channel gets its own strip, stacked in the one
+// panel: the whole song is as wide as it ever was, and
+// because all the strips live in the same scrolling panel,
+// they share the one scrollLeft and the playhead line lines
+// up down the stack.
+//
+// The scaffold build runs in slices, as the cell build did:
+// each slice spends a few milliseconds building strips, then
+// yields, so even the heaviest song never blocks the page's
+// first paint or a scroll. A build a newer song supersedes
+// stops at its next slice, by token; the window materialises
+// when the last slice lands.
 let gridBuildToken = 0;
 
 function scheduleGridSlice(fn) {
@@ -1776,14 +1914,15 @@ function scheduleGridSlice(fn) {
 function buildGrid() {
   const token = ++gridBuildToken;
   gridEl.innerHTML = "";
-  gridState.cellsByStep = new Map();
-  gridState.lastCol = -1;
+  view.strips = [];
+  view.start = -1;
+  view.end = -1;
   const song = player.song;
   if (!song) return;
   if (!song.channels.some((c) => c.letter === gridState.letter)) {
     gridState.letter = song.channels[0]?.letter ?? null;
   }
-  const builders = song.channels.map((ch) => channelGridSteps(ch, song));
+  const builders = song.channels.map((ch) => channelStripSteps(ch, song));
   let idx = 0;
   const slice = () => {
     if (token !== gridBuildToken) return;
@@ -1795,17 +1934,18 @@ function buildGrid() {
       scheduleGridSlice(slice);
       return;
     }
-    refreshNoteStates();
+    calibrateView();
+    materialiseWindow(true);
+    paintPlayhead(view.step);
   };
   slice();
 }
 
-// One channel's grid, built as a generator: the header first,
-// then one row per step of the generator, so buildGrid's
-// slices cut across rows and channels alike. The rows
-// accumulate in a fragment and land together when the channel
-// is done, as they did when this was one synchronous pass.
-function* channelGridSteps(ch, song) {
+// One channel's scaffold, built as a generator: the header
+// first, then the strip with its pitch labels and its empty
+// note layer. Blocks arrive with the window, not the
+// scaffold, so building a song never builds its notes.
+function* channelStripSteps(ch, song) {
   const head = document.createElement("div");
   head.className = "gchan";
   const used = [...new Set(ch.notes.map((n) => n.inst))]
@@ -1815,58 +1955,150 @@ function* channelGridSteps(ch, song) {
     `<span class="gchan__inst">${used}</span>`;
   gridEl.appendChild(head);
 
-  const pitches = [...new Set(ch.notes.map((n) => n.midi))].sort((a, b) => b - a);
-  if (!pitches.length) return;
-  const rows = [pitches[0] + 1, ...pitches, pitches[pitches.length - 1] - 1]
-    .filter((m, i, a) => m >= 24 && m <= 96 && a.indexOf(m) === i);
+  const rows = laneRows(ch);
+  const entry = {
+    ch, rows,
+    laneOf: new Map(rows.map((m, i) => [m, i])),
+    strip: null, layer: null, play: null, blocks: [],
+  };
+  view.strips.push(entry);
+  if (!rows.length) return;
 
-  // A step -> note index for this channel, so building a cell
-  // is a lookup, not a scan of every note in the channel.
-  const span = new Map();
-  for (const n of ch.notes) {
-    for (let s = n.step; s < n.step + n.len; s++) span.set(n.midi + ":" + s, n);
-  }
-
-  const frag = document.createDocumentFragment();
-  for (const midi of rows) {
-    const row = document.createElement("div");
-    row.className = "grow";
+  const cell = cellSize();
+  const layerW = stepX(song.steps - 1, cell) + cell;
+  const strip = document.createElement("div");
+  strip.className = "gstrip";
+  strip.style.width = `calc(3.4rem + 1px + ${layerW}px)`;
+  strip.style.height = `${rows.length * LANE_PITCH}px`;
+  const layer = document.createElement("div");
+  layer.className = "glayer";
+  layer.style.width = `${layerW}px`;
+  strip.appendChild(layer);
+  const play = document.createElement("div");
+  play.className = "gplay";
+  play.hidden = true;
+  layer.appendChild(play);
+  for (let i = 0; i < rows.length; i++) {
     const label = document.createElement("span");
     label.className = "glabel";
-    label.textContent = pitchName(midi);
-    row.appendChild(label);
-    for (let step = 0; step < song.steps; step++) {
-      const cell = document.createElement("button");
-      cell.type = "button";
-      cell.className = "cell" + (step % 4 === 0 && step > 0 ? " beat" : "");
-      cell.dataset.step = step;
-      cell.dataset.midi = midi;
-      cell.dataset.letter = ch.letter;
-      cell.setAttribute("aria-label",
-        `${pitchName(midi)}, step ${step + 1}, channel ${ch.letter}`);
-      const note = span.get(midi + ":" + step);
-      if (note) cell.classList.add(step === note.step ? "c-on" : "c-sus");
-      if (!gridState.cellsByStep.has(step)) gridState.cellsByStep.set(step, []);
-      gridState.cellsByStep.get(step).push(cell);
-      row.appendChild(cell);
-    }
-    frag.appendChild(row);
-    yield;
+    label.textContent = pitchName(rows[i]);
+    label.style.top = `${i * LANE_PITCH + 1}px`;
+    strip.appendChild(label);
   }
-  gridEl.appendChild(frag);
+  entry.strip = strip;
+  entry.layer = layer;
+  entry.play = play;
+  gridEl.appendChild(strip);
+  yield;
 }
 
+// The note layer's left edge in the panel's scroll
+// coordinates, measured from the layout (a measurement of
+// the environment, not state): every strip's layer shares
+// the one offset.
+function calibrateView() {
+  const first = view.strips.find((s) => s.layer);
+  if (!first || !panelEl) { view.originX = 0; return; }
+  const pr = panelEl.getBoundingClientRect();
+  const lr = first.layer.getBoundingClientRect();
+  view.originX = lr.left - pr.left - panelEl.clientLeft + panelEl.scrollLeft;
+}
+
+// Build the current window's blocks from the song data:
+// the notes intersecting it, each wearing the state the
+// data says (pending when its key is not in the sounding
+// render), plus ghost blocks for spans the render still
+// sounds. The blocks already on the page are removed and
+// rebuilt from the data every time; nothing is read back
+// from them.
+function materialiseWindow(force = false) {
+  const song = player.song;
+  if (!song || !panelEl || !view.strips.length) return;
+  const cell = cellSize();
+  const win = materialWindow(view, view.originX,
+    panelEl.scrollLeft, panelEl.clientWidth, song.steps, cell, force);
+  if (!win) return;
+  const [start, end] = win;
+  view.start = start;
+  view.end = end;
+  const cur = keySetOf(song);
+  const ghosts = ghostSpans(renderedKeys, cur);
+  for (const entry of view.strips) {
+    for (const b of entry.blocks) b.remove();
+    entry.blocks = [];
+    if (!entry.layer) continue;
+    const frag = document.createDocumentFragment();
+    const addBlock = (midi, step, len, cls, note) => {
+      const lane = entry.laneOf.get(midi);
+      if (lane === undefined) return;
+      if (step + len <= start || step >= end) return;
+      const span = noteSpan({ step, len }, cell);
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "gblock " + cls;
+      el.style.left = `${span.left}px`;
+      el.style.width = `${span.width}px`;
+      el.style.top = `${blockTop(lane, cell)}px`;
+      el.setAttribute("aria-label",
+        `${pitchName(midi)}, step ${step + 1}, channel ${entry.ch.letter}`);
+      if (note) blockNote.set(el, { ch: entry.ch, note });
+      frag.appendChild(el);
+      entry.blocks.push(el);
+    };
+    for (const n of entry.ch.notes) {
+      const pending = renderedKeys && !renderedKeys.has(noteKey(entry.ch.letter, n));
+      addBlock(n.midi, n.step, n.len, pending ? "c-on c-pending" : "c-on", n);
+    }
+    for (const g of ghosts) {
+      if (g.letter === entry.ch.letter) {
+        addBlock(g.midi, g.step, g.len, "c-ghost", null);
+      }
+    }
+    entry.layer.appendChild(frag);
+    if (entry.play) entry.layer.appendChild(entry.play);
+  }
+}
+
+// Scrolling and the playhead's follow both move the
+// viewport; the window follows on the next frame, and only
+// when the visible steps near the materialised edge (see
+// materialWindow).
+function scheduleMaterialise() {
+  if (view.framed) return;
+  view.framed = true;
+  requestAnimationFrame(() => {
+    view.framed = false;
+    materialiseWindow(false);
+  });
+}
+
+if (panelEl) {
+  panelEl.addEventListener("scroll", scheduleMaterialise, { passive: true });
+}
+window.addEventListener("resize", () => {
+  calibrateView();
+  materialiseWindow(true);
+});
+coarseCells.addEventListener?.("change", () => buildGrid());
+
 function paintPlayhead(step) {
-  const prev = gridState.cellsByStep.get(gridState.lastCol) || [];
-  for (const c of prev) c.classList.remove("is-now");
-  const next = gridState.cellsByStep.get(step) || [];
-  for (const c of next) c.classList.add("is-now");
-  gridState.lastCol = step;
+  // One line per strip, moved by transform. The step lives
+  // in view.step, so a strip rebuilt under a playing song
+  // can be handed its line back (buildGrid does).
+  view.step = step;
+  for (const entry of view.strips) {
+    if (!entry.play) continue;
+    if (step < 0) {
+      entry.play.hidden = true;
+      continue;
+    }
+    entry.play.hidden = false;
+    entry.play.style.transform = `translateX(${stepX(step, cellSize()) - 1}px)`;
+  }
 }
 
 function clearPlayhead() {
   paintPlayhead(-1);
-  gridState.lastCol = -1;
 }
 
 // How far in from the panel's left edge the playhead sits
@@ -1893,19 +2125,15 @@ function followPlayhead(step) {
   // clamps, and the playhead crosses the first or last stretch
   // itself, again like the demo. When playback stops the panel
   // stays where it is.
+
   if (!panelEl || step < 0) return;
-  const cells = gridState.cellsByStep.get(step);
-  if (!cells || !cells.length) return;
-  const panelRect = panelEl.getBoundingClientRect();
-  const cellRect = cells[0].getBoundingClientRect();
-  const w = cellRect.width;
-  if (!w) return;
-  const x = cellRect.left - panelRect.left + panelEl.scrollLeft;
+  const x = view.originX + stepX(step, cellSize());
   const lead = PLAYHEAD_LEAD_FRACTION * panelEl.clientWidth;
   const maxScroll = Math.max(0, panelEl.scrollWidth - panelEl.clientWidth);
   const target = Math.min(Math.max(0, x - lead), maxScroll);
   if (panelEl.scrollLeft !== target) panelEl.scrollLeft = target;
 }
+
 
 function gridEdit(ch, step, midi) {
   const notes = ch.notes;
@@ -1961,16 +2189,33 @@ function gridEdit(ch, step, midi) {
 }
 
 gridEl.addEventListener("click", (event) => {
-  const cell = event.target.closest(".cell");
-  if (!cell) return;
-  // With every channel's grid on the page, the cell names its
-  // own channel; the edit lands there, whichever grid was tapped.
-  const ch =
-    player.song?.channels.find((c) => c.letter === cell.dataset.letter) ||
-    currentChannel();
-  if (!ch) return;
+  const song = player.song;
+  if (!song) return;
+  let ch, step, midi;
+  // A tap computes its step and pitch from its position in
+  // the strip: the page holds no per-cell identity to read.
+  // A keyboard press on a note block arrives with no
+  // position (detail 0); the block's note comes from the
+  // JS-held map instead.
+  const hit = event.detail === 0 ? blockNote.get(event.target) : undefined;
+  if (hit) {
+    ch = hit.ch;
+    step = hit.note.step;
+    midi = hit.note.midi;
+  } else {
+    const layerEl = event.target.closest(".glayer");
+    if (!layerEl) return;
+    const entry = view.strips.find((s) => s.layer === layerEl);
+    if (!entry) return;
+    const rect = layerEl.getBoundingClientRect();
+    step = Math.min(song.steps - 1,
+      stepAtX(event.clientX - rect.left, cellSize()));
+    const lane = Math.floor((event.clientY - rect.top - 1) / LANE_PITCH);
+    if (lane < 0 || lane >= entry.rows.length) return;
+    midi = entry.rows[lane];
+    ch = entry.ch;
+  }
   gridState.letter = ch.letter;
-  const step = Number(cell.dataset.step), midi = Number(cell.dataset.midi);
   const before = ch.notes.find(
     (n) => n.midi === midi && step >= n.step && step < n.step + n.len);
   gridEdit(ch, step, midi);
@@ -2017,33 +2262,14 @@ let pendingRenderKeys = null;
 
 function refreshNoteStates() {
   if (!player.song || !gridEl) return;
-  const cur = keySetOf(player.song);
-  const span = new Map();
-  for (const ch of player.song.channels) {
-    for (const n of ch.notes) {
-      for (let s = n.step; s < n.step + n.len; s++) {
-        span.set(ch.letter + "|" + n.midi + "|" + s, n);
-      }
-    }
-  }
-  const ghost = new Map();
-  if (renderedKeys) {
-    for (const k of renderedKeys) {
-      if (cur.has(k)) continue;
-      const [letter, midi, step, len] = k.split("|");
-      for (let s = Number(step); s < Number(step) + Number(len); s++) {
-        ghost.set(letter + "|" + midi + "|" + s, true);
-      }
-    }
-  }
-  for (const cell of gridEl.querySelectorAll(".cell")) {
-    const id = cell.dataset.letter + "|" + cell.dataset.midi + "|" + cell.dataset.step;
-    const note = span.get(id);
-    const isPending = Boolean(
-      note && renderedKeys && !renderedKeys.has(noteKey(cell.dataset.letter, note)));
-    cell.classList.toggle("c-pending", isPending);
-    cell.classList.toggle("c-ghost", Boolean(!note && ghost.has(id)));
-  }
+  // A note's state is a fact about the data: pending when
+  // its key is not in the sounding render's key set, a ghost
+  // when a key in that set has left the song. The blocks are
+  // a projection of those facts, rebuilt by the window's
+  // materialisation, so a state change is a
+  // re-materialisation; nothing is scanned or read back from
+  // the page to decide a state.
+  materialiseWindow(true);
 }
 
 // One graph builder for every live voice: the same chain the
