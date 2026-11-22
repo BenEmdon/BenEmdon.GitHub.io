@@ -69,9 +69,9 @@ ul {
 
 a {
   color: var(--link-color);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-thickness: 1px;
+  /* Links are never underlined (Ben's rule, 2026-11-22): the blue
+     and the hover fill below carry them. */
+  text-decoration: none;
 }
 
 /* Borrowed from the terminal: hovering fills the cell instead of tinting the

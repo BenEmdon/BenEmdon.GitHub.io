@@ -721,7 +721,20 @@ html[data-boot-hide] main {
   touch-action: manipulation;
 }
 
-.music-demo__button:hover,
+/* The fill follows a real hover or a keyboard focus, never a tap:
+   a touch press leaves the hover state stuck to the button after
+   the press ends (Ben, 2026-11-22), so the hover half applies
+   only where a pointer can actually hover. The music-demo.js
+   click handlers drop the focus a pointer press leaves behind,
+   for the browsers that focus a button on tap. */
+@media (hover: hover) {
+  .music-demo__button:hover {
+    background: var(--accent-color);
+    color: var(--inverted-color);
+    border-color: var(--accent-color);
+  }
+}
+
 .music-demo__button:focus-visible {
   background: var(--accent-color);
   color: var(--inverted-color);
