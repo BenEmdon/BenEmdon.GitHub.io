@@ -673,6 +673,17 @@
   margin-block: var(--step);
 }
 
+/* The full music maker link below the demo gets the elsewhere links'
+   treatment at full row extent. Those links are row boxes, so the base
+   link fill (accent background, inverted text, on hover and on
+   focus-visible) paints the whole row, not just the words. Making this
+   link a block box gives it the same extent: its box is the full width
+   of the measure, so the same base fill spans the entire row while the
+   resting state stays a plain muted line. */
+.music-demo__full-link {
+  display: block;
+}
+
 /* Touch targets on the same terms as the music maker's own buttons
    and the footer buttons: two whole steps tall on coarse pointers. */
 @media (max-width: 34rem), (pointer: coarse) {
