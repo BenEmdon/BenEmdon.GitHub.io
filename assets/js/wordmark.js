@@ -1,14 +1,20 @@
 // A terminal can only change whole character cells, on a clock tick. The
 // wordmark follows that limit literally. Its art is a fixed grid of
-// character columns; exactly one column is lit at a time, and the lit
-// column changes only once per 75ms tick. There is no distance falloff,
-// no energy, no fade, and no sub-cell position: a column is accent or it
-// is not, then the next column takes its place.
+// character cells; a cell's colour changes only once per 75ms tick, in
+// place, as a whole-cell swap to another palette colour. There is no
+// fade, no drift, and no sub-cell rendering: a cell sits at one rung of
+// the shade ladder or at rest.
 //
-// Hover quantizes the pointer to the nearest character column. The idle
-// animation is a refresh scan: one column at a time, left to right, at
-// the same fixed tick. The original text remains the no-JS fallback; the
-// heading has its own label.
+// Hover carries a pool of light across the word. A cell's rung is its
+// distance from the pointer, measured between true cell centres, so the
+// pool crosses letter boundaries in steps instead of snapping column to
+// column the way the old single-column light did. The core takes the
+// accent, the rings around it step down the ladder toward the resting
+// ink. Pointer speed stretches the pool along the direction of travel;
+// a resting pointer keeps a tight round pool. The idle animation is the
+// same pool crossing the word on its own, one column per tick, on the
+// schedule the old refresh scan kept. The original text remains the
+// no-JS fallback; the heading has its own label.
 
 const BLOCK_GLYPH = "█";
 
@@ -87,84 +93,233 @@ export async function animateWordmark(wordmark, reduced) {
   if (!wordmark.isConnected) return;
 
   const TICK = 75;
-  const rows = wordmark.textContent.split("\n");
-  const columnCount = Math.max(...rows.map((row) => [...row].length));
-  const columns = splitWordmark(wordmark);
+  splitWordmark(wordmark);
 
+  // The pool is computed in pixels, not columns. After the split, walk
+  // the spans in document order to give every block cell its grid
+  // position; the "\n" text nodes the split leaves between span runs
+  // are the row breaks. Each cell's centre is then measured from its
+  // own box, so distance is true distance and the pool pays no
+  // attention to where one letter ends and the next begins.
+  const cells = [];
+  {
+    let x = 0;
+    let y = 0;
+    for (const node of wordmark.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        y += 1;
+        x = 0;
+      } else {
+        if (node.classList.contains("wordmark__cell")) {
+          cells.push({ el: node, x, y, cx: 0, cy: 0, rung: 0 });
+        }
+        x += 1;
+      }
+    }
+  }
+
+  const RUNG_CLASS = ["", "is-pool-1", "is-pool-2", "is-pool-3"];
   let cellWidth = 0;
-  let litColumn = -1;
-  let lastInteract = 0;
-  let scanTimer = 0;
-  let scanColumn = -1;
+  let markWidth = 0;
+  let midY = 0;
+  let coreR = 0;
+  let nearR = 0;
+  let farR = 0;
 
   // Font metrics are measured once after loading, then only on resize.
+  // The rung radii are counted in cell widths, so the pool keeps its
+  // proportions whatever size the wordmark is rendered at.
   function measure() {
     sizeCells(wordmark);
-    const first = columns.flat().find(Boolean);
-    if (first) cellWidth = first.getBoundingClientRect().width;
+    const origin = wordmark.getBoundingClientRect();
+    markWidth = origin.width;
+    for (const cell of cells) {
+      const box = cell.el.getBoundingClientRect();
+      cell.cx = box.left - origin.left + box.width / 2;
+      cell.cy = box.top - origin.top + box.height / 2;
+    }
+    if (cells.length) cellWidth = cells[0].el.getBoundingClientRect().width;
+    const middle = cells.find((cell) => cell.y === 2);
+    if (middle) midY = middle.cy;
+    coreR = cellWidth * 2.2;
+    nearR = cellWidth * 4.4;
+    farR = cellWidth * 7;
   }
   measure();
   new ResizeObserver(measure).observe(wordmark);
 
-  function setColumn(next) {
-    if (next === litColumn) return;
-    if (litColumn >= 0) {
-      for (const el of columns[litColumn]) el.classList.remove("is-lit");
-    }
-    litColumn = next;
-    if (litColumn >= 0) {
-      for (const el of columns[litColumn]) el.classList.add("is-lit");
+  let lastInteract = 0;
+  let tickTimer = 0;
+
+  // The pointer target. Events only write this; the tick reads it, so
+  // nothing on screen ever changes between ticks.
+  const pointer = { active: false, x: 0, y: 0, dirX: 1, dirY: 0, speed: 0 };
+  let lastPX = null;
+  let lastPY = null;
+  let lastPT = 0;
+
+  // The idle sweep: a pool centre crossing the word at mid height, one
+  // column per tick, on the old refresh scan's schedule.
+  let sweeping = false;
+  let sweepX = 0;
+
+  function setRung(cell, rung) {
+    if (cell.rung === rung) return;
+    if (cell.rung) cell.el.classList.remove(RUNG_CLASS[cell.rung]);
+    cell.rung = rung;
+    if (rung) cell.el.classList.add(RUNG_CLASS[rung]);
+  }
+
+  function clearPool() {
+    for (const cell of cells) setRung(cell, 0);
+  }
+
+  // One frame of the pool: every cell's rung from its distance to the
+  // centre. The distance is elliptical under way: the offset is split
+  // along and across the direction of travel, and the along part is
+  // divided by the stretch, so a fast pointer throws a long pool along
+  // its path while a slow one keeps a tight round pool.
+  function paintPool(cx, cy, dirX, dirY, speed) {
+    const stretch = 1 + Math.min(speed, 2.5) * 0.8;
+    for (const cell of cells) {
+      const dx = cell.cx - cx;
+      const dy = cell.cy - cy;
+      let dist;
+      if (stretch > 1) {
+        const along = dx * dirX + dy * dirY;
+        const across = dy * dirX - dx * dirY;
+        dist = Math.hypot(along / stretch, across);
+      } else {
+        dist = Math.hypot(dx, dy);
+      }
+      setRung(cell, dist <= coreR ? 3 : dist <= nearR ? 2 : dist <= farR ? 1 : 0);
     }
   }
 
-  function stopScan() {
-    clearInterval(scanTimer);
-    scanTimer = 0;
-    scanColumn = -1;
+  function stopTick() {
+    clearInterval(tickTimer);
+    tickTimer = 0;
+  }
+
+  function tick() {
+    if (pointer.active) {
+      // Speed bleeds off on the tick, so a pointer that stops moving
+      // watches its pool relax back to round instead of staying
+      // stretched around a position it has already left behind.
+      pointer.speed *= 0.7;
+      paintPool(pointer.x, pointer.y, pointer.dirX, pointer.dirY, pointer.speed);
+    } else if (sweeping) {
+      sweepX += cellWidth;
+      if (sweepX - farR > markWidth) {
+        sweeping = false;
+        stopTick();
+        clearPool();
+        return;
+      }
+      paintPool(sweepX, midY, 1, 0, 0);
+    } else {
+      stopTick();
+      clearPool();
+    }
+  }
+
+  function startTick() {
+    if (!tickTimer) tickTimer = setInterval(tick, TICK);
   }
 
   function sweep() {
-    if (reduced.matches || document.hidden || scanTimer) return;
-    scanColumn = -1;
-    scanTimer = setInterval(() => {
-      scanColumn += 1;
-      if (scanColumn >= columnCount) {
-        stopScan();
-        setColumn(-1);
-        return;
+    if (reduced.matches || document.hidden || sweeping || pointer.active) return;
+    sweeping = true;
+    sweepX = -farR;
+    startTick();
+  }
+
+  function notePointer(event) {
+    const origin = wordmark.getBoundingClientRect();
+    const x = event.clientX - origin.left;
+    const y = event.clientY - origin.top;
+    const now = performance.now();
+    if (lastPX !== null) {
+      const dt = Math.max(now - lastPT, 1);
+      const dx = x - lastPX;
+      const dy = y - lastPY;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 0.5) {
+        pointer.dirX = dx / dist;
+        pointer.dirY = dy / dist;
       }
-      setColumn(scanColumn);
-    }, TICK);
+      pointer.speed = pointer.speed * 0.5 + (dist / dt) * 0.5;
+    }
+    lastPX = x;
+    lastPY = y;
+    lastPT = now;
+    pointer.x = x;
+    pointer.y = y;
+  }
+
+  function releasePointer() {
+    pointer.active = false;
+    pointer.speed = 0;
+    lastPX = null;
+    stopTick();
+    clearPool();
   }
 
   wordmark.addEventListener("pointermove", (event) => {
-    if (reduced.matches || event.pointerType === "touch") return;
+    if (reduced.matches) return;
+    if (event.pointerType === "touch" && !pointer.active) return;
     lastInteract = performance.now();
-    stopScan();
-    const origin = wordmark.getBoundingClientRect();
-    const column = Math.floor((event.clientX - origin.left) / cellWidth);
-    setColumn(Math.max(0, Math.min(columnCount - 1, column)));
+    sweeping = false;
+    notePointer(event);
+    if (event.pointerType !== "touch") pointer.active = true;
+    startTick();
   }, { passive: true });
 
-  wordmark.addEventListener("pointerleave", () => setColumn(-1));
+  wordmark.addEventListener("pointerleave", (event) => {
+    if (event.pointerType !== "touch") releasePointer();
+  });
 
-  // First scan once the boot screen (about 1.3s) has cleared, then again
-  // every 20s while the page is visible and nobody has hovered recently.
+  // Touch on a hover-capable device: a tap lights the pool where the
+  // finger lands, a drag carries it, and lifting the finger clears it
+  // in one step. No-hover devices never reach this function and keep
+  // the static split instead.
+  wordmark.addEventListener("pointerdown", (event) => {
+    if (reduced.matches || event.pointerType !== "touch") return;
+    lastInteract = performance.now();
+    sweeping = false;
+    lastPX = null;
+    pointer.speed = 0;
+    notePointer(event);
+    pointer.active = true;
+    startTick();
+  }, { passive: true });
+
+  wordmark.addEventListener("pointerup", (event) => {
+    if (event.pointerType === "touch") releasePointer();
+  });
+  wordmark.addEventListener("pointercancel", (event) => {
+    if (event.pointerType === "touch") releasePointer();
+  });
+
+  // First sweep once the boot screen (about 1.3s) has cleared, then
+  // again every 20s while the page is visible and nobody has hovered
+  // recently.
   const firstSweep = setTimeout(sweep, 1600);
   const idleSweep = setInterval(() => {
     if (performance.now() - lastInteract > 12000) sweep();
   }, 20000);
 
   reduced.addEventListener("change", () => {
-    stopScan();
-    setColumn(-1);
+    sweeping = false;
+    releasePointer();
     clearTimeout(firstSweep);
     clearInterval(idleSweep);
   });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
-      stopScan();
-      setColumn(-1);
+      sweeping = false;
+      stopTick();
+      clearPool();
     }
   });
 }
