@@ -513,9 +513,13 @@ const ICON_BASE = ICON.reduce(
 
 let loaderBatch = null;
 
-// A chip whose batch was replaced under it inside its
-// minimum: the element stays in the corner for the rest of
-// its second, retired. It is not a dead remnant: its
+// A chip whose batch was replaced under it while its
+// completion was still owed: the element stays in the
+// corner for the rest of what it is owed, retired. What a
+// finished chip is owed is the later of its minimum on
+// screen, counted from its mount, and its settle hold,
+// counted from its batch's close, plus its painting
+// played out to whole. It is not a dead remnant: its
 // painting plays out to whole on the fill step while it
 // retires (a finished batch's picture completes as an
 // animation, never a snap), its count and latency are its
@@ -523,7 +527,7 @@ let loaderBatch = null;
 // batch's panel. The incoming batch adopts the element on
 // its mount frame (the usual case); the retirement timers
 // only ever fire for a batch nothing adopted.
-let retiredChip = null; // { view, batch, timer, fillTimer, minElapsed }
+let retiredChip = null; // { view, batch, timer, fillTimer, gateElapsed }
 
 // Promise-identity dedupe for the adapter: a promise with a
 // live task already is that task, whoever asks again.
@@ -547,6 +551,7 @@ function openLoaderBatch(startedAt) {
     startedAt,
     tasks: [],
     closed: false,
+    closedAt: null, // when the batch closed; the settle hold counts from here
     holdElapsed: false, // the settle hold has run out (removal also waits on the painting)
     latency: null,
     coveredByBoot: false,
@@ -609,9 +614,9 @@ function countText(batch) {
 // The batch a registration joins: the live one, a fresh one
 // when the registry is idle, and a fresh one again when the
 // previous batch has closed (the new work gets its own counts
-// and its own latency; the finished chip, if it has not yet
-// had its second on screen, stays up for the rest of it while
-// its batch is replaced under it).
+// and its own latency; the finished chip, if its completion
+// is still owed, stays up for the rest of it while its batch
+// is replaced under it).
 function currentLoaderBatch(startedAt) {
   let batch = loaderBatch;
   if (batch && batch.closed) {
@@ -1004,7 +1009,7 @@ function renderLoader(batch) {
 }
 
 // A retired chip leaves the corner when both halves of its
-// retirement are done: its second on screen has run out,
+// retirement are done: the time it was owed has run out,
 // and its painting has played out to whole on the fill
 // step. Whichever half lands last calls this. While the
 // retired batch's panel is open the chip stays, as it
@@ -1012,7 +1017,7 @@ function renderLoader(batch) {
 // its batch, through teardown.
 function finishRetiredChip(retired) {
   if (retiredChip !== retired) return;
-  if (!retired.minElapsed || retired.batch.filled < ICON_TOTAL) return;
+  if (!retired.gateElapsed || retired.batch.filled < ICON_TOTAL) return;
   if (retired.batch.panel) return;
   if (retired.fillTimer) clearInterval(retired.fillTimer);
   retired.view.el.remove();
@@ -1054,32 +1059,49 @@ function teardownLoaderBatch(batch, { keepChip = false } = {}) {
   if (batch.chip) {
     const view = batch.chip;
     batch.chip = null;
-    // A chip replaced inside its minimum (keepChip, the
-    // currentLoaderBatch path) retires: it stays on screen
-    // for the rest of its second, but finished, not frozen.
-    // Its painting plays out to whole on the fill's own
-    // step: the batch's fill timer was cleared above, so a
+    // A chip replaced while its completion is still owed
+    // (keepChip, the currentLoaderBatch path: the batch
+    // here has always closed) retires: it stays on screen,
+    // finished, not frozen, until what it is owed has run.
+    // What it is owed is the later of its minimum on
+    // screen, counted from its mount, and its settle hold,
+    // counted from the close; its painting plays out to
+    // whole across that time on the retirement's own step,
+    // and the chip leaves only once both are done. The
+    // gate was once the minimum alone, so a batch that
+    // closed after its chip's first second (a long render,
+    // above all: the music pipeline's next step always
+    // registers after the step before it has closed its
+    // batch, deep inside the hold) had its finished chip
+    // removed in one step by that registration, and the
+    // corner never showed the completion at all. Its
+    // painting plays out to whole on the fill's own step:
+    // the batch's fill timer was cleared above, so a
     // timer of the retirement's own walks the remaining
     // cells in, a step a tick, the way every fill on the
-    // site moves. A finished batch's picture completes; it
-    // never snaps to whole. Its count and latency are
+    // site moves. A finished batch's picture completes;
+    // it never snaps to whole. Its count and latency are
     // already its final ones, and its tap still opens its
-    // own batch's panel. The chip leaves once its second
-    // is up AND the picture is whole, whichever lands last
-    // (finishRetiredChip). Every other removal (the hold
-    // expiring, the visitor collapsing the panel) takes
-    // the chip in one step, as it always has.
-    const shownFor =
+    // own batch's panel. The chip leaves once its owed
+    // time is up AND the picture is whole, whichever
+    // lands last (finishRetiredChip). Every other removal
+    // (the hold expiring on an unreplaced batch, the
+    // visitor collapsing the panel) takes the chip in one
+    // step, as it always has.
+    const now = performance.now();
+    const owedUntil = Math.max(
       batch.chipMountedAt == null
-        ? SPINNER_MIN_MS
-        : performance.now() - batch.chipMountedAt;
-    if (keepChip && shownFor < SPINNER_MIN_MS) {
+        ? 0
+        : batch.chipMountedAt + SPINNER_MIN_MS,
+      batch.closedAt == null ? 0 : batch.closedAt + SPINNER_HOLD_MS
+    );
+    if (keepChip && owedUntil > now) {
       const retired = {
         view,
         batch,
         timer: null,
         fillTimer: null,
-        minElapsed: false,
+        gateElapsed: false,
       };
       retiredChip = retired;
       // The retirement steps the batch's own level, like
@@ -1097,9 +1119,9 @@ function teardownLoaderBatch(batch, { keepChip = false } = {}) {
       }, 75);
       retired.timer = setTimeout(() => {
         retired.timer = null;
-        retired.minElapsed = true;
+        retired.gateElapsed = true;
         finishRetiredChip(retired);
-      }, SPINNER_MIN_MS - shownFor);
+      }, Math.max(0, owedUntil - now));
     } else {
       view.el.remove();
     }
@@ -1109,7 +1131,8 @@ function teardownLoaderBatch(batch, { keepChip = false } = {}) {
 
 function closeLoaderBatch(batch) {
   batch.closed = true;
-  batch.latency = Math.round(performance.now() - batch.startedAt);
+  batch.closedAt = performance.now();
+  batch.latency = Math.round(batch.closedAt - batch.startedAt);
   if (!batch.chip) {
     // Never mounted. An instant batch (work already settled
     // when it registered) has nothing worth reporting on a

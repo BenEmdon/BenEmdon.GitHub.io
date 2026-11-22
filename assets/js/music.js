@@ -37,7 +37,7 @@
 import { createThemeScene } from "./theme-scene.js";
 import { animateWordmark, setUpStaticWordmark } from "./wordmark.js";
 import { renderCacheKey, readRender, writeRender, verifyRenderData } from "./render-cache.js";
-import { runBoot, registerTask } from "./boot.js?v=20261122n";
+import { runBoot, registerTask } from "./boot.js?v=20261122o";
 
 /* ---------- boot ---------- */
 
