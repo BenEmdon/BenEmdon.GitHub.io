@@ -11,10 +11,14 @@
 
   Playback is the maker's pattern: the whole loop renders once
   into a buffer, and a single looping buffer source plays it.
-  The playhead follows the maker's step maths and moves the way
-  everything on this site moves: one 16th step at a time, in
-  jumps, on a fixed grid. Under reduced motion the roll is
-  static and only the audio plays.
+  The roll shows a window of the song, not all of it: the
+  window follows the playing song in discrete jumps, one step
+  column at a time, on the fixed grid, and the playhead moves
+  the way everything on this site moves, one 16th step at a
+  time. Under reduced motion the window and the picture jump
+  by whole bars instead. The controls are play and restart,
+  and the status line says what the render cost and that the
+  song loops.
 */
 
 /* ---------- instruments ---------- */
@@ -44,18 +48,22 @@ const AUDIO_BASE = "assets/audio/";
 /* ---------- the song ---------- */
 
 // Identical to the maker's Saria's Song, header comments and all.
-const SARIA_TEXT = `; Saria's Song — The Legend of Zelda: Ocarina of Time (N64, 1998)
-; C major, quick: 140, eighth notes. Transcribed from
-; mio.t's note-for-note MIDI of the Lost Woods music
-; (vgmusic.com): the ocarina line on ocarina, the English
-; horn's top line on strings, the pizzicato bass on cello,
-; the tambourine on noise. Full form: the tune twice, then
-; the climbing middle section and its answer. The old
-; build ran at 152 with the tune only, in quarter notes.
-A @6 t140 v13 l8 o5 f a b4 f a b4 f a b o6 e d4 o5 b o6 c o5 b g16 r16 e2^8 d e g16 r16 e2^8 r8 f a b4 f a b4 f a b o6 e d4 o5 b o6 c e o5 b16 r16 g2^8 b g d16 r16 e2^8 r1 r1 r8 f g a4 b o6 c16 r16 d4 e f16 r16 g2. r1 r1 o5 f e16 r16 a g16 r16 b a16 r16 o6 c o5 b16 r16 o6 d c16 r16 e d16 r16 f e16 r16 o5 b16 o6 c16 r16 o5 a16 b1^4 r2.
-B @8 v9 l16 o3 f8 o4 c r16 c r16 c r16 o3 f8 o4 c r16 c r16 c r16 o3 f8 o4 c r16 c r16 c r16 o3 f8 o4 c r16 c r16 c r16 o3 e8 o4 c r16 c r16 c r16 o3 e8 o4 c r16 c r16 o3 c8 e8 o4 c r16 c r16 c r16 o3 e8 o4 c r16 c r16 o3 c8 f8 o4 c r16 c r16 c r16 o3 f8 o4 c r16 c r16 c r16 o3 f8 o4 c r16 c r16 c r16 o3 f8 o4 c r16 c r16 c r16 o3 e8 o4 c r16 c r16 c r16 o3 e8 o4 c r16 c r16 o3 c8 e8 o4 c r16 c r16 c r16 o3 e8 o4 c r16 c r16 o3 e8 o4 d8 e r16 f4 g8 a8 b4 o5 c8 o4 b r16 e2. d8 e8 f4 g8 a r16 b4 o5 c8 d r16 e2. o4 d8 e r16 f4 g8 a r16 b4 o5 c8 o4 b r16 e2. d8 c r16 f8 e r16 g8 f r16 a8 g r16 b8 a r16 o5 c8 o4 b r16 o5 d8 c r16 e f r16 d e1^4 r2.
-C @9 v11 l16 o3 f r4. r16 f r4. r16 f r4. r16 f r4. r16 c r4. r16 c r4. r16 c r4. r16 c r4. r16 f r4. r16 f r4. r16 f r4. r16 f r4. r16 c r4. r16 c r4. r16 c r4. r16 c r4. r16 d r16 f r16 d r16 f r16 o2 g r16 o3 d r16 o2 g r16 o3 d r16 c r16 e r16 c r16 e r16 o2 a r16 o3 c r16 o2 a r16 o3 c r16 d r16 f r16 d r16 f r16 o2 g r16 o3 d r16 o2 g r16 o3 d r16 c r16 e r16 c r16 e r16 o2 a r16 o3 c r16 o2 a r16 o3 c r16 d r16 f r16 d r16 f r16 o2 g r16 o3 d r16 o2 g r16 o3 d r16 c r16 e r16 c r16 e r16 o2 a r16 o3 c r16 o2 a r16 o3 c r16 d r16 f r16 f r8. d r16 f r16 f r8. c r16 g r16 g r8. c r16 g r16 g r8. e r16 a r8. a r16 e r16 a r8. a r16 e r16 a- r16 a- r16 e r16 e r8. e4
-D @5 v5 l16 [o3 f# r16 f# f# f# r16 f# r16 f# r16 f# f# f# r16 f# r16]8 [o3 f# r16 f# f# f# r16 f# f# f# r16 f# f# f# r16 f# f#]6 o3 f# r16 f# f# f# r8. f# r16 f# f# f# r8. o3 f# r16 f# f# f# r8. f# r16 f# f# f# r8. o3 f# r16 f# f# f# r16 f# f# f# r16 f# f# f# r16 f# f# r8 o3 f# r16 f# r16 f# r16 f# r8. f# r8.`;
+const SARIA_TEXT = `; Saria's Song: The Legend of Zelda: Ocarina of Time (N64, 1998)
+; C major, quick: 140. The Lost Woods music, from mio.t's
+; note-for-note MIDI (vgmusic.com): the ocarina line on
+; the ocarina sample, the pizzicato bass on cello, the
+; tambourine on noise. B and C carry chords now: the
+; English horn part and the pizzicato part both write
+; two-note chords through the tune, restored from The
+; Ultimate Koopa's XG transcription of the same music
+; where its lines match the shipped ones. Where the part
+; plays single notes, or the voicing differs, the shipped
+; note stands alone. Full form: the tune twice, then the
+; climbing middle section and its answer.
+A @6 t140 v13 o5 f8 a8 b4 f8 a8 b4 f8 a8 b8 o6 e8 d4 o5 b8 o6 c8 o5 b8 g16 r16 e2^8 d8 e8 g16 r16 e2^8 r8 f8 a8 b4 f8 a8 b4 f8 a8 b8 o6 e8 d4 o5 b8 o6 c8 e8 o5 b16 r16 g2^8 b8 g8 d16 r16 e2^8 r1 r1 r8 f8 g8 a4 b8 o6 c16 r16 d4 e8 f16 r16 g2. r1 r1 o5 f8 e16 r16 a8 g16 r16 b8 a16 r16 o6 c8 o5 b16 r16 o6 d8 c16 r16 e8 d16 r16 f8 e16 r16 o5 b16 o6 c16 r16 o5 a16 b1^4
+B @8 v9 o3 f8 {a>c}16 r16 {a>c}16 r16 {a>c}16 r16 f8 {a>c}16 r16 {a>c}16 r16 {a>c}16 r16 f8 {a>c}16 r16 {a>c}16 r16 {a>c}16 r16 f8 {a>c}16 r16 {a>c}16 r16 {a>c}16 r16 e8 {g>c}16 r16 {g>c}16 r16 {g>c}16 r16 e8 {g>c}16 r16 {g>c}16 r16 c8 e8 {g>c}16 r16 {g>c}16 r16 {g>c}16 r16 e8 {g>c}16 r16 {g>c}16 r16 c8 f8 {a>c}16 r16 {a>c}16 r16 {a>c}16 r16 f8 {a>c}16 r16 {a>c}16 r16 {a>c}16 r16 f8 {a>c}16 r16 {a>c}16 r16 {a>c}16 r16 f8 {a>c}16 r16 {a>c}16 r16 {a>c}16 r16 e8 {g>c}16 r16 {g>c}16 r16 {g>c}16 r16 e8 {g>c}16 r16 {g>c}16 r16 c8 e8 {g>c}16 r16 {g>c}16 r16 {g>c}16 r16 e8 {g>c}16 r16 {g>c}16 r16 e8 o4 d8 e16 r16 f4 g8 a8 b4 o5 c8 o4 b16 r16 e2. d8 e8 f4 g8 a16 r16 b4 o5 c8 d16 r16 e2. o4 d8 e16 r16 f4 g8 a16 r16 b4 o5 c8 o4 b16 r16 e2. d8 c16 r16 f8 e16 r16 g8 f16 r16 a8 g16 r16 b8 a16 r16 o5 c8 o4 b16 r16 o5 d8 c16 r16 e16 f16 r16 d16 e1^4
+C @9 v11 o3 f16 r4. r16 f16 r4. r16 f16 r4. r16 f16 r4. r16 c16 r4. r16 c16 r4. r16 c16 r4. r16 c16 r4. r16 f16 r4. r16 f16 r4. r16 f16 r4. r16 f16 r4. r16 c16 r4. r16 c16 r4. r16 c16 r4. r16 c16 r4. r16 d16 r16 {fa}16 r16 d16 r16 {fa}16 r16 o2 g16 r16 o3 {dg}16 r16 o2 g16 r16 o3 {dg}16 r16 c16 r16 {e>c}16 r16 c16 r16 {e>c}16 r16 o2 a16 r16 o3 c16 r16 o2 a16 r16 o3 c16 r16 d16 r16 {fa}16 r16 d16 r16 {fa}16 r16 o2 g16 r16 o3 {dg}16 r16 o2 g16 r16 o3 {dg}16 r16 c16 r16 {e>c}16 r16 c16 r16 {e>c}16 r16 o2 a16 r16 o3 c16 r16 o2 a16 r16 o3 c16 r16 d16 r16 {fa}16 r16 d16 r16 {fa}16 r16 o2 g16 r16 o3 {dg}16 r16 o2 g16 r16 o3 {dg}16 r16 c16 r16 {e>c}16 r16 c16 r16 {e>c}16 r16 o2 a16 r16 o3 c16 r16 o2 a16 r16 o3 c16 r16 d16 r16 {fa}16 r16 {fa}16 r8. d16 r16 {fa}16 r16 {fa}16 r8. c16 r16 {gb}16 r16 {gb}16 r8. c16 r16 {gb}16 r16 {gb}16 r8. e16 r16 {ab}16 r8. {ab}16 r16 e16 r16 {ab}16 r8. {ab}16 r16 e16 r16 {a-b}16 r16 {a-b}16 r16 {ea-b}16 r16 {ea-b}16 r8. e4
+D @5 v5 o3 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r8. f#16 r16 f#16 f#16 f#16 r8. f#16 r16 f#16 f#16 f#16 r8. f#16 r16 f#16 f#16 f#16 r8. f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 r8 f#16 r16 f#16 r16 f#16 r16 f#16 r8. f#16`;
 
 /* ---------- MML parser ---------- */
 
@@ -82,6 +90,39 @@ function tokenizeMML(body, letter, errors) {
     }
     if (ch === "<" || ch === ">") { tokens.push({ k: ch }); i++; continue; }
     if (ch === "L") { tokens.push({ k: "L" }); i++; continue; }
+    if (ch === "{") {
+      // A chord: the notes inside the braces sound together and
+      // share the one length written after the closing brace.
+      // < and > inside step the octave for the notes after them
+      // in that chord only; the channel's octave is untouched.
+      i++;
+      const tones = [];
+      let off = 0, closed = false;
+      while (i < body.length) {
+        const c = body[i];
+        if (c === "}") { closed = true; i++; break; }
+        if (c === " " || c === "\t") { i++; continue; }
+        if (c === "<") { off--; i++; continue; }
+        if (c === ">") { off++; i++; continue; }
+        const nc = c.toLowerCase();
+        if (NOTE_PC[nc] !== undefined) {
+          i++;
+          let acc = 0;
+          if (body[i] === "#" || body[i] === "+") { acc = 1; i++; }
+          else if (body[i] === "-") { acc = -1; i++; }
+          tones.push({ pc: NOTE_PC[nc], acc, off });
+          continue;
+        }
+        fail(`"${c}" cannot sit inside a chord`);
+        i++;
+      }
+      if (!closed) { fail("a { is never closed"); continue; }
+      if (!tones.length) { fail("a chord needs a note inside its braces"); continue; }
+      const len = readLength(body, () => i, (v) => { i = v; });
+      tokens.push({ k: "chord", tones, len });
+      continue;
+    }
+    if (ch === "}") { fail("a } with no {"); i++; continue; }
     if (ch === "^") {
       i++;
       const len = readLength(body, () => i, (v) => { i = v; });
@@ -198,7 +239,7 @@ function parseSong(text) {
       tokenizeMML(bodies.get(letter), letter, errors), 0, errors, letter);
     const st = { oct: 4, def: { n: 4, dots: 0 }, vol: 12, inst: 1 };
     const notes = [];
-    let step = 0, last = null;
+    let step = 0, lastGroup = null;
     for (const tok of tokens) {
       if (tok.k === "t") {
         if (tempo === null) tempo = tok.n;
@@ -223,24 +264,37 @@ function parseSong(text) {
         else if (loopStep !== step) warnings.push(`Channel ${letter}: its L sits at a different step and was ignored`);
       } else if (tok.k === "r") {
         step += lengthSteps(tok.len, st.def, warnings, letter);
-        last = null;
+        lastGroup = null;
       } else if (tok.k === "^") {
-        if (last) last.len += lengthSteps(tok.len, st.def, warnings, letter);
-        else warnings.push(`Channel ${letter}: a ^ tie with no note before it`);
-        step += 0; // the tie extends the note; the cursor already sits at its end
-        if (last) { /* cursor must advance past the extension */ }
-        // Ties extend the previous note, and the cursor moves with it:
-        // handled by tracking note end below.
-        if (last) step = Math.max(step, last.step + last.len);
+        // A tie extends every note of the last event, one note
+        // or a whole chord, and the cursor moves to its end.
+        if (lastGroup) {
+          const extra = lengthSteps(tok.len, st.def, warnings, letter);
+          for (const n of lastGroup) n.len += extra;
+          step = Math.max(step, ...lastGroup.map((n) => n.step + n.len));
+        } else warnings.push(`Channel ${letter}: a ^ tie with no note before it`);
       } else if (tok.k === "n") {
         const len = lengthSteps(tok.len, st.def, warnings, letter);
         const midi = (st.oct + 1) * 12 + tok.pc + tok.acc;
-        last = { step, len, midi, inst: st.inst, vol: st.vol };
-        notes.push(last);
+        const note = { step, len, midi, inst: st.inst, vol: st.vol };
+        notes.push(note);
+        lastGroup = [note];
+        step += len;
+      } else if (tok.k === "chord") {
+        const len = lengthSteps(tok.len, st.def, warnings, letter);
+        const group = [];
+        for (const tone of tok.tones) {
+          const midi = (st.oct + 1 + tone.off) * 12 + tone.pc + tone.acc;
+          const note = { step, len, midi, inst: st.inst, vol: st.vol };
+          notes.push(note);
+          group.push(note);
+        }
+        lastGroup = group;
         step += len;
       }
       if (step > 8192) { errors.push(`Channel ${letter}: the song runs past 8192 steps`); break; }
     }
+    notes.sort((a, b) => a.step - b.step || a.midi - b.midi);
     if (notes.length) {
       channels.push({
         letter, notes,
@@ -485,6 +539,7 @@ async function renderSong(song) {
 
 const roll = document.querySelector("[data-music-demo-roll]");
 const playButton = document.querySelector("[data-music-demo-play]");
+const restartButton = document.querySelector("[data-music-demo-restart]");
 const status = document.querySelector("[data-music-demo-status]");
 
 if (roll && playButton) {
@@ -506,7 +561,15 @@ if (roll && playButton) {
     return systemDark.matches;
   };
 
-  const STEP_W = 2, ROW_H = 3;
+  // The roll is a window, not the whole song: WINDOW_STEPS of
+  // the song are on screen at once, and the window follows the
+  // playing song in discrete jumps, one step column at a time,
+  // locked to the 16th-step grid like everything else here.
+  // The playhead sits HEAD_OFFSET steps into the window while
+  // steps remain on both sides. Under reduced motion the
+  // window (and the picture with it) moves by whole bars.
+  const STEP_W = 4, ROW_H = 3;
+  const WINDOW_STEPS = 48, HEAD_OFFSET = 12, BAR_STEPS = 16;
   let lo = Infinity, hi = -Infinity;
   for (const ch of song.channels) {
     for (const n of ch.notes) {
@@ -516,11 +579,11 @@ if (roll && playButton) {
   }
   lo -= 1; hi += 1;
   const ROWS = hi - lo + 1;
-  roll.width = song.steps * STEP_W;
+  roll.width = WINDOW_STEPS * STEP_W;
   roll.height = ROWS * ROW_H;
 
   const notesLayer = document.createElement("canvas");
-  notesLayer.width = roll.width;
+  notesLayer.width = song.steps * STEP_W;
   notesLayer.height = roll.height;
 
   function paintNotes() {
@@ -542,14 +605,29 @@ if (roll && playButton) {
     }
   }
 
+  function windowStart(step) {
+    const maxStart = Math.max(0, song.steps - WINDOW_STEPS);
+    if (step < 0) return 0;
+    if (reducedMotion.matches) {
+      const raw = step - HEAD_OFFSET;
+      if (raw <= 0) return 0;
+      return Math.min(maxStart, Math.floor(raw / BAR_STEPS) * BAR_STEPS);
+    }
+    return Math.min(maxStart, Math.max(0, step - HEAD_OFFSET));
+  }
+
   function paint(step) {
     const c = roll.getContext("2d");
+    const ws = windowStart(step);
     c.clearRect(0, 0, roll.width, roll.height);
-    c.drawImage(notesLayer, 0, 0);
-    if (step >= 0 && !reducedMotion.matches) {
+    c.drawImage(
+      notesLayer,
+      ws * STEP_W, 0, WINDOW_STEPS * STEP_W, roll.height,
+      0, 0, WINDOW_STEPS * STEP_W, roll.height);
+    if (step >= 0) {
       const pal = PALETTES[resolvedDark() ? "dark" : "light"];
       c.fillStyle = pal.head;
-      c.fillRect(step * STEP_W, 0, STEP_W, roll.height);
+      c.fillRect((step - ws) * STEP_W, 0, STEP_W, roll.height);
     }
   }
 
@@ -570,12 +648,17 @@ if (roll && playButton) {
   }
 
   function runPlayhead() {
-    let lastStep = -1;
+    let lastStep = -1, lastWin = -1;
     const tick = () => {
       if (!demo.playing) return;
       const step = stepAt(demo.ctx.currentTime);
-      if (step !== lastStep) {
+      const ws = windowStart(step);
+      // Full motion: repaint as the step changes. Reduced
+      // motion: repaint only when the window jumps a bar, so
+      // the picture moves in bar-sized steps and no more.
+      if (reducedMotion.matches ? ws !== lastWin : step !== lastStep) {
         lastStep = step;
+        lastWin = ws;
         paint(step);
       }
       demo.raf = requestAnimationFrame(tick);
@@ -589,8 +672,39 @@ if (roll && playButton) {
     playButton.disabled = disabled;
   }
 
+  function renderNote() {
+    if (status && demo.rendered) {
+      status.textContent =
+        `rendered in ${Math.round(demo.rendered.renderMs)} ms · loops`;
+    }
+  }
+
+  function startSource() {
+    if (demo.src) {
+      try { demo.src.stop(); } catch { /* already stopped */ }
+      demo.src.disconnect();
+      demo.src = null;
+    }
+    cancelAnimationFrame(demo.raf);
+    const src = demo.ctx.createBufferSource();
+    src.buffer = demo.rendered.buffer;
+    src.loop = true;
+    src.loopStart = demo.rendered.loopStart;
+    src.loopEnd = demo.rendered.dur;
+    src.connect(demo.out);
+    const startCtxTime = demo.ctx.currentTime + 0.08;
+    src.start(startCtxTime);
+    demo.src = src;
+    demo.seg = { startCtxTime, rendered: demo.rendered };
+    demo.playing = true;
+    setButton("stop", true, false);
+    renderNote();
+    runPlayhead();
+  }
+
   async function play() {
     if (demo.rendering || demo.playing) return;
+    if (demo.rendered) { startSource(); return; }
     demo.rendering = true;
     setButton("rendering…", false, true);
     if (status) status.textContent = "rendering the loop";
@@ -610,20 +724,7 @@ if (roll && playButton) {
       return;
     }
     demo.rendering = false;
-    const src = demo.ctx.createBufferSource();
-    src.buffer = demo.rendered.buffer;
-    src.loop = true;
-    src.loopStart = demo.rendered.loopStart;
-    src.loopEnd = demo.rendered.dur;
-    src.connect(demo.out);
-    const startCtxTime = demo.ctx.currentTime + 0.08;
-    src.start(startCtxTime);
-    demo.src = src;
-    demo.seg = { startCtxTime, rendered: demo.rendered };
-    demo.playing = true;
-    setButton("stop", true, false);
-    if (status) status.textContent = "Saria's Song, looping";
-    if (!reducedMotion.matches) runPlayhead();
+    startSource();
   }
 
   function stop() {
@@ -635,12 +736,19 @@ if (roll && playButton) {
     demo.playing = false;
     cancelAnimationFrame(demo.raf);
     setButton("play", false, false);
-    if (status) status.textContent = "";
+    renderNote();
     paint(-1);
   }
 
   playButton.addEventListener("click", () => {
     if (demo.playing) stop();
+    else play();
+  });
+  restartButton?.addEventListener("click", () => {
+    // Back to step 0 and playing from the top. Before the
+    // first render this is simply play, which starts at 0 too.
+    if (demo.rendering) return;
+    if (demo.rendered) startSource();
     else play();
   });
 
@@ -662,5 +770,7 @@ if (roll && playButton) {
     get ctx() { return demo.ctx; },
     get out() { return demo.out; },
     stepNow: () => (demo.seg ? stepAt(demo.ctx.currentTime) : -1),
+    winNow: () => windowStart(demo.seg && demo.playing ? stepAt(demo.ctx.currentTime) : -1),
+    windowStart,
   };
 }

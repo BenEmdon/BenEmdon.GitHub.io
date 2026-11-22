@@ -10,11 +10,12 @@
   and cannot stutter it. An edit re-renders and swaps in at the
   loop boundary.
 
-  Two voice families, matched to the eras. The 8-bit songs use the
-  fixed channels the hardware had: pulse waves at real duty cycles
-  (PeriodicWave, not plain square), a stepped 32-step triangle, and
-  LFSR noise, with stepped envelopes and no reverb. The Zelda songs
-  are sample-based, as the N64 was: short recordings from VSCO-2 CE
+  Two voice families. The chip voices are the fixed channels the
+  old hardware had: pulse waves at real duty cycles (PeriodicWave,
+  not plain square), a stepped 32-step triangle, and LFSR noise,
+  with stepped envelopes and no reverb; they carry the DS battle
+  theme's square leads, bass and drums. The rest is sample-based,
+  as the N64 was: short recordings from VSCO-2 CE
   (Versilian Studios, CC0), trimmed and encoded to small MP3s under
   assets/audio/, pitch-shifted by playbackRate, with one generated
   -impulse convolver for the N64's space. Sample roots were set by
@@ -29,6 +30,7 @@
 */
 
 import { createThemeScene } from "./theme-scene.js";
+import { animateWordmark } from "./wordmark.js";
 
 /* ---------- theme ---------- */
 
@@ -195,114 +197,124 @@ const AUDIO_BASE = "assets/audio/";
 const SONGS = {
   storms: {
     title: "Song of Storms (Zelda)",
-    text: `; Song of Storms — The Legend of Zelda: Ocarina of Time (N64, 1998)
-; D minor, 6/8 at 190. Transcribed from Metal Master's
-; note-for-note MIDI of the Windmill Hut music (vgmusic.com):
-; the organ melody on ocarina, the reed organ chords carried
-; by their top line on strings, the accordion bass on cello,
-; the tambourine on noise. The old build had this at 144 in
-; a loose 3/4 with invented harmony; the hut original is 6/8.
-A @6 t190 v13 l8 o4 d f o5 d2 o4 d f o5 d2 e4. f e f e c o4 a2 a4 d4 f g a2. a4 d4 f g e2.
-B @8 v9 l4 r4 o4 a a4. e8 b2 r4 o5 c c4. o4 e8 b2 r4 a a r4 a2 r4 a a r4 a2
-C @9 v12 l4 o2 d2. e2. f2. e2. b-2. f2. b-2. a2.
-D @5 v5 l8 r4 o3 f# r8 f# r4 f# f# f# f# r4. f# r8 f# r4 f# f# f# f# r4. f# r8 f# r4 f# f# f# f# r4. f# r8 f# r4 f# f# f# f#4`,
+    text: `; Song of Storms: The Legend of Zelda: Ocarina of Time (N64, 1998)
+; D minor, 6/8 at 190. The windmill hut music, transcribed
+; from Metal Master's note-for-note MIDI (vgmusic.com):
+; the melody on the ocarina sample, the bass on cello, the
+; tambourine on noise. B is the reed organ part on strings,
+; chords in full this time: the voicings come from The
+; Ultimate Koopa's XG transcription of the same music,
+; whose chord onsets and top notes match the line the last
+; pass shipped at 12 of 14 chords. The other two onsets are
+; single notes in that part too. Chord lengths follow it.
+A @6 t190 v13 o4 d8 f8 o5 d2 o4 d8 f8 o5 d2 e4. f8 e8 f8 e8 c8 o4 a2 a4 d4 f8 g8 a2. a4 d4 f8 g8 e2.
+B r4 @8 v9 o4 {dfa}4 {dfa}4. e8 {egb}2 r4 {fa>c}4 {fa>c}4. e8 {egb}2 r4 {dfa}4 {dfa}4 r4 {cfa}2 r4 {dfa}4 {dfa}4 r4 {c#ea}2
+C @9 v12 o2 d2. e2. f2. e2. b-2. f2. b-2. a2.
+D r4 @5 v5 o3 f#8 r8 f#8 r4 f#8 f#8 f#8 f#8 r4. f#8 r8 f#8 r4 f#8 f#8 f#8 f#8 r4. f#8 r8 f#8 r4 f#8 f#8 f#8 f#8 r4. f#8 r8 f#8 r4 f#8 f#8 f#8 f#4`,
   },
   lullaby: {
     title: "Zelda's Lullaby (Zelda)",
-    text: `; Zelda's Lullaby — The Legend of Zelda: Ocarina of Time (N64, 1998)
+    text: `; Zelda's Lullaby: The Legend of Zelda: Ocarina of Time (N64, 1998)
 ; G major, 3/4 at 110. The first full statement of Zelda's
-; Theme, transcribed from Aaron Ritchie's MIDI of the theme
-; (vgmusic.com): flute lead, the string chords split into
-; two lines (top line on strings, bottom line on cello),
-; and the harp part as written. The old build played it at
-; 100 with an ending the theme does not have; it ends here
-; on the long high D, as the theme does.
-A @7 t110 v13 l2 o4 b o5 d4 o4 a g8 a8 b o5 d4 o4 a2. b o5 d4 a g4 d c8 o4 b8 a2. b o5 d4 o4 a g8 a8 b o5 d4 o4 a2. b o5 d4 a g4 o6 d1^2
-B @8 v9 l4 o4 g2. a2. g2. a2. a2. g2. g2. f#2. g2. a2. g2. a2. a2. g2. g2. f#2.
-C @9 v11 l4 o4 e2. f#2. e2. f#2. f#2. e2. e2. d2. c2. c2. c2. c2. o3 b2. b-2. a2. o4 c2.
-D @10 v7 l8 o3 c g o4 e2 o3 c a o4 f#2 o3 c g o4 e2 o3 c a o4 f#2 o2 b o4 d a2 o2 b- o4 c# g2 o2 a o4 c g2 o3 d o4 c f#2 o3 c g o4 e2 o3 c a o4 f#2 o3 c16 r16 g o4 e2 o3 c a o4 f#2 o2 b o4 d a2 o2 b- o4 c# g2 o2 a o4 c g2 o3 d o4 c f#2`,
+; Theme, from Aaron Marshall's MIDI of the theme
+; (vgmusic.com). A is the flute, C is the harp part as
+; written (it sits on two tracks in the file). B is the
+; string section whole on one channel: violin, viola,
+; cello and bass playing their chords together. The last
+; pass split the strings into a top line and a cello line;
+; that split is retired. Ends on the long high D.
+A @7 t110 v13 o4 b2 o5 d4 o4 a2 g8 a8 b2 o5 d4 o4 a2. b2 o5 d4 a2 g4 d2 c8 o4 b8 a2. b2 o5 d4 o4 a2 g8 a8 b2 o5 d4 o4 a2. b2 o5 d4 a2 g4 o6 d1^2
+B @8 v9 o4 {eg}2. {f#a}2. {eg}2. {f#a}2. {f#a}2. {eg}2. {eg}2. {df#}2. o3 {c>ceg}2. {c>cf#a}2. {c>ceg}2. {c>cf#a}2. o2 {b>b>f#a}2. {b->b->eg}2. {a>a>eg}2. o3 {d>df#}2.
+C @10 v7 o3 c8 g8 o4 e2 o3 c8 a8 o4 f#2 o3 c8 g8 o4 e2 o3 c8 a8 o4 f#2 o2 b8 o4 d8 a2 o2 b-8 o4 c#8 g2 o2 a8 o4 c8 g2 o3 d8 o4 c8 f#2 o3 c8 g8 o4 e2 o3 c8 a8 o4 f#2 o3 c16 r16 g8 o4 e2 o3 c8 a8 o4 f#2 o2 b8 o4 d8 a2 o2 b-8 o4 c#8 g2 o2 a8 o4 c8 g2 o3 d8 o4 c8 f#2`,
   },
   saria: {
     title: "Saria's Song (Zelda)",
-    text: `; Saria's Song — The Legend of Zelda: Ocarina of Time (N64, 1998)
-; C major, quick: 140, eighth notes. Transcribed from
-; mio.t's note-for-note MIDI of the Lost Woods music
-; (vgmusic.com): the ocarina line on ocarina, the English
-; horn's top line on strings, the pizzicato bass on cello,
-; the tambourine on noise. Full form: the tune twice, then
-; the climbing middle section and its answer. The old
-; build ran at 152 with the tune only, in quarter notes.
-A @6 t140 v13 l8 o5 f a b4 f a b4 f a b o6 e d4 o5 b o6 c o5 b g16 r16 e2^8 d e g16 r16 e2^8 r8 f a b4 f a b4 f a b o6 e d4 o5 b o6 c e o5 b16 r16 g2^8 b g d16 r16 e2^8 r1 r1 r8 f g a4 b o6 c16 r16 d4 e f16 r16 g2. r1 r1 o5 f e16 r16 a g16 r16 b a16 r16 o6 c o5 b16 r16 o6 d c16 r16 e d16 r16 f e16 r16 o5 b16 o6 c16 r16 o5 a16 b1^4 r2.
-B @8 v9 l16 o3 f8 o4 c r16 c r16 c r16 o3 f8 o4 c r16 c r16 c r16 o3 f8 o4 c r16 c r16 c r16 o3 f8 o4 c r16 c r16 c r16 o3 e8 o4 c r16 c r16 c r16 o3 e8 o4 c r16 c r16 o3 c8 e8 o4 c r16 c r16 c r16 o3 e8 o4 c r16 c r16 o3 c8 f8 o4 c r16 c r16 c r16 o3 f8 o4 c r16 c r16 c r16 o3 f8 o4 c r16 c r16 c r16 o3 f8 o4 c r16 c r16 c r16 o3 e8 o4 c r16 c r16 c r16 o3 e8 o4 c r16 c r16 o3 c8 e8 o4 c r16 c r16 c r16 o3 e8 o4 c r16 c r16 o3 e8 o4 d8 e r16 f4 g8 a8 b4 o5 c8 o4 b r16 e2. d8 e8 f4 g8 a r16 b4 o5 c8 d r16 e2. o4 d8 e r16 f4 g8 a r16 b4 o5 c8 o4 b r16 e2. d8 c r16 f8 e r16 g8 f r16 a8 g r16 b8 a r16 o5 c8 o4 b r16 o5 d8 c r16 e f r16 d e1^4 r2.
-C @9 v11 l16 o3 f r4. r16 f r4. r16 f r4. r16 f r4. r16 c r4. r16 c r4. r16 c r4. r16 c r4. r16 f r4. r16 f r4. r16 f r4. r16 f r4. r16 c r4. r16 c r4. r16 c r4. r16 c r4. r16 d r16 f r16 d r16 f r16 o2 g r16 o3 d r16 o2 g r16 o3 d r16 c r16 e r16 c r16 e r16 o2 a r16 o3 c r16 o2 a r16 o3 c r16 d r16 f r16 d r16 f r16 o2 g r16 o3 d r16 o2 g r16 o3 d r16 c r16 e r16 c r16 e r16 o2 a r16 o3 c r16 o2 a r16 o3 c r16 d r16 f r16 d r16 f r16 o2 g r16 o3 d r16 o2 g r16 o3 d r16 c r16 e r16 c r16 e r16 o2 a r16 o3 c r16 o2 a r16 o3 c r16 d r16 f r16 f r8. d r16 f r16 f r8. c r16 g r16 g r8. c r16 g r16 g r8. e r16 a r8. a r16 e r16 a r8. a r16 e r16 a- r16 a- r16 e r16 e r8. e4
-D @5 v5 l16 [o3 f# r16 f# f# f# r16 f# r16 f# r16 f# f# f# r16 f# r16]8 [o3 f# r16 f# f# f# r16 f# f# f# r16 f# f# f# r16 f# f#]6 o3 f# r16 f# f# f# r8. f# r16 f# f# f# r8. o3 f# r16 f# f# f# r8. f# r16 f# f# f# r8. o3 f# r16 f# f# f# r16 f# f# f# r16 f# f# f# r16 f# f# r8 o3 f# r16 f# r16 f# r16 f# r8. f# r8.`,
+    text: `; Saria's Song: The Legend of Zelda: Ocarina of Time (N64, 1998)
+; C major, quick: 140. The Lost Woods music, from mio.t's
+; note-for-note MIDI (vgmusic.com): the ocarina line on
+; the ocarina sample, the pizzicato bass on cello, the
+; tambourine on noise. B and C carry chords now: the
+; English horn part and the pizzicato part both write
+; two-note chords through the tune, restored from The
+; Ultimate Koopa's XG transcription of the same music
+; where its lines match the shipped ones. Where the part
+; plays single notes, or the voicing differs, the shipped
+; note stands alone. Full form: the tune twice, then the
+; climbing middle section and its answer.
+A @6 t140 v13 o5 f8 a8 b4 f8 a8 b4 f8 a8 b8 o6 e8 d4 o5 b8 o6 c8 o5 b8 g16 r16 e2^8 d8 e8 g16 r16 e2^8 r8 f8 a8 b4 f8 a8 b4 f8 a8 b8 o6 e8 d4 o5 b8 o6 c8 e8 o5 b16 r16 g2^8 b8 g8 d16 r16 e2^8 r1 r1 r8 f8 g8 a4 b8 o6 c16 r16 d4 e8 f16 r16 g2. r1 r1 o5 f8 e16 r16 a8 g16 r16 b8 a16 r16 o6 c8 o5 b16 r16 o6 d8 c16 r16 e8 d16 r16 f8 e16 r16 o5 b16 o6 c16 r16 o5 a16 b1^4
+B @8 v9 o3 f8 {a>c}16 r16 {a>c}16 r16 {a>c}16 r16 f8 {a>c}16 r16 {a>c}16 r16 {a>c}16 r16 f8 {a>c}16 r16 {a>c}16 r16 {a>c}16 r16 f8 {a>c}16 r16 {a>c}16 r16 {a>c}16 r16 e8 {g>c}16 r16 {g>c}16 r16 {g>c}16 r16 e8 {g>c}16 r16 {g>c}16 r16 c8 e8 {g>c}16 r16 {g>c}16 r16 {g>c}16 r16 e8 {g>c}16 r16 {g>c}16 r16 c8 f8 {a>c}16 r16 {a>c}16 r16 {a>c}16 r16 f8 {a>c}16 r16 {a>c}16 r16 {a>c}16 r16 f8 {a>c}16 r16 {a>c}16 r16 {a>c}16 r16 f8 {a>c}16 r16 {a>c}16 r16 {a>c}16 r16 e8 {g>c}16 r16 {g>c}16 r16 {g>c}16 r16 e8 {g>c}16 r16 {g>c}16 r16 c8 e8 {g>c}16 r16 {g>c}16 r16 {g>c}16 r16 e8 {g>c}16 r16 {g>c}16 r16 e8 o4 d8 e16 r16 f4 g8 a8 b4 o5 c8 o4 b16 r16 e2. d8 e8 f4 g8 a16 r16 b4 o5 c8 d16 r16 e2. o4 d8 e16 r16 f4 g8 a16 r16 b4 o5 c8 o4 b16 r16 e2. d8 c16 r16 f8 e16 r16 g8 f16 r16 a8 g16 r16 b8 a16 r16 o5 c8 o4 b16 r16 o5 d8 c16 r16 e16 f16 r16 d16 e1^4
+C @9 v11 o3 f16 r4. r16 f16 r4. r16 f16 r4. r16 f16 r4. r16 c16 r4. r16 c16 r4. r16 c16 r4. r16 c16 r4. r16 f16 r4. r16 f16 r4. r16 f16 r4. r16 f16 r4. r16 c16 r4. r16 c16 r4. r16 c16 r4. r16 c16 r4. r16 d16 r16 {fa}16 r16 d16 r16 {fa}16 r16 o2 g16 r16 o3 {dg}16 r16 o2 g16 r16 o3 {dg}16 r16 c16 r16 {e>c}16 r16 c16 r16 {e>c}16 r16 o2 a16 r16 o3 c16 r16 o2 a16 r16 o3 c16 r16 d16 r16 {fa}16 r16 d16 r16 {fa}16 r16 o2 g16 r16 o3 {dg}16 r16 o2 g16 r16 o3 {dg}16 r16 c16 r16 {e>c}16 r16 c16 r16 {e>c}16 r16 o2 a16 r16 o3 c16 r16 o2 a16 r16 o3 c16 r16 d16 r16 {fa}16 r16 d16 r16 {fa}16 r16 o2 g16 r16 o3 {dg}16 r16 o2 g16 r16 o3 {dg}16 r16 c16 r16 {e>c}16 r16 c16 r16 {e>c}16 r16 o2 a16 r16 o3 c16 r16 o2 a16 r16 o3 c16 r16 d16 r16 {fa}16 r16 {fa}16 r8. d16 r16 {fa}16 r16 {fa}16 r8. c16 r16 {gb}16 r16 {gb}16 r8. c16 r16 {gb}16 r16 {gb}16 r8. e16 r16 {ab}16 r8. {ab}16 r16 e16 r16 {ab}16 r8. {ab}16 r16 e16 r16 {a-b}16 r16 {a-b}16 r16 {ea-b}16 r16 {ea-b}16 r8. e4
+D @5 v5 o3 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 r16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r8. f#16 r16 f#16 f#16 f#16 r8. f#16 r16 f#16 f#16 f#16 r8. f#16 r16 f#16 f#16 f#16 r8. f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 f#16 r16 f#16 f#16 r8 f#16 r16 f#16 r16 f#16 r16 f#16 r8. f#16`,
   },
-  pallet: {
-    title: "Pallet Town (Pokémon)",
-    text: `; Pallet Town — Pokémon Red & Blue (Game Boy, 1996)
-; G major, 4/4, 121 bpm, Junichi Masuda. Note-for-note
-; from Nayuki's transcription of the Game Boy score
-; (nayuki.io): channel 1 on the 50% pulse, channel 2 on
-; the 25% pulse, channel 3 (triangle wave) on the
-; triangle voice. Sixteen bars: the game's full loop.
-; The old build's lead came from a guitar tab and left
-; the score behind in the second half; this is the score.
-A @2 t121 v13 l8 o4 b8. r16 o5 c d8. r16 g d c o4 b8. r16 g o5 d8. r16 d c o4 b r8 b o5 c o4 b o5 c4^16 r4 r16 o4 b o5 c o4 a b g a f# b8. r16 o5 c d8. r16 g d c o4 b8. r16 g o5 d8. r16 d g f# e8. r16 d c8. r16 o4 a b o5 c d c o4 b a g8. r16 f#8. r16 o5 c o4 g e g o5 d o4 a f# a b g d g b g d g o5 c o4 g e g o5 d o4 a f# a b g d g b g d g a e c e a e c e a e c e a e c e f# d c d g e c e g e c e f# d c d
-B @1 v8 l8 o6 d c o5 b a o6 g e f# e d4^16 r16 o5 b g g a b o6 c4^16 r4 r16 o5 f# g a b4^16 r16 o6 c16 o5 b16 a4^16 r8. o6 d c o5 b o6 d g f# f# g e4^16 r16 d d4^16 r8. c o5 b a g o6 d c o5 b a g4^16 r4 r16 g a b o6 c4^16 r8. d4^16 r16 c o5 b4^16 r4 r16 g a b o6 c8. r16 c8. r16 d4^16 r16 c16 d16 o5 b4^16 r4 r16 b a g a4^16 r8. e8. r16 b8. r16 a4^16 r8. g8. r16 e8. r16 f#4^16 r8. g8. r16 b8. r16 b4^16 r8. a4^16 r8.
-C @4 v12 l2 o4 g4^16 r16 e4^16 r16 f#8. r16 g4^16 r16 a4^16 r16 g8. r16 e4^16 r16 f#4^16 r16 e8. r16 g4^16 r16 e4^16 r16 d8. r16 g4^16 r16 e4^16 r16 f#8. r16 g4^16 r16 a4^16 r16 g8. r16 e4^16 r16 f#4^16 r16 a8. r16 g4^16 r16 e4^16 r16 d8. r16 c4.^16 r16 d4.^16 r16 g4.^16 r16 e8. r16 d8. r16 c4.^16 r16 d4.^16 r16 g4.^16 r16 a8. r16 g8. r16 e4.^16 r16 a4.^16 r16 e4.^16 r16 g4.^16 r16 f#4.^16 r16 e4.^16 r16 e4.^16 r16 f#`,
+  twinleaf: {
+    title: "Twinleaf Town (Pokémon)",
+    text: `; Twinleaf Town: Pokémon Diamond and Pearl (DS, 2006)
+; F major, 4/4 at 80. The starting town's theme, from the
+; NinSheetMusic piano arrangement (ninsheetmusic.org),
+; split at middle C: the right hand on the flute sample,
+; the left hand, a soft pulsing accompaniment, on harp.
+; The arrangement plays its form twice; one pass is kept,
+; and it loops. The file is a human-playback export, so
+; note starts were snapped to the step grid.
+A @7 t80 v9 o4 {cg}4 o5 c4 o4 {cb}8 o5 c4 d8 o4 {c#>e}4 a-8 a8 c#8 b-4. {da}4 o5 d4 o4 {c#>c#}8 o5 d4 e8 o4 {c>f}4 f8 g4 a-4. {c>d}4 o5 c4 o4 {cg}8 o5 c4. o4 {cb}4 a4 {e>d}4 {c>e-}8 o5 e8 o4 d8 r8 o5 f4 o4 {da}4 o5 c4 o4 {db}8 c8 o5 c8 o4 d8 a4 {da-}4 g8 o5 c8 o4 b8 o5 c4 d8 e8 o4 g8 a4 o5 {cd}8 c2^8 o4 g8 o5 c8 o4 b8 o5 c4 o4 {c>d}8 o5 e8 g8 o6 c8 o4 c8 {g>>cd}8 o6 c4 o4 {f>f}8 {e>e}8 {d>d}8 o5 c4 o4 g8 o5 c8 o4 c8 o5 d4 c4. o4 g8 o5 d8 o4 c8 o5 c4 o4 g8 {ea}4 {c>c}4 o5 a4 f4 o4 b4 o5 d4 b4 a16 o4 c16 r16 d16 g16 e16 c16 r16 {e>c}16 c16 r8 {db}16 c16 o5 c8 o4 c16 r16 o5 a8 o4 {g>g}16 e16 r8 {e>e}16 c16 r8 {db-}4 a-4 a16 f16 c16 r16 {f>d}16 d16 r8 {c#>c#}8 o5 d4 o6 c16 o4 c16 o5 {da-}16 c16 o4 a-16 f16 {d>f}16 c16 r8 o5 c4 d4 e16 o4 c16 r16 e16 {g>f}8 o5 e8 c8 o4 g16 c16 d4 o5 d4 o4 {c>e-}8 o5 d8 c8 o4 a-4. o5 c1^2 o4 c8 c8 d8 d8 o5 f2 o4 {ceg}16 o5 c16 o4 c8 d8 f8
+B r8 @10 v8 o3 e8 g8 e8 r8 e8 g8 e8 r8 e8 a8 c#8 r8 e8 a8 c#8 r8 f8 a8 f8 r8 f8 a8 f8 r8 f8 a8 f8 b8 f8 a-8 f8 r8 e8 g8 e8 r8 e8 a-8 e8 r8 e8 a8 e8 r8 a-8 r8 a-8 r8 f8 a8 f8 r8 f#8 a8 f#8 r4 g8 r8 g8 b8 r8 g8 o2 g8 o3 c8 o2 b8 o3 c4 g4. o2 f#8 o3 c8 o2 b8 o3 c4 a4. o2 g8 o3 c8 o2 b8 o3 c4 r4. g8 r4 b-4 r2 c8 f8 g8 r8 g8 f8 c4 c8 d8 g8 r8 g8 d8 c8 a4 r16 a16 r16 f16 c4 o2 a16 f16 r16 c16 o1 g16 o2 d16 r16 c16 o1 g16 o2 c16 d16 f16 g16 o3 c16 d16 f16 g16 r4. g16 r8 g16 e16 r8 g16 c16 r16 g16 e16 c16 r8 b-16 g16 r8 g16 e16 r16 b-16 g16 c16 b-16 a-16 e16 c8 r8 a16 r8 a16 f16 r16 a16 f16 d16 a16 f16 d16 r4. r16 a-16 f16 c4 f4 g16 r4. r16 e16 g16 r4. c16 f16 r16 a-16 r4 o2 a-16 o3 c16 r16 f16 a-4 o2 c8 c8 f8 f8 a-8 a-8 o3 c8 c8 f8 f8 g8 g8 r1 g8`,
   },
-  center: {
-    title: "Pokémon Center (Pokémon)",
-    text: `; Pokémon Center — Pokémon Red & Blue (Game Boy, 1996)
-; D major, 4/4, 134 bpm, Junichi Masuda. Note-for-note
-; from Nayuki's transcription of the Game Boy score
-; (nayuki.io), channels mapped as in Pallet Town. The
-; full sixteen bars this time: the old build cut the
-; middle strain (bars 9 to 16) and shrank the bass to a
-; two-note figure; the real triangle part walks the
-; chord in eighths, all bar, every bar.
-A @2 t134 v13 l8 o4 f# f f# o5 d8. r16 c# o4 b a b a g f# e f# g a a e a o5 c#8. r16 o4 b a g f# a b o5 c# d c# o4 b a f# f f# o5 d8. r16 c# o4 b a b a g f# e f# g a a e a o5 c#8. r16 o4 b a g f# e d e f# g a b f# e d8. r16 e f# g a b a g8. r16 e f# g a g f# e8. r16 c# d e g f# g a b a4.^16 r16 o5 d c# o4 b8. r16 a b o5 c# d e d c#8. r16 o4 b o5 c# d e c# o4 b a8. r16 g a b g a g f# e d e f# g
-B @1 v8 l8 o5 d o4 a o5 d a8. r16 g8. r16 f# e c#4^16 r16 o4 a8. r16 e8. r16 o5 c# o4 a o5 c# f#8. r16 e8. r16 c# d f#4^16 r16 o4 a8. r16 e8. r16 o5 d o4 a o5 d a8. r16 g8. r16 f# e c#4^16 r16 o4 a8. r16 e8. r16 o5 c# o4 a o5 c# f#8. r16 e8. r16 c# d4^16 r8. o4 d8. r16 e8. r16 o5 f#4.^16 r16 a4.^16 r16 g a g f# e4.^16 r16 c#4.^16 r16 e4.^16 r16 f# g f# e d4.^16 r16 f#4.^16 r16 a4.^16 r16 g f# g a b4.^16 r16 a8. r16 g f# g4.^16 r16 f# g f# e d2
-C @4 v12 l8 o4 d f# d f# d f# g f# e a e a e a e a e a e a e a g a f# a f# a f# a g a d f# d f# d f# g f# e a e a e a e a e a e a e a g a d f# d f# d b a g f# a f# a f# a f# a g b g b g b g b e g e g e g e g f# a f# a f# a a- a f# a f# a f# a f# a g b g b g b g b e g e g e g e g f# a f# a f# g f# e`,
+  route201: {
+    title: "Route 201 (Pokémon)",
+    text: `; Route 201: Pokémon Diamond and Pearl (DS, 2006)
+; 4/4 at 120, the tempo the arrangement is marked
+; (Bouncy 120). From the NinSheetMusic piano arrangement
+; (ninsheetmusic.org), split at middle C: right hand on
+; the flute sample, left hand on harp. The arrangement
+; states its 14-bar form twice, then tags an ending; one
+; statement is kept, and it loops. Note starts were
+; snapped to the step grid (human-playback export).
+A r4 @7 t120 v9 o4 {ce}16 r4. r16 {cf}16 r4. r16 {dg}16 r4. r16 {cf}16 r8 o5 e16 {efg}8 {df}8 o4 {ce>ce}8 o5 {df}8 {ce}8 o4 {g>c}8 {ceg}8 r8 {fa}8 {eg}8 {cfa}8 {db}8 {e>c}8 o5 {cg}8 o4 {ce}16 r8 o5 f16 {fga}8 {eg}8 o4 {cf>fa}8 o5 {db}8 {e>c}8 {cg}8 o4 {ceg}8 e8 {d>f}8 {e>e}8 {f>d}8 {f#>c}8 {g>a}8 b8 {a>dg}16 o5 f16 o4 {g>e}16 o5 d16 o4 {fa>c}8 c16 r16 {fa>c}8 c16 r16 {eg>c}8 c16 r16 {eg>c}8 c16 r16 {gb>g}8 o5 f8 o4 {g>e}8 o5 d8 o4 {ce>e}8 o5 c8 o4 {eg}8 {c>d}8 {fa>c}8 c16 r16 {fa>c}8 c16 r16 {eg>c}8 c16 r16 {eg>c}8 c16 r16 {cg}8 o5 d8 o4 {g>e}8 o5 d8 o4 {cg}8 {c>c}16 g16 {e>c}16 o5 d16 o4 {c>e}16 o5 f16 o4 {c>g}16 f16 r16 c16 o5 c8 o4 {e>>c}8 d16 g16 r16 d16 {b>b}8 g8 {e>a}16 g16 o5 g16 o4 e16 o5 {ce}8 d8 o4 {c>e}16 e16 o5 c16 o4 c16 g8 {c>a}8 {f>g}16 c16 r16 f16 o5 c8 o4 {e>>c}8 a16 c16 r16 f16 {a>b}8 f8 {c>a}16 f16 o5 g8 {ce}16 o4 f16 o5 c16 o4 a-16 d8 {cg}8 {g>d}8 {b>c}8
+B @10 v8 o3 c16 r16 c16 r8. g16 r16 c16 r16 c16 r8. a16 r16 c16 r16 c16 r8. b16 r16 c16 r16 c16 r8. a16 r16 c16 r16 c16 r8. g16 r16 e16 r16 e16 r8. g16 r16 f16 r16 f16 r8. a16 r16 c16 r16 c16 r8. g16 r16 f16 r16 f16 r8. a16 r16 c16 r16 c16 r8. g16 r16 f16 r16 f16 r4 r16 g16 r16 g16 r4 r16 f8 r8 f8 r8 c8 r8 c8 r8 g8 g8 a8 {gb}8 c8 g8 r8 c8 f8 r8 f8 r8 c8 r8 c8 r8 g8 g8 a8 {gb}8 c8 g8 r8 c8 f4. f8 g4. g8 e4. {eg}8 c4. e8 f4. f8 c4. c8 f8. c16 r8 f8 g16 r16 g16 r16 a16 r16 b16`,
   },
-  lavender: {
-    title: "Lavender Town (Pokémon)",
-    text: `; Lavender Town — Pokémon Red & Blue (Game Boy, 1996)
-; G major signature over E minor, 4/4, 127 bpm, Junichi
-; Masuda. Note-for-note from Nayuki's transcription of
-; the Game Boy score (nayuki.io), channels mapped as in
-; Pallet Town, plus the pedal hi-hat on noise. Four bars
-; of the high cycle alone (C G B F#), then the full
-; texture; the L is where the game loops. The old build
-; crawled at 96 with the cycle as slow half notes. At
-; 127 the cycle is short pings, one a beat, over the
-; half-note melody and a whole-note bass.
-A @2 t127 v12 l4 r1 r1 r1 r1 L l4 o4 g4.^16 r16 g4.^16 r16 e4.^16 r16 e4.^16 r16 g8. r16 f#8. r16 e8. r16 b8. r16 c#4.^16 r16 c#4.^16 r16 g4.^16 r16 g4.^16 r16 f#4.^16 r16 f#4.^16 r16 b8. r16 g8. r16 f#8. r16 b8. r16 o5 c4.^16 r16 c4.^16 r16 o4 g4.^16 r16 g4.^16 r16 e4.^16 r16 e4.^16 r16 g8. r16 f#8. r16 e8. r16 b8. r16 c#4.^16 r16 c#4.^16 r16 g4.^16 r16 g4.^16 r16 f#4.^16 r16 f#4.^16 r16 b8. r16 g8. r16 f#8. r16 b8. r16 c4.^16 r16 c4.^16 r1 r1 r1 r1 r16
-B @1 v11 l16 [o6 c r8. g r8. b r8. f# r8.]24
-C @4 v12 l4 r1 r1 r1 r1 o4 e2.^8. r16 d2.^8. r16 c2.^8. r16 e8. r16 c8. r16 o3 b8. r16 o4 e8. r16 e2.^8. r16 d2.^8. r16 c2.^8. r16 e8. r16 c8. r16 o3 b8. r16 o4 e8. r16 e2.^8. r16 d2.^8. r16 c2.^8. r16 e8. r16 c8. r16 o3 b8. r16 o4 e8. r16 o6 b8. r16 g8. r16 f#8. r16 b8. r16 b8. r16 g8. r16 f#8. r16 b8. r16 o7 e8. r16 c8. r16 o6 b8. r16 o7 e8. r16 o4 e8. r16 g8. r16 f#8. r16 b8. r16 e2.^8. r16 d2.^8. r16 c2.^8. r16 e8. r16 c8. r16 o3 b8. r16 o4 e
-D @5 v5 l8 r1 r1 r1 r1 o2 a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4. a- r4.`,
+  jubilife: {
+    title: "Jubilife City (Pokémon)",
+    text: `; Jubilife City: Pokémon Diamond and Pearl (DS, 2006)
+; 12/8. The big city's theme, from the NinSheetMusic
+; piano arrangement (ninsheetmusic.org). The file marks
+; 207 per quarter note, which is 69 per dotted-quarter
+; beat; the song is written at t207 with the eighth note
+; as the two-step unit, so one beat is a dotted quarter.
+; Split at middle C: the right hand on the flute sample;
+; the left hand's lowest note of each chord on cello, the
+; rest of the chord on strings. The arrangement plays its
+; form twice; one pass is kept. Starts snapped to the grid.
+A @7 t207 v9 o4 {df#a}4. o5 a8 r8 o4 {df#a}8 o5 d8 r2 r8 g8 r4 f#8 r4 d8 o4 a8 r8 o5 e8 r4 o4 {c#e}4. o5 a8 r8 o4 {c#e}8 o5 d8 r2 r8 e8 r4 d8 r4 o4 a8 f#8 r8 b8 r4 a4 o5 d8 r4 d8 e4 d4 o4 a4 {df#b-}4 {df#b}8 r4 o5 d8 o4 {eg>e}8 b-8 {eg}8 o5 g8 r4 o4 {f#a>f#}4 {f#a>d}8 r4. g8 f#8 r8 o5 d8 r8 b8 o4 {a>df#a}4 {df#a}8 o5 g8 r4 o4 {gb>df#}4 {gb>d}8 o5 e8 d8 o4 {gb>de}8 {a>c#f#}4 {c#e}8 o5 d8 r4 g8 f#8 r8 d8 r8 o4 a8 o5 d8 r4 o4 a8 r4 o5 d8 r4 e8 f#8 g8 a4 d4 o4 {da}4 o5 a4 d4 o4 a4 o5 d8 r8 o4 d8 {df#a}4. o5 e8 r8 e8 o4 {f#a>f#}8 o5 e8 d8 o4 {f#>c#}4. {e>e}4 a8 {f#b}4. o5 d4 o4 a8 {a>c#}4. {c#eg>g}4 o5 c#8 o4 {a->d}4. {dfa->f}4 o5 b-8 o4 {ce-}4. o5 f4 o4 {ce-}8 o5 e-4. f8 e-8 a-8 b-4 b-8 o4 e-8 o5 a-4 o4 {ce-a-}4 o5 e-8 o4 {cb}8 o5 c8 o4 {e->c#}8 r4. o5 f4 o4 {ce-}8 o5 e-4. f8 e-8 a-8 b-4 b-8 o4 {ce-}8 o5 a-4 r4 e-8 o4 {e->c}8 o5 c#8 d8 e-4 e-4. o4 a-8 a-2 o5 c8 c#8 f4 e-4. o4 a-8 a-4 o5 c4 c#4 e-2 c8 e-8 a-4. o4 c4 c8 o5 b-4 o4 {ce-}4 o5 c8 o4 {ce->e-}8 o5 b-4. a-4. g4 a-4. a-4. g4 a-8 b-8 o6 c4. o5 g4 a-4 g4 a-8 b-4 g2^8 c8 c2. d8 r8 e8 o4 {df#a}4 o5 f#8 r4 g8 o4 {ceg}4.
+B r1 r1 r1 @8 v8 o3 a4. r4 a8 r1 r1 r4 o2 {b>d}4 {b>d}8 r4. o3 {df#}4 {df#}8 r1 r1 r1 r1 r1 r1 r4. {df#b}4. r4. {df#b-}4. r4. {df#}4 r4 b4 r4 {df#}4 r2 {gb}8 r1 r2 a4. r4. {f#b}4. r1 r2 a-4. r4 a-8 r1 r8 a-4. r4. a-4 b-8 r2 r8 a-8 r1 r2 o2 {b->c#}4. o3 b-4 {gb-}8 o2 {b->c#}4. {a->c}4. {a->c}4. r4. {a->c}4 o3 c4. c2.^8 r4. {e-g}4 {e-g}8 r4. f#4 f#8 r2. o2 {a->c}4 {a->c}8 r4. {a->c}1^2 {e-gb-}4 {gb-}2 {a->c}2. o3 {gb}1^2
+C @9 v10 o2 g4. r4 g8 r1 r8 g4. r4 g8 g8 r4 f#4. r4 f#8 r1 r8 f#4. r4 f#8 f#8 r4 e4 e8 r4. f#4 f#8 r4. b4 b8 r4. b-4 b-8 r4. g4. g8 d8 r8 g8 r8 g8 r2. g8 d8 r8 g8 r8 g8 r4. f#4 o3 a8 o2 f#8 c#8 r8 f#8 r8 f#8 r4. b8 r8 b8 r4. b-8 r8 b-8 r4. g4 g4 d4 g4 g4 b4 g4 g8 r4 g8 a4 a8 r4 a8 d4. o3 f#4. o2 d4. o3 d4. o2 a4. r4. b-4. r4. c#4. r4 c#8 r1 r8 o3 f4. r4. f4 a-8 o2 c#4. r4 c#8 r2. f4 f8 o3 a-4. o2 e-4 e-8 o3 g4 e-8 o2 c#4. c#4. f4. a-4. c#4 a-8 f4 a-8 a-4. f4. c4 c8 o3 c4 c8 o2 e-4 e-8 o3 e-4 e-8 o2 f4 o3 a-4. a-8 o2 e-4 e-8 r4. c#1^2 c4 e-2 f2. o3 c1^2 o2 b4. r4 b8 a4.`,
   },
-  mario: {
-    title: "Overworld (Mario)",
-    text: `; Overworld — Super Mario Bros. (NES, 1985)
-; C major, 4/4, Koji Kondo. Note-for-note from matOO's
-; four-channel transcription of the NES score
-; (vgmusic.com), cross-checked against KBY30's
-; "Actually Perfect" rendition, which agrees note for
-; note outside the triplet sections: square 1 on @1,
-; square 2 on @2, triangle on @4, noise on @5. Tempo
-; 200: Nintendo's own sheet music (via Nintendo Music)
-; marks the theme 100 in cut time, 200 in quarter
-; notes; the old build's 180 came from a piano book.
-; The first 32 bars play once; the L marks the loop,
-; the 72-bar body. Notes sound for at most an eighth,
-; as both transcriptions have them. The triplet
-; sections are squared to the 16th grid, the one
-; figure this text format cannot spell exactly.
-A @1 t200 v13 l8 o5 e e r8 e r8 c e r8 g r2. r8 c r4 o4 g r4 e r4 a r8 b r8 b- a r8 g r16 o5 e g r16 a r8 f g r8 e r8 c d o4 b r4 o5 c r4 o4 g r4 e r4 a r8 b r8 b- a r8 g r16 o5 e g r16 a r8 f g r8 e r8 c d o4 b r2 o5 g f# f e- r8 e r8 o4 a- a o5 c r8 o4 a o5 c d r4 g f# f e- r8 e r8 o6 c r8 c c r2 r8 o5 g f# f e- r8 e r8 o4 a- a o5 c r8 o4 a o5 c d r4 e- r4 d r4 c r1 r8 g f# f e- r8 e r8 o4 a- a o5 c r8 o4 a o5 c d r4 g f# f e- r8 e r8 o6 c r8 c c r2 r8 o5 g f# f e- r8 e r8 o4 a- a o5 c r8 o4 a o5 c d r4 e- r4 d r4 c r2. r8 c c r8 c r8 c d r8 e c r8 o4 a g r4. o5 c c r8 c r8 c d e r1 c c r8 c r8 c d r8 e c r8 o4 a g r4. L l8 o5 e e r8 e r8 c e r8 g r2. r8 c r4 o4 g r4 e r4 a r8 b r8 b- a r8 g r16 o5 e g r16 a r8 f g r8 e r8 c d o4 b r4 o5 c r4 o4 g r4 e r4 a r8 b r8 b- a r8 g r16 o5 e g r16 a r8 f g r8 e r8 c d o4 b r4 o5 e c r8 o4 g r4 a- r8 a o5 f r8 f o4 a r4. b r16 o5 a a r16 a r16 g f r16 e c r8 o4 a g r4. o5 e c r8 o4 g r4 a- r8 a o5 f r8 f o4 a r4. b o5 f r8 f f r16 e d r16 c r2. r8 e c r8 o4 g r4 a- r8 a o5 f r8 f o4 a r4. b r16 o5 a a r16 a r16 g f r16 e c r8 o4 a g r4. o5 e c r8 o4 g r4 a- r8 a o5 f r8 f o4 a r4. b o5 f r8 f f r16 e d r16 c r2. r8 c c r8 c r8 c d r8 e c r8 o4 a g r4. o5 c c r8 c r8 c d e r1 c c r8 c r8 c d r8 e c r8 o4 a g r4. o5 e e r8 e r8 c e r8 g r2. r8 e c r8 o4 g r4 a- r8 a o5 f r8 f o4 a r4. b r16 o5 a a r16 a r16 g f r16 e c r8 o4 a g r4. o5 e c r8 o4 g r4 a- r8 a o5 f r8 f o4 a r4. b o5 f r8 f f r16 e d r16 c r2. r8 c r4 o4 g r4 e r4 a r8 b r8 b- a r8 g r16 o5 e g r16 a r8 f g r8 e r8 c d o4 b r4 o5 c r4 o4 g r4 e r4 a r8 b r8 b- a r8 g r16 o5 e g r16 a r8 f g r8 e r8 c d o4 b r2 o5 g f# f e- r8 e r8 o4 a- a o5 c r8 o4 a o5 c d r4 g f# f e- r8 e r8 o6 c r8 c c r2 r8 o5 g f# f e- r8 e r8 o4 a- a o5 c r8 o4 a o5 c d r4 e- r4 d r4 c r1 r8 g f# f e- r8 e r8 o4 a- a o5 c r8 o4 a o5 c d r4 g f# f e- r8 e r8 o6 c r8 c c r2 r8 o5 g f# f e- r8 e r8 o4 a- a o5 c r8 o4 a o5 c d r4 e- r4 d r4 c r2. r8 c c r8 c r8 c d r8 e c r8 o4 a g r4. o5 c c r8 c r8 c d e r1 c c r8 c r8 c d r8 e c r8 o4 a g r4.
-B @2 v9 l8 o4 f# f# r8 f# r8 f# f# r8 b r4. g r4. e r4 c r4 o3 g r4 o4 c r8 d r8 c# c r8 c r16 g b r16 o5 c r8 o4 a b r8 a r8 e f d r4 e r4 c r4 o3 g r4 o4 c r8 d r8 c# c r8 c r16 g b r16 o5 c r8 o4 a b r8 a r8 e f d r2 o5 e e- d o4 b r8 o5 c r8 o4 e f g r8 c e f r4 o5 e e- d o4 b r8 o5 c r8 f r8 f f r2 r8 e e- d o4 b r8 o5 c r8 o4 e f g r8 c e f r4 a- r4 f r4 e r1 r8 o5 e e- d o4 b r8 o5 c r8 o4 e f g r8 c e f r4 o5 e e- d o4 b r8 o5 c r8 f r8 f f r2 r8 e e- d o4 b r8 o5 c r8 o4 e f g r8 c e f r4 a- r4 f r4 e r2. r8 a- a- r8 a- r8 a- b- r8 g e r8 e c r4. a- a- r8 a- r8 a- b- g r1 a- a- r8 a- r8 a- b- r8 g e r8 e c r4. f# f# r8 f# r8 f# f# r8 b r4. g r4. e r4 c r4 o3 g r4 o4 c r8 d r8 c# c r8 c r16 g b r16 o5 c r8 o4 a b r8 a r8 e f d r4 e r4 c r4 o3 g r4 o4 c r8 d r8 c# c r8 c r16 g b r16 o5 c r8 o4 a b r8 a r8 e f d r4 o5 c o4 a r8 e r4 e r8 f o5 c r8 c o4 f r4. g r16 o5 f f r16 f r16 e d r16 c o4 a r8 f e r4. o5 c o4 a r8 e r4 e r8 f o5 c r8 c o4 f r4. g o5 d r8 d d r16 c o4 b r16 g e r8 e c r4. o5 c o4 a r8 e r4 e r8 f o5 c r8 c o4 f r4. g r16 o5 f f r16 f r16 e d r16 c o4 a r8 f e r4. o5 c o4 a r8 e r4 e r8 f o5 c r8 c o4 f r4. g o5 d r8 d d r16 c o4 b r16 g e r8 e c r4. a- a- r8 a- r8 a- b- r8 g e r8 e c r4. a- a- r8 a- r8 a- b- g r1 a- a- r8 a- r8 a- b- r8 g e r8 e c r4. f# f# r8 f# r8 f# f# r8 b r4. g r4. o5 c o4 a r8 e r4 e r8 f o5 c r8 c o4 f r4. g r16 o5 f f r16 f r16 e d r16 c o4 a r8 f e r4. o5 c o4 a r8 e r4 e r8 f o5 c r8 c o4 f r4. g o5 d r8 d d r16 c o4 b r16 g e r8 e c r4. e r4 c r4 o3 g r4 o4 c r8 d r8 c# c r8 c r16 g b r16 o5 c r8 o4 a b r8 a r8 e f d r4 e r4 c r4 o3 g r4 o4 c r8 d r8 c# c r8 c r16 g b r16 o5 c r8 o4 a b r8 a r8 e f d r2 o5 e e- d o4 b r8 o5 c r8 o4 e f g r8 c e f r4 o5 e e- d o4 b r8 o5 c r8 f r8 f f r2 r8 e e- d o4 b r8 o5 c r8 o4 e f g r8 c e f r4 a- r4 f r4 e r1 r8 o5 e e- d o4 b r8 o5 c r8 o4 e f g r8 c e f r4 o5 e e- d o4 b r8 o5 c r8 f r8 f f r2 r8 e e- d o4 b r8 o5 c r8 o4 e f g r8 c e f r4 a- r4 f r4 e r2. r8 a- a- r8 a- r8 a- b- r8 g e r8 e c r4. a- a- r8 a- r8 a- b- g r1 a- a- r8 a- r8 a- b- r8 g e r8 e c r4.
-C @4 v13 l8 o3 d d r8 d r8 d d r8 o4 g r4. o3 g r4. g r4 e r4 c r4 f r8 g r8 f# f r8 e r16 o4 c e r16 f r8 d e r8 c r8 o3 a b g r4 g r4 e r4 c r4 f r8 g r8 f# f r8 e r16 o4 c e r16 f r8 d e r8 c r8 o3 a b g r4 c r4 g r4 o4 c r8 o3 f r4 o4 c c r8 o3 f r8 c r4 e r4 g o4 c r8 o5 g r8 g g r8 o3 g r8 c r4 g r4 o4 c r8 o3 f r4 o4 c c r8 o3 f r8 c r8 a- r4 b- r4 o4 c r4 o3 g g r8 c r8 c r4 g r4 o4 c r8 o3 f r4 o4 c c r8 o3 f r8 c r4 e r4 g o4 c r8 o5 g r8 g g r8 o3 g r8 c r4 g r4 o4 c r8 o3 f r4 o4 c c r8 o3 f r8 c r8 a- r4 b- r4 o4 c r4 o3 g g r8 c r8 o2 a- r4 o3 e- r4 a- r8 g r4 c r4 o2 g r8 a- r4 o3 e- r4 a- r8 g r4 c r4 o2 g r8 a- r4 o3 e- r4 a- r8 g r4 c r4 o2 g r8 o3 d d r8 d r8 d d r8 o4 g r4. o3 g r4. g r4 e r4 c r4 f r8 g r8 f# f r8 e r16 o4 c e r16 f r8 d e r8 c r8 o3 a b g r4 g r4 e r4 c r4 f r8 g r8 f# f r8 e r16 o4 c e r16 f r8 d e r8 c r8 o3 a b g r4 c r4 f# g r8 o4 c r8 o3 f r8 f r8 o4 c c o3 f r8 d r4 f g r8 b r8 g r8 g r8 o4 c c o3 g r8 c r4 f# g r8 o4 c r8 o3 f r8 f r8 o4 c c o3 f r8 g g r8 g g r16 a b r16 o4 c r8 o3 g r8 c r4. c r4 f# g r8 o4 c r8 o3 f r8 f r8 o4 c c o3 f r8 d r4 f g r8 b r8 g r8 g r8 o4 c c o3 g r8 c r4 f# g r8 o4 c r8 o3 f r8 f r8 o4 c c o3 f r8 g g r8 g g r16 a b r16 o4 c r8 o3 g r8 c r4. o2 a- r4 o3 e- r4 a- r8 g r4 c r4 o2 g r8 a- r4 o3 e- r4 a- r8 g r4 c r4 o2 g r8 a- r4 o3 e- r4 a- r8 g r4 c r4 o2 g r8 o3 d d r8 d r8 d d r8 o4 g r4. o3 g r4. c r4 f# g r8 o4 c r8 o3 f r8 f r8 o4 c c o3 f r8 d r4 f g r8 b r8 g r8 g r8 o4 c c o3 g r8 c r4 f# g r8 o4 c r8 o3 f r8 f r8 o4 c c o3 f r8 g g r8 g g r16 a b r16 o4 c r8 o3 g r8 c r4. g r4 e r4 c r4 f r8 g r8 f# f r8 e r16 o4 c e r16 f r8 d e r8 c r8 o3 a b g r4 g r4 e r4 c r4 f r8 g r8 f# f r8 e r16 o4 c e r16 f r8 d e r8 c r8 o3 a b g r4 c r4 g r4 o4 c r8 o3 f r4 o4 c c r8 o3 f r8 c r4 e r4 g o4 c r8 o5 g r8 g g r8 o3 g r8 c r4 g r4 o4 c r8 o3 f r4 o4 c c r8 o3 f r8 c r8 a- r4 b- r4 o4 c r4 o3 g g r8 c r8 c r4 g r4 o4 c r8 o3 f r4 o4 c c r8 o3 f r8 c r4 e r4 g o4 c r8 o5 g r8 g g r8 o3 g r8 c r4 g r4 o4 c r8 o3 f r4 o4 c c r8 o3 f r8 c r8 a- r4 b- r4 o4 c r4 o3 g g r8 c r8 o2 a- r4 o3 e- r4 a- r8 g r4 c r4 o2 g r8 a- r4 o3 e- r4 a- r8 g r4 c r4 o2 g r8 a- r4 o3 e- r4 a- r8 g r4 c r4 o2 g4
-D @5 v7 l16 o2 f#8. r16 f# r16 f#8. r16 f# r16 f#8. r16 o2 f#8. r8. f#8. r16 f# r16 f# r16 f# r16 [o2 f# r8. f# r8 f# f#8. r16 f# r8 f#]24 o2 f#8. r16 f# r16 f#8. r16 f# r16 f#8. r16 o2 f#8. r8. f#8. r16 f# r16 f# r16 f# r16 o2 f#8. r16 f# r16 f#8. r16 f# r16 f#8. r16 o2 f#8. r8. f#8. r16 f# r16 f# r16 f# r16 o2 f#8. r16 f# r16 f#8. r16 f# r16 f#8. r16 o2 f#8. r8. f#8. r16 f# r16 f# r16 f# r16 o2 f#8. r16 f# r16 f#8. r16 f# r16 f#8. r16 o2 f#8. r8. f#8. r16 f# r16 f# r16 f# r16 [o2 f# r8. f# r8 f# f#8. r16 f# r8 f#]8 [o2 f# r4 r16 f# r16 f#8. r16 f# r8.]16 o2 f#8. r16 f# r16 f#8. r16 f# r16 f#8. r16 o2 f#8. r8. f#8. r16 f# r16 f# r16 f# r16 o2 f#8. r16 f# r16 f#8. r16 f# r16 f#8. r16 o2 f#8. r8. f#8. r16 f# r16 f# r16 f# r16 o2 f#8. r16 f# r16 f#8. r16 f# r16 f#8. r16 o2 f#8. r8. f#8. r16 f# r16 f# r16 f# r16 o2 f#8. r16 f# r16 f#8. r16 f# r16 f#8. r16 o2 f#8. r8. f#8. r16 f# r16 f# r16 f# r16 [o2 f# r4 r16 f# r16 f#8. r16 f# r8.]8 [o2 f# r8. f# r8 f# f#8. r16 f# r8 f#]24 o2 f#8. r16 f# r16 f#8. r16 f# r16 f#8. r16 o2 f#8. r8. f#8. r16 f# r16 f# r16 f# r16 o2 f#8. r16 f# r16 f#8. r16 f# r16 f#8. r16 o2 f#8. r8. f#8. r16 f# r16 f# r16 f# r16 o2 f#8. r16 f# r16 f#8. r16 f# r16 f#8. r16 o2 f#8. r8. f#8. r16 f# r16 f# r16 f#8`,
+  cynthia: {
+    title: "Battle! (Champion Cynthia)",
+    text: `; Battle! (Champion Cynthia): Pokémon Diamond and Pearl (DS, 2006)
+; The champion battle theme, from a note-for-note rip of
+; the game's own sequence data (vgmusic.com). The rip's
+; first bar is silent setup; the music starts at its
+; second bar. Its intro carries a tempo curve, 171 easing
+; to 185; the song is written at the main tempo, 185.
+; After a 7-bar intro the body loops, marked by the L.
+; A: the two square-wave leads, on pulse 25%. B: the
+; string tracks, as chords. C: the triangle bass; its
+; lowest notes sit below this format's lowest octave and
+; are written an octave up. D: the drum track, on noise,
+; pitches kept as written, every hit one step long.
+; E: the harp figure. F: the horn, orchestra hit and
+; synth brass tracks, on strings. G: the agogo and guitar
+; tracks, on pulse 50%. One track in the rip duplicates
+; the bass and is not used. Note lengths were rounded to
+; the step grid: the rip's notes are legato and overlap,
+; and a channel here cannot ring past its next note.
+A @1 t185 v13 o5 a-1^1 r1 r1 r1 r1 r1 L r1 r1 r2. o4 a-16 a16 o5 d16 e-16 a-2. f#8 a-8 a8 a-8 f#8 a8 a-4 g8 f8 f#2. f8 f#8 g8 f#8 f8 g8 f#4 e8 e-8 e2^8 o4 b8 o5 e8 a-8 a8 a-8 a8 b-8 b2 f#2^8 c#8 f#8 b-8 b8 b-8 b8 o6 c8 c#2 o5 a-2. f#8 a-8 a8 a-8 f#8 a8 a-4 g8 f8 f#2. f8 f#8 g8 f#8 f8 g8 f#4 e8 e-8 o4 {b>e}8 a-8 b4. {b>e}8 {b>e}8 {a->a-}8 o5 {ea}8 o4 {b>a-}8 o5 {ea}8 {gb-}8 {a-b}8 e8 c#8 o4 b8 o5 {c#f#}8 o4 b-8 o5 c#4. {c#f#}8 {c#f#}8 o4 {b->b-}8 o5 {f#b}8 {c#b-}8 {f#b}8 {a->c}8 {b->c#}8 f#8 e-8 c#8 {e-a-}8 c8 e-4. {e->c}8 a-8 o6 {ce-}8 {cc#}8 o5 {a->c}8 o6 {c#e-}8 {cd}8 e-8 a-8 e-8 c#8 o5 {e->c}8 c8 e-4. {e->c}8 a-8 o6 {ce-}8 {cc#}8 o5 {a->c}8 {e->c#}8 {f>d}8 {a->e-}8 g8 f8 e-8 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 o4 b4. o5 f#4. e8 e-8 f#4 e8 e-8 o4 b4 a4 b4. o5 f#4. e8 e-8 f#4 e8 e-8 o4 b4 a4 o5 c4. g4. f8 e8 g4 f8 e8 c4 o4 g4 o5 c4. g4. f8 e8 g4 f8 e8 c4 o4 g4 r1 r1 r1 r1 r1 r1 r1 r1 o5 f#8 f1^1^1^2.^8
+B @8 v9 o4 {a-a}1^1 r1 r1 r1 r1 r1 r1 r1 r2. o3 {e-a-}16 {ea}16 {a>d}16 {b->e-}16 o4 {e-a-}2. {c#f#}8 {e-a-}8 {ea}8 {e-a-}8 {c#f#}8 {ea}8 {e-a-}4 {dg}8 {cf}8 {c#f#}2. {cf}8 {c#f#}8 {dg}8 {c#f#}8 {cf}8 {dg}8 {c#f#}4 o3 {b>e}8 {b->e-}8 {b>e}2^8 {ea-b}8 {b>e}8 o4 {ea-}8 {f#a}16 o3 f16 {f#>ea-}16 g16 {a->f#a}16 a16 {b->gb-}16 b16 o4 {ca-b}16 o3 b16 b-16 a16 a-16 g16 f#16 f16 {f#>c#f#}2^8 {c#b->c#}8 o4 {c#f#}8 {f#b-}8 o3 {f#>a-b}16 g16 {a->f#b-}16 a16 {b->a-b}16 b16 o4 {ca>c}16 c#16 {db->c#}16 c#16 c16 o3 b16 b-16 a16 a-16 g16 o4 {e-a-}2. {c#f#}8 {e-a-}8 {ea}8 {e-a-}8 {c#f#}8 {ea}8 {e-a-}4 {dg}8 {cf}8 {c#f#}2. {cf}8 {c#f#}8 {dg}8 {c#f#}8 {cf}8 {dg}8 {c#f#}4 o3 {b>e}8 {b->e-}8 {b>e}2^8 {ea-b}8 {b>e}8 o4 {ea-}8 {f#a}16 o3 f16 {f#>ea-}16 g16 {a->f#a}16 a16 {b->gb-}16 b16 o4 {ca-b}16 o3 b16 b-16 a16 a-16 g16 f#16 f16 {f#>c#f#}2^8 {c#b->c#}8 o4 {c#f#}8 {f#b-}8 o3 {f#>a-b}16 g16 {a->f#b-}16 a16 {b->a-b}16 b16 o4 {ca>c}16 c#16 {db->c#}16 c#16 c16 o3 b16 b-16 a16 a-16 g16 {a->e-a-}2^8 {e->ce-}8 o4 a-16 e-16 {a->c}8 o3 {a->b->c#}16 a16 {b->a->c}16 b16 o4 {cb->c#}16 c#16 {db>d}16 e-16 {e>ce-}16 e-16 d16 c#16 c16 o3 b16 b-16 a16 {a->a->c}2^8 {e->ce-}8 o4 {e-a-}8 {a->c}8 o3 {a->b->c#}16 a16 {b->a->c}16 b16 o4 {cb->c#}16 c#16 {db>d}16 e-16 {e>ce-}16 e-16 d16 c#16 c16 o3 b16 b-16 a16 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 o4 {b>cf#b}1^1 {b>f#b}16 r4 r16 {b>f#b}16 r4 r16 {b>f#b}16 r4 r16 {b>f#b}16 r4 r16 o5 {da>d}4 {cg>c}4 o4 {b>f#b}8 r2. r8 o1 {b>b}1 o4 b16 f#16 o3 a16 o4 b16 o5 b-16 f16 g16 o4 b16 o6 c#16 o5 e-16 g16 o4 g16 o5 c16 c#16 a16 o4 a16 o5 d16 g16 e16 f16 o6 e16 o5 f#16 o6 c16 o5 c16 a-16 o4 b16 o5 f#16 o4 a-16 d16 a-16 o5 d16 g16 {e-f#}8 {df}1^1^1^2.^8
+C @4 v12 o1 e-4. r8 e-4. r8 e-4. r8 o2 e-8 e8 e-8 a8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 b8 o2 e8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 e-8 o2 f8 o1 f8 o2 c#8 o1 f8 o2 c#8 o1 {f>e-}8 o2 f8 o1 c#8 o2 f8 o1 c#8 o2 f8 o1 c#8 o2 f8 o1 c#8 o2 f8 o1 f8 o2 a-8 o1 f8 o2 a-8 o1 f8 o2 a-8 o1 f8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 c#8 o2 f#8 o1 c#8 o2 f#8 o1 e-8 o2 f8 o1 f8 o2 c#8 o1 f8 o2 c#8 o1 {f>e-}8 o2 f8 o1 c#8 o2 f8 o1 c#8 o2 f8 o1 c#8 o2 f8 o1 c#8 o2 f8 o1 f8 o2 a-8 o1 f8 o2 a-8 o1 {f>>c#}8 o2 a-8 o1 {fb}8 o2 c8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 c8 o1 b-8 o2 c8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 d8 f8 d8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 d8 o1 b-8 o2 c#8 o1 b8 o2 f#8 f8 c#8 f#8 e8 a8 d8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 c8 o1 b-8 o2 c8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 d8 f8 d8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 d8 o1 b-8 o2 c#8 o1 b8 o2 f#8 f8 c#8 f#8 e8 a8 d8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 c8 o1 b-8 o2 c8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 d8 f8 d8 o1 b8 o2 f#8 f8 d8 o1 b8 o2 d8 o1 b-8 o2 c#8 o1 b8 o2 f#8 f8 c#8 f#8 e8 a8 d8 c8 g8 f#8 e-8 c8 c#8 o1 b8 o2 c#8 c8 g8 f#8 e-8 c8 e-8 f#8 e-8 c8 g8 f#8 e-8 c8 e-8 o1 b8 o2 d8 c8 g8 f#8 d8 g8 f8 b-8 e-8 c8 g8 f#8 e-8 c8 c#8 o1 b8 o2 c#8 c8 g8 f#8 e-8 c8 e-8 f#8 e-8 c8 g8 f#8 e-8 c8 e-8 o1 b8 o2 d8 c8 g8 f#8 d8 g8 f8 b-8 e-8 c8 g8 f#8 e-8 c8 c#8 o1 b8 o2 c#8 c8 g8 f#8 e-8 c8 e-8 f#8 e-8 c8 g8 f#8 e-8 c8 e-8 o1 b8 o2 d8 c8 g8 f#8 d8 g8 f8 b-8 e-8 c8 g8 f#8 e-8 c8 c#8 o1 b8 o2 c#8 c8 g8 f#8 e-8 c8 e-8 f#8 e-8 c8 g8 f#8 e-8 c8 e-8 o1 b8 o2 d8 c8 g8 f#8 d8 g8 f8 b-8 e-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8 o1 e-8 o2 a-8
+D @5 v6 o2 c16 r4. r16 c16 r4. r16 c16 r4. r16 c16 r8. c16 r8. c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {cb-}16 c16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {c>c#}16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 c16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 d16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 r16 {db-}16 r16 c16 c16 c16 c16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 {c>a}16 r16 b-16 r16 c16 r16 {b->c#}16 r16 c16 r16 b-16 r16 {c>a}16 r16 b-16 r16 c16 r16 {b->c#}16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 {c>a}16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 c16 r16 b-16 r16 {c>c#}16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 r8. c16 c16 c16 c16 {cd}16 r16 {db-}16 d16 {cd}16 r16 {db-}16 r16 {cd}16 d16 {db-}16 r16 {cd}16 r16 {db-}16 d16
+E r1 r2. r8 @10 v8 o2 a-16 a-16 o3 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r4 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r4 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r4 e-8 r8 c#8 r4 c#8 r4 c#8 r4 c#8 r4 c#8 r8 c#8 r8 o2 b8 r4 b8 r4 b8 r4 b8 r4 b8 r8 b8 r8 o3 c#8 r4 c#8 r4 c#8 r4 c#8 r4 c#8 r8 c#8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r4 e-8 r8 c#8 r4 c#8 r4 c#8 r4 c#8 r4 c#8 r8 c#8 r8 o2 b8 r4 b8 r4 b8 r4 b8 r4 b8 r8 b8 r8 o3 c#8 r4 c#8 r4 c#8 r4 c#8 r4 c#8 r8 c#8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r4 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r4 e-8 r8 e-8 r4 e-8 r4 e-8 r4 e-8 r4 e-8 r8 e-8 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r8 e-8. r8. e-8. r8. e-8. r8. e-8. r16 e-8. r8. e-8. r16 e-8. r8. e-8. r8. e-8. r8. e-8. r8. e-8. r16 e-8. r16 e-8. r8. e-8. r8. e-8. r8. e-8. r16 e-8. r8. e-8. r16 e-8. r8. e-8. r8. e-8. r8. e-8. r8. e-8. r16 e-8. r16 e-8. r8. e-8. r8. e-8. r8. e-8. r16 e-8. r8. e-8. r16 d8. r8. d8. r8. d8. r8. c#8. r8. c#8. r16 c#8. r16 e-8 r4 e-8 r4 e-8
+F @8 v10 o5 c#1^1 o3 {a->a->a-}4. r1 r1 r1 r2 r8 {a->a->a-}4. r1 r1 r1 r1 r1 r1 r1 r1 r4 b8 o4 e8 a-8 a8 a-8 a8 b-8 b2 f#2^8 c#8 f#8 b-8 b8 b-8 b8 o5 c8 c#2 r1 r1 r1 r1 r2 r8 o3 b8 o4 e8 a-8 a8 a-8 a8 b-8 b2 f#2^8 c#8 f#8 b-8 b8 b-8 b8 o5 c8 c#2 o4 a-2^8 e-8 a-8 o5 c8 c#8 c8 c#8 d8 e-2 c2^8 o4 e-8 a-8 o5 c8 c#8 c8 c#8 d8 e-2 o4 e-2 c#2 a-4. f4. c#4 a-4. f4. c#4 o3 a-1 o5 e-2 c#2 o4 a-4. b-4. a-4 o5 c#4. f4. e4 f1 o2 {b>b>b}4. r1 r2 r8 {f#>f#>f#}4. r1 r2 r8 {g>g>g}4. r1 r2 r8 o3 {c>c>c}4. r1 r2 r8 o2 {b>b>b}4. r1 r2 r8 {g>g>g}4. r1 r2 r8 o3 {c>c>c}4. r1 r2 r8 {c>c>c}4. r1 r1 r1 r2 r8 o2 {b>b>b}4 r8 {b>b>b}4 r8 {b>b>b}4 r8 {b>b>b}4 r8 o4 {d>d}4 {c>c}4 o2 {b>b>b}4 r1 r1 r1 r2. o5 e-8 d1^1^1^2.^8 o3 {a->a-}4.
+G @2 v9 o5 {e-a-}8 o4 {a>e-}8 a8 a-8 e-8 o3 b8 a-8 b8 o4 c8 e-8 a8 o5 c8 c#16 e-16 r16 f#16 a-16 a16 r16 b16 r1 r1 r1 r1 r8 o6 a-16 r16 a-16 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r2 r8. e-8 d8 e-8 r4 e8 r8 e-8 r1 c#8 c8 c#8 r4 d8 r8 c#8 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 r1 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 r8 f#8 r8 o3 b8 o4 f#8 o3 b8 o4 f#8 b8 o5 e8 o4 f#8 b8 c8 g8 c8 g8 o5 c8 r8 o4 g8 r8 c8 g8 c8 g8 o5 c8 f8 o4 g8 o5 c8 o4 c8 g8 c8 g8 o5 c8 r8 o4 g8 r8 c8 g8 c8 g8 o5 c8 f8 o4 g8 o5 c8 o4 b8 f#8 o5 c8 o6 c8 o5 d8 o6 d8 o5 f#8 a8 o6 a8 f#8 c8 d8 c8 o5 a-8 f#8 d8 o2 b16 b16 b16 b16 b16 r16 b4^16 r16 b16 b16 b16 b16 b16 b16 b4. {f>g}8 o3 f8 o2 {a>b-}8 o3 e-8 o5 b4.^16 r16 b4.^16 r16 b4.^16 r1 r1 r2 r16 o4 c8 g8 f#8 e-8 c8 c#8 o3 b8 o4 c#8 c8 g8 f#8 e-8 c8 e-8 f#8 e-8 c8 g8 f#8 e-8 c8 e-8 o3 b8 o4 d8 c8 g8 f#8 d8 g8 f8 b-8 e-8 r8 o6 a-16 r16 a-16`,
   },
 };
 
@@ -314,7 +326,10 @@ D @5 v7 l16 o2 f#8. r16 f# r16 f#8. r16 f# r16 f#8. r16 o2 f#8. r8. f#8. r16 f# 
 // the last note; o sets the octave, < and > move it; l sets the
 // default length; v volume 0-15; @ instrument; t tempo; [ ]n
 // repeats a passage; L marks where the loop restarts (everything
-// before it plays once, as an intro). ; starts a comment.
+// before it plays once, as an intro). { } sounds its notes
+// together, as one chord with one length: {ceg}4. Inside the
+// braces only note letters, accidentals, and < > octave steps
+// (local to the chord) may appear. ; starts a comment.
 // Lengths land on a 16th-note grid: that grid is the single source
 // of truth for time, which is what lets the grid view and the text
 // stay two views of one song.
@@ -341,6 +356,39 @@ function tokenizeMML(body, letter, errors) {
     }
     if (ch === "<" || ch === ">") { tokens.push({ k: ch }); i++; continue; }
     if (ch === "L") { tokens.push({ k: "L" }); i++; continue; }
+    if (ch === "{") {
+      // A chord: the notes inside the braces sound together and
+      // share the one length written after the closing brace.
+      // < and > inside step the octave for the notes after them
+      // in that chord only; the channel's octave is untouched.
+      i++;
+      const tones = [];
+      let off = 0, closed = false;
+      while (i < body.length) {
+        const c = body[i];
+        if (c === "}") { closed = true; i++; break; }
+        if (c === " " || c === "\t") { i++; continue; }
+        if (c === "<") { off--; i++; continue; }
+        if (c === ">") { off++; i++; continue; }
+        const nc = c.toLowerCase();
+        if (NOTE_PC[nc] !== undefined) {
+          i++;
+          let acc = 0;
+          if (body[i] === "#" || body[i] === "+") { acc = 1; i++; }
+          else if (body[i] === "-") { acc = -1; i++; }
+          tones.push({ pc: NOTE_PC[nc], acc, off });
+          continue;
+        }
+        fail(`"${c}" cannot sit inside a chord`);
+        i++;
+      }
+      if (!closed) { fail("a { is never closed"); continue; }
+      if (!tones.length) { fail("a chord needs a note inside its braces"); continue; }
+      const len = readLength(body, () => i, (v) => { i = v; });
+      tokens.push({ k: "chord", tones, len });
+      continue;
+    }
+    if (ch === "}") { fail("a } with no {"); i++; continue; }
     if (ch === "^") {
       i++;
       const len = readLength(body, () => i, (v) => { i = v; });
@@ -461,7 +509,7 @@ function parseSong(text) {
       tokenizeMML(bodies.get(letter), letter, errors), 0, errors, letter);
     const st = { oct: 4, def: { n: 4, dots: 0 }, vol: 12, inst: 1 };
     const notes = [];
-    let step = 0, last = null;
+    let step = 0, lastGroup = null;
     for (const tok of tokens) {
       if (tok.k === "t") {
         if (tempo === null) tempo = tok.n;
@@ -486,24 +534,37 @@ function parseSong(text) {
         else if (loopStep !== step) warnings.push(`Channel ${letter}: its L sits at a different step and was ignored`);
       } else if (tok.k === "r") {
         step += lengthSteps(tok.len, st.def, warnings, letter);
-        last = null;
+        lastGroup = null;
       } else if (tok.k === "^") {
-        if (last) last.len += lengthSteps(tok.len, st.def, warnings, letter);
-        else warnings.push(`Channel ${letter}: a ^ tie with no note before it`);
-        step += 0; // the tie extends the note; the cursor already sits at its end
-        if (last) { /* cursor must advance past the extension */ }
-        // Ties extend the previous note, and the cursor moves with it:
-        // handled by tracking note end below.
-        if (last) step = Math.max(step, last.step + last.len);
+        // A tie extends every note of the last event, one note
+        // or a whole chord, and the cursor moves to its end.
+        if (lastGroup) {
+          const extra = lengthSteps(tok.len, st.def, warnings, letter);
+          for (const n of lastGroup) n.len += extra;
+          step = Math.max(step, ...lastGroup.map((n) => n.step + n.len));
+        } else warnings.push(`Channel ${letter}: a ^ tie with no note before it`);
       } else if (tok.k === "n") {
         const len = lengthSteps(tok.len, st.def, warnings, letter);
         const midi = (st.oct + 1) * 12 + tok.pc + tok.acc;
-        last = { step, len, midi, inst: st.inst, vol: st.vol };
-        notes.push(last);
+        const note = { step, len, midi, inst: st.inst, vol: st.vol };
+        notes.push(note);
+        lastGroup = [note];
+        step += len;
+      } else if (tok.k === "chord") {
+        const len = lengthSteps(tok.len, st.def, warnings, letter);
+        const group = [];
+        for (const tone of tok.tones) {
+          const midi = (st.oct + 1 + tone.off) * 12 + tone.pc + tone.acc;
+          const note = { step, len, midi, inst: st.inst, vol: st.vol };
+          notes.push(note);
+          group.push(note);
+        }
+        lastGroup = group;
         step += len;
       }
       if (step > 8192) { errors.push(`Channel ${letter}: the song runs past 8192 steps`); break; }
     }
+    notes.sort((a, b) => a.step - b.step || a.midi - b.midi);
     if (notes.length) {
       channels.push({
         letter, notes,
@@ -554,18 +615,59 @@ function channelToMML(letter, ch, tempo, withTempo) {
     for (let i = 1; i < chunks.length; i++) s += tie ? `^${chunks[i]}` : ` ${base}${chunks[i]}`;
     return s;
   };
-  for (const n of ch.notes) {
-    if (n.step > cursor) {
-      parts.push(emitLen("r", n.step - cursor, false));
-      cursor = n.step;
+  // Notes are written out one step-group at a time: everything
+  // sounding from the same step is one event, spelled as a chord
+  // when it holds more than one pitch. When a group's tones run
+  // for different lengths, the group takes the shortest length
+  // and the longer tones re-enter as a fresh group where the
+  // short ones end, so the text re-reads as the same events in
+  // the same groups.
+  const pending = ch.notes.map((n) => ({ ...n }));
+  const byStepThenPitch = (a, b) => a.step - b.step || a.midi - b.midi;
+  pending.sort(byStepThenPitch);
+  while (pending.length) {
+    const step = pending[0].step;
+    const group = [];
+    for (let i = pending.length - 1; i >= 0; i--) {
+      if (pending[i].step === step) group.unshift(pending.splice(i, 1)[0]);
     }
-    if (n.inst !== curInst) { parts.push(`@${n.inst}`); curInst = n.inst; }
+    group.sort((a, b) => a.midi - b.midi);
+    if (step > cursor) {
+      parts.push(emitLen("r", step - cursor, false));
+      cursor = step;
+    }
+    const first = group[0];
+    if (first.inst !== curInst) { parts.push(`@${first.inst}`); curInst = first.inst; }
     if (withTempo && tempo !== null) { parts.push(`t${tempo}`); tempo = null; }
-    if (n.vol !== curVol) { parts.push(`v${n.vol}`); curVol = n.vol; }
-    const oct = Math.floor(n.midi / 12) - 1;
-    if (oct !== curOct) { parts.push(`o${oct}`); curOct = oct; }
-    parts.push(emitLen(PC_NAME[n.midi % 12], n.len, true));
-    cursor = n.step + n.len;
+    if (first.vol !== curVol) { parts.push(`v${first.vol}`); curVol = first.vol; }
+    const minLen = Math.min(...group.map((n) => n.len));
+    if (group.length === 1) {
+      const oct = Math.floor(first.midi / 12) - 1;
+      if (oct !== curOct) { parts.push(`o${oct}`); curOct = oct; }
+      parts.push(emitLen(PC_NAME[first.midi % 12], minLen, true));
+    } else {
+      // The chord's home octave is its lowest tone's; the tones
+      // ascend from there, stepping octaves inside the braces.
+      // The channel's own octave is the home octave afterwards:
+      // in-brace steps are local, as the parser reads them.
+      const baseOct = Math.floor(group[0].midi / 12) - 1;
+      if (baseOct !== curOct) { parts.push(`o${baseOct}`); curOct = baseOct; }
+      let inner = "", prevOct = baseOct;
+      for (const n of group) {
+        const oct = Math.floor(n.midi / 12) - 1;
+        while (prevOct < oct) { inner += ">"; prevOct++; }
+        while (prevOct > oct) { inner += "<"; prevOct--; }
+        inner += PC_NAME[n.midi % 12];
+      }
+      parts.push(emitLen(`{${inner}}`, minLen, true));
+    }
+    cursor = Math.max(cursor, step + minLen);
+    for (const n of group) {
+      if (n.len > minLen) {
+        pending.push({ ...n, step: step + minLen, len: n.len - minLen });
+      }
+    }
+    pending.sort(byStepThenPitch);
   }
   return parts.join(" ");
 }
@@ -1105,12 +1207,16 @@ function gridEdit(ch, step, midi) {
       };
       notes.push(fresh);
     }
-    // A channel is one voice: anything else under the new span is
-    // cut back or removed, and the new note stops at the next one.
+    // A channel is one voice, but a voice may sound a chord:
+    // notes that start together are partners, and a new span
+    // never cuts a partner that shares its first step. Anything
+    // else under the new span is cut back or removed, and the
+    // new note stops at the next one.
     const s = fresh.step, e = fresh.step + fresh.len;
     for (let i = notes.length - 1; i >= 0; i--) {
       const n = notes[i];
       if (n === fresh) continue;
+      if (n.step === s) continue;
       if (n.step < e && n.step + n.len > s) {
         if (n.step >= s) notes.splice(i, 1);
         else n.len = s - n.step;
@@ -1122,7 +1228,7 @@ function gridEdit(ch, step, midi) {
     if (next && fresh.step + fresh.len > next.step) {
       fresh.len = Math.max(1, next.step - fresh.step);
     }
-    notes.sort((a, b) => a.step - b.step);
+    notes.sort((a, b) => a.step - b.step || a.midi - b.midi);
   }
   ch.steps = notes.reduce((mx, n) => Math.max(mx, n.step + n.len), 0);
   player.song.steps = player.song.channels
@@ -1240,6 +1346,33 @@ textEl.addEventListener("input", () => {
 window.addEventListener("pointerdown", () => loadSamples(), { once: true });
 
 /* ----- go ----- */
+
+// The wordmark gets the home page's own treatment, wired the
+// way main.js wires it: the stepped boot reveal starts once
+// the block-glyph font is ready, and wordmark.js splits the
+// art into fixed cells and runs its scan on pointer devices.
+// On touch devices the scan never runs and the splitter in
+// wordmark.js stays out, so the split happens here instead,
+// statically: the same .wordmark__cell spans on the same
+// fixed grid, which is what keeps the letters from merging
+// together in a phone browser.
+const wordmark = document.querySelector(".wordmark");
+document.fonts.ready.then(() => wordmark?.classList.add("is-booting"));
+animateWordmark(wordmark, window.matchMedia("(prefers-reduced-motion: reduce)"));
+if (wordmark && !window.matchMedia("(hover: hover)").matches) {
+  const fragment = document.createDocumentFragment();
+  wordmark.textContent.split("\n").forEach((row, y, rows) => {
+    for (const glyph of row) {
+      if (glyph === " ") { fragment.append(" "); continue; }
+      const el = document.createElement("span");
+      el.className = "wordmark__cell";
+      el.textContent = glyph;
+      fragment.append(el);
+    }
+    if (y < rows.length - 1) fragment.append("\n");
+  });
+  wordmark.replaceChildren(fragment);
+}
 
 setUpThemeToggle();
 setUpKeys();
