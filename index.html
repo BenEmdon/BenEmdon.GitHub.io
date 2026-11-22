@@ -77,7 +77,7 @@
 
     <link rel="stylesheet" href="assets/css/tokens.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/base.css" />
-    <link rel="stylesheet" href="assets/css/layout.css?v=20261122" />
+    <link rel="stylesheet" href="assets/css/layout.css?v=20261122b" />
     <link rel="stylesheet" href="assets/css/components.css?v=20261114f" />
 
     <!-- Visit counting: GoatCounter. No cookies, no fingerprinting, no
@@ -149,6 +149,12 @@
         </button>
         <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
       </div>
+
+      <nav class="pagenav" aria-label="Pages">
+        <a href="index.html" aria-current="page">home</a>
+        <a href="mochi.html">mochi</a>
+        <a href="music.html">music</a>
+      </nav>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
@@ -405,6 +411,11 @@
 
       <!-- The clock ships hidden and is unwrapped by main.js, so a visitor
            without JS sees "Ottawa, ON" rather than a dead --:--. -->
+      <nav class="pagenav" aria-label="Pages (bottom)">
+        <a href="index.html" aria-current="page">home</a>
+        <a href="mochi.html">mochi</a>
+        <a href="music.html">music</a>
+      </nav>
       <footer class="footer">
         <p>
           Ottawa, ON<span class="clock" data-clock hidden
@@ -444,7 +455,6 @@
           </div>
         </div>
       </footer>
-
     </main>
 
     <!-- Ships hidden and stays hidden without JS, since every key it lists is
