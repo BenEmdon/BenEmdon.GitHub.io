@@ -433,13 +433,18 @@ function setUp() {
   const SPINNER = [..."⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"];
 
   // No schedule at all: a line resolves when its task resolves, and the
-  // screen leaves when the last task does. The only number left is the
-  // per-task timeout, the safety valve: a task that hangs (a stalled
-  // image, a wedged audio render) reports "still working" at the
-  // timeout and stops holding the screen, while the work itself
-  // carries on in the background and the page underneath stays usable.
-  // The skip is still there too: any key or click cuts to the page.
+  // screen leaves when the last task does, subject to one floor: the
+  // screen stays at least BOOT_FLOOR_MS once it has appeared, so a fully
+  // cached load does not flash past unread. The floor pads nothing a
+  // line quotes: every duration stays the task's real measured time.
+  // The other number is the per-task timeout, the safety valve: a task
+  // that hangs (a stalled image, a wedged audio render) reports "still
+  // working" at the timeout and stops holding the screen, while the
+  // work itself carries on in the background and the page underneath
+  // stays usable. The skip ignores the floor too: any key or click
+  // cuts to the page at once.
   const TASK_TIMEOUT = 12000;
+  const BOOT_FLOOR_MS = 750;
 
   const boot = document.querySelector("[data-boot]");
 
@@ -451,6 +456,8 @@ function setUp() {
     const logo = wordmark.cloneNode(true);
     boot.querySelector("[data-boot-logo]").append(logo);
     boot.hidden = false;
+    // The floor is measured from the moment the screen appears.
+    const bootShownAt = performance.now();
 
     // The clone is taken before the block glyphs have loaded, since they are
     // served display=block and the boot starts immediately. Rather than hold
@@ -519,7 +526,10 @@ function setUp() {
       if (progressFilled >= PROGRESS_CELLS) clearInterval(fill);
     }, 75);
 
+    let bootDone = false;
     function done() {
+      if (bootDone) return;
+      bootDone = true;
       clearInterval(spin);
       clearInterval(grow);
       clearInterval(fill);
@@ -555,7 +565,9 @@ function setUp() {
         label: "rendering music",
         promise: whenBootTask("music"),
         format: (r) =>
-          r.fromCache ? "from cache" : `rendered in ${Math.round(r.renderMs)} ms`,
+          r.fromCache
+            ? `from cache · ${Math.round(r.ms)} ms`
+            : `rendered in ${Math.round(r.renderMs)} ms`,
       },
       {
         label: "syncing clock",
@@ -568,7 +580,13 @@ function setUp() {
     const settle = () => {
       settled += 1;
       progressTarget = settled * (PROGRESS_CELLS / BOOT_TASKS.length);
-      if (settled === BOOT_TASKS.length) done();
+      if (settled !== BOOT_TASKS.length) return;
+      // Leave at max(the floor, real completion): hold only for what is
+      // left of the floor, never past it once the work is done. The
+      // scheduled exit sits in timers, so a skip still clears it.
+      const remaining = BOOT_FLOOR_MS - (performance.now() - bootShownAt);
+      if (remaining > 0) timers.push(setTimeout(done, remaining));
+      else done();
     };
 
     for (const task of BOOT_TASKS) {
