@@ -583,10 +583,11 @@
 /* ---------- page nav ---------- */
 
 /* One quiet row of page links, used twice on every page: under the
-   masthead scene control, and below the footer as its own element.
-   The footer system line keeps its own markup and spacing; the
-   bottom row never sits inside it. Plain inline flow, so a fourth
-   destination later simply extends the row. */
+   masthead scene control, and above the footer as its own element,
+   so the status line is the last thing on the page. The footer
+   system line keeps its own markup and spacing; the bottom row
+   never sits inside it. Plain inline flow, so a fourth destination
+   later simply extends the row. */
 .pagenav {
   display: flex;
   flex-wrap: wrap;
@@ -606,10 +607,15 @@
 }
 
 .pagenav a:hover,
-.pagenav a:focus-visible {
-  color: var(--accent-color);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.pagenav a:focus-visible,
+.pagenav a:active {
+  /* The base link rule fills the cell with the accent colour in
+     these states; the text flips to the inverted colour to match,
+     the same pairing the full-row links use. Accent text on the
+     accent fill would vanish. */
+  background: var(--accent-color);
+  color: var(--inverted-color);
+  text-decoration: none;
 }
 
 .pagenav a[aria-current="page"] {
