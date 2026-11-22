@@ -43,7 +43,7 @@
     <link rel="stylesheet" href="assets/css/tokens.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="assets/css/layout.css?v=20261122c" />
-    <link rel="stylesheet" href="assets/css/components.css?v=20261122c" />
+    <link rel="stylesheet" href="assets/css/components.css?v=20261122d" />
     <link rel="stylesheet" href="assets/css/music.css?v=20261122-view" />
 
     <script>
@@ -63,12 +63,6 @@
   </head>
 
   <body>
-    <!-- The indicator's slot: a slim space reserved at the top of the
-         layout on every page, whether or not the indicator runs on this
-         load. boot.js squeezes the bar into it on follow-up loads; the
-         rest of the time it sits empty. -->
-    <div class="boot-slot" data-boot-slot aria-hidden="true"></div>
-
     <!-- The boot screen. Ships hidden and empty: without JS it never appears,
          and a crawler is handed the real page rather than a splash. boot.js
          fills it and takes it away again. aria-hidden because it is theatre;
@@ -432,7 +426,7 @@ the new recording takes over</pre>
       </ul>
     </div>
 
-    <script type="module" src="assets/js/music.js?v=20261122-opt"></script>
+    <script type="module" src="assets/js/music.js?v=20261122-loader"></script>
     <script type="module" src="assets/js/keycaps.js"></script>
   </body>
 </html>
