@@ -579,3 +579,61 @@
     gap: 0;
   }
 }
+
+/* ---------- page nav ---------- */
+
+/* One quiet row of page links, used twice on every page: under the
+   masthead scene control, and above the footer as its own element,
+   so the status line is the last thing on the page. The footer
+   system line keeps its own markup and spacing; the bottom row
+   never sits inside it. Plain inline flow, so a fourth destination
+   later simply extends the row. */
+.pagenav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--step);
+  font-size: var(--text-small);
+  line-height: var(--step);
+}
+
+.pagenav a {
+  color: var(--muted-color);
+  text-decoration: none;
+  /* A 48px hit area around a one-step line: the padding reaches into
+     the step of space on either side, so the row itself stays one
+     step tall and nothing on the grid moves. */
+  padding-block: calc(var(--step) / 2);
+  margin-block: calc(var(--step) / -2);
+}
+
+.pagenav a:hover,
+.pagenav a:focus-visible,
+.pagenav a:active {
+  /* The filled state follows the footer button rule (.footer__button
+     in this file, and the base link rule in base.css): the accent
+     fill with the text flipped to the inverted colour. Accent text
+     on the accent fill would vanish. */
+  background: var(--accent-color);
+  color: var(--inverted-color);
+  text-decoration: none;
+}
+
+.pagenav a[aria-current="page"] {
+  color: var(--accent-color);
+  font-weight: 700;
+}
+
+.pagenav a[aria-current="page"]::before {
+  content: "> ";
+}
+
+.pagenav a[aria-current="page"]:hover,
+.pagenav a[aria-current="page"]:focus-visible,
+.pagenav a[aria-current="page"]:active {
+  /* The marker rule above ties this rule on specificity and sits
+     later in the file, so on the current page's own link it would
+     win the colour and the label would sit accent on accent. The
+     filled state is the button rule, on every link. */
+  background: var(--accent-color);
+  color: var(--inverted-color);
+}

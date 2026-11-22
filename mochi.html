@@ -45,7 +45,7 @@
 
     <link rel="stylesheet" href="assets/css/tokens.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/base.css" />
-    <link rel="stylesheet" href="assets/css/layout.css?v=20261122" />
+    <link rel="stylesheet" href="assets/css/layout.css?v=20261122b" />
     <link rel="stylesheet" href="assets/css/components.css?v=20261114f" />
 
     <style>
@@ -208,6 +208,12 @@
         </button>
         <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
       </div>
+
+      <nav class="pagenav" aria-label="Pages">
+        <a href="index.html">home</a>
+        <a href="mochi.html" aria-current="page">mochi</a>
+        <a href="music.html">music</a>
+      </nav>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
@@ -443,8 +449,12 @@ function paint() {
         </p>
       </section>
 
+      <nav class="pagenav" aria-label="Pages (bottom)">
+        <a href="index.html">home</a>
+        <a href="mochi.html" aria-current="page">mochi</a>
+        <a href="music.html">music</a>
+      </nav>
       <footer class="footer">
-        <p><a href="index.html">&larr; back to the home page</a></p>
         <p>
           Ottawa, ON<span class="clock" data-clock hidden
             ><time class="clock__time" data-clock-time
