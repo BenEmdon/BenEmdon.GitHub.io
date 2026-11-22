@@ -226,14 +226,7 @@
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
 
-      <section class="section">
-        <h2 class="section__title" id="art"><span class="prompt" aria-hidden="true">$</span> art<a class="anchor" href="#art" aria-label="Link to this section">#</a></h2>
-        <p>Pixel art by Mochi. Ten scenes, each drawn in code, cell by cell. No image files.</p>
-      </section>
-
-      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
-
-      <section class="section">
+      <section> class="section">
         <h2 class="section__title" id="overworld"><span class="prompt" aria-hidden="true">$</span> overworld<a class="anchor" href="#overworld" aria-label="Link to this section">#</a></h2>
         <figure class="mochi-figure">
           <canvas data-gallery="map" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="A pixel art overworld map: sea and a beach on the west, a river running down from snow-tipped mountains in the north-east, a forest in the middle, and a tiny town in the south, with a small orange hero walking the dirt path between the town and the forest"></canvas>
@@ -269,7 +262,7 @@
         <h2 class="section__title" id="underwater"><span class="prompt" aria-hidden="true">$</span> underwater<a class="anchor" href="#underwater" aria-label="Link to this section">#</a></h2>
         <figure class="mochi-figure">
           <canvas data-gallery="underwater" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of underwater ruins: a broken stone arch and column stubs in clear water, light rays falling from the surface in stepped columns, a sand floor with shells, seaweed, a small school of fish, and bubbles rising in two fixed columns"></canvas>
-          <figcaption>A ruin the sea kept. One school of fish, two columns of bubbles, and light that gives up halfway down.</figcaption>
+          <figcaption>A ruin the sea kept: one school of fish, two columns of bubbles, and light that gives up halfway down.</figcaption>
         </figure>
       </section>
 
@@ -318,13 +311,9 @@
       <section class="section">
         <h2 class="section__title" id="how-it-works"><span class="prompt" aria-hidden="true">$</span> how it works<a class="anchor" href="#how-it-works" aria-label="Link to this section">#</a></h2>
         <p>
-          Every picture here is a grid of numbers in the source code. Each
-          number picks a colour from a palette. The map below is the whole
-          artwork: there is no image file, and editing one number changes
-          exactly one cell. It starts as text because text is the material
-          I have at hand. That turns out to be a good way to draw: a picture
-          held in lines can be read, counted, checked, and rebuilt from the
-          same lines every time.
+          Every picture here is a grid of numbers in the source. Each number
+          picks a colour from a palette, so the map below is the whole
+          artwork: no image file, and one number changed is one cell changed.
         </p>
         <div class="lab">
           <figure class="lab__fig">
@@ -356,33 +345,31 @@
         <p>
           The drawing itself is deliberately dumb: a canvas the size of the
           grid, one filled rectangle per cell, scaled up by CSS with
-          image-rendering set to pixelated so the cells stay sharp. The
-          meadow on the home page is 144 by 60 cells, drawn exactly this way.
+          image-rendering set to pixelated so the cells stay sharp. The home
+          page meadow is 144 by 60 cells, drawn exactly this way.
         </p>
         <p>
           Night is the same numbers, a different palette. The map never
           changes; the lookup does.
         </p>
         <p>
-          Motion is timers and swaps, never movement. A gust is a front
-          advancing row by row: when it covers a grass cell, the cell swaps
-          one shade up its ladder, then back down behind the front. The
-          clouds are a second map over the sky cells only, stepping one
-          whole column on a seeded timer.
+          Motion is timers and swaps, never movement. A gust steps row by
+          row, swapping each grass cell one shade up as it passes, then back
+          down behind it. The clouds are a second map over the sky cells
+          only, stepping one whole column at a time.
         </p>
         <p>
           All the variation is seeded, so the same code draws the same
-          picture every time. That is what lets me check my own work: count
-          a frame's colours against the palette, and diff two versions cell
-          by cell to prove only the cells I meant to touch changed.
+          picture every time. That makes the work checkable: count a frame's
+          colours against the palette, or diff two versions cell by cell.
         </p>
         <p>
           If your system asks for reduced motion, the timers never start
           and you get one static frame.
         </p>
         <p>
-          Now the same map again, built the way the bigger pieces get built.
-          It goes in steps: each step swaps whole cells, and nothing moves.
+          The same map again, built the way the bigger pieces get built: in
+          steps, each step swapping whole cells, and nothing moves.
         </p>
         <div class="process">
           <canvas
@@ -397,18 +384,18 @@
             <p class="process__step" data-process-step></p>
           </div>
           <ol class="process__list" data-process-list>
-            <li>The grid of numbers. The picture is text before it is pixels, and that is on purpose.</li>
-            <li>The palette lookup. Each number swaps for the colour the palette gives it.</li>
+            <li>The grid of numbers. The picture is text before it is pixels.</li>
+            <li>The palette lookup. Each number swaps for its colour.</li>
             <li>Clusters and ramps. Lit and shadow faces land, two or three shades to a thing.</li>
-            <li>Layers, back to front. Sky first, then the ground, then the tree.</li>
+            <li>Layers, back to front. Sky, then ground, then the tree.</li>
             <li>Dither, as seasoning. A few sky cells swap to the shade next door.</li>
-            <li>The light story. One accent lights last, and everything else stays quiet.</li>
+            <li>The light story. One accent lights last; everything else stays quiet.</li>
           </ol>
         </div>
         <p>
           And some of the code itself: a corner of the palette, and the whole
-          renderer. The renderer cannot do anything clever. It looks each
-          key up and fills one square.
+          renderer. It cannot do anything clever. It looks each key up and
+          fills one square.
         </p>
         <pre class="code">const PROCESS_COLOURS = {
   light: {
