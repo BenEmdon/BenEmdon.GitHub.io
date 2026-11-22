@@ -307,6 +307,17 @@
   display: none;
 }
 
+/* A full boot presents as a covering screen: while it runs,
+   the page behind it stays hidden until the screen clears,
+   the way the boot worked before it moved into the flow.
+   boot.js marks the document whenever the full screen opens
+   and lifts the mark when the boot element goes. The boot
+   block itself is outside main, so the ceremony stays
+   visible. */
+html[data-boot-hide] main {
+  visibility: hidden;
+}
+
 .boot__inner {
   width: min(100%, var(--content-width));
   margin-inline: auto;
@@ -319,9 +330,12 @@
    the boot is busy restoring. The loader's spinner wears the same
    painting at 32px, so this palette and the cell shades below are
    shared by both surfaces. */
+/* The painting sits top-left, always: first in the row and
+   aligned to its top in every state of the ceremony, however
+   the log beside it grows. */
 .boot__row {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: var(--step);
   margin-block-start: var(--step);
 }
@@ -494,15 +508,21 @@
 
 /* The loader's spinner, the surface for every load after a
    session's first and for all async work after that: the framed
-   field at 32px, fixed in the top right corner over the page,
-   with the batch's count beside it in the log's own small muted
-   type. It overlays rather than reserving space, so no page
-   makes room for loading any more and nothing moves when it
-   comes or goes; it takes taps, one tap expanding it into the
-   panel below, and it leaves the way its cells filled, in one
-   step, by removal, never a fade. The chip's own background
-   keeps the count readable over whatever scrolls beneath it.
-   The icon wears the boot icon's palette (the shared --icon-*
+   field at 32px, fixed in the top right corner over the page.
+   It overlays rather than reserving space, so no page makes
+   room for loading any more and nothing moves when it comes
+   or goes; it takes taps, one tap expanding it into the panel
+   below, and it leaves the way its cells filled, in one step,
+   by removal, never a fade. The chip is a stack of lines,
+   right-aligned under the corner: the picture pinned to the
+   edge, the batch's count under it in the log's own small
+   muted type, and the measured latency on a line of its own
+   once the batch closes. There is no backing slab behind the
+   stack: each line, the picture included, carries its own
+   page background fitted to exactly that line's content, so
+   every piece stays readable over whatever scrolls beneath
+   it and nothing sticks out past any piece's edges. The icon
+   wears the boot icon's palette (the shared --icon-*
    properties above) and its cells the boot cells' shades, so
    the little painting is the same one in both surfaces, only
    smaller. */
@@ -512,10 +532,9 @@
   inset-inline-end: calc(var(--step) / 2);
   z-index: 10;
   display: flex;
-  align-items: center;
-  gap: calc(var(--step) / 2);
-  padding: calc(var(--step) / 4);
-  background: var(--page-background);
+  flex-direction: column;
+  align-items: flex-end;
+  gap: calc(var(--step) / 4);
   cursor: pointer;
 }
 
@@ -524,6 +543,7 @@
   flex: none;
   width: 32px;
   height: 32px;
+  background: var(--page-background);
 }
 
 /* Placed once, fully coloured, and never moving or fading, like
@@ -534,26 +554,32 @@
   height: 2px;
 }
 
-.boot-spin__text {
+.boot-spin__count,
+.boot-spin__time {
+  background: var(--page-background);
   color: var(--muted-color);
   font-size: var(--text-small);
   line-height: var(--step);
   white-space: nowrap;
 }
 
-/* The loader expanded: the full boot loader's UI as an overlay
-   panel under the chip, the framed field at full size beside
-   the log of the batch's tasks, with the segmented progress
-   bar above the log and the batch's rolled-up line below it.
-   The frame follows the key legend's card, the site's other
-   corner overlay: page background, an accent border, and the
-   same small type. The boot's own row, icon, log and line
-   rules carry the inside, so the panel reads as the boot
-   screen it is named for; the row's top margin is the flow
-   layout's, and the panel has the bar to space it instead. */
+.boot-spin__time[hidden] {
+  display: none;
+}
+
+/* The loader expanded: an overlay panel under the chip with
+   the batch's count in a header and the batch's tasks as a
+   table under it, one row per task. No progress bar and no
+   picture: the chip above already carries the favicon, and
+   the table is the whole story. The frame follows the key
+   legend's card, the site's other corner overlay: page
+   background, an accent border, and the same small type. The
+   top offset clears the chip's full stack (picture, count,
+   and the latency line that joins at the close), so the two
+   surfaces never overlap however many lines the chip wears. */
 .boot-panel {
   position: fixed;
-  inset-block-start: calc(var(--step) * 2 + 8px);
+  inset-block-start: calc(var(--step) * 4 + 14px);
   inset-inline-end: calc(var(--step) / 2);
   z-index: 10;
   width: min(36rem, calc(100vw - var(--step)));
@@ -562,48 +588,49 @@
   border: 1px solid var(--accent-color);
 }
 
-.boot-panel .boot__row {
-  margin-block-start: 0;
-}
-
-.boot-panel__summary {
-  margin-block-start: var(--step-half);
+.boot-panel__head {
+  margin-block-end: var(--step-half);
   color: var(--muted-color);
   font-size: var(--text-small);
   line-height: var(--step);
 }
 
-/* The segmented progress bar: one segment per registered task,
-   four cells each, the cells lighting in place with the task's
-   reported fraction, the way the old top bar's segments lit as
-   their tasks settled. A failed task's segment lights whole in
-   the flower's red pair, the icon palette's one alarm colour:
-   the task is finished, and finished wrong. Unlit cells sit at
-   the page rule, like the boot log's leader dots. */
-.boot-seg {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--step) / 4);
-  margin-block-end: var(--step-half);
+/* The task table: fixed columns in the boot log's spirit, the
+   mark in its own box (Iosevka draws ✓ at two columns while
+   its advance is one), the status right-aligned, and the
+   label taking whatever room is left. A row is one line at
+   any width: mark and status never wrap, and the label
+   ellipsises in its column rather than pushing the status
+   onto a second line. */
+.boot-panel__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-small);
+  line-height: var(--step);
 }
 
-.boot-seg__seg {
-  display: flex;
-  gap: 2px;
+.boot-panel__mark {
+  width: 3ch;
+  padding: 0;
+  color: var(--accent-color);
+  white-space: nowrap;
 }
 
-.boot-seg__cell {
-  width: 8px;
-  height: 8px;
-  background: var(--page-rule);
+.boot-panel__task {
+  max-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-color);
 }
 
-.boot-seg__cell.is-lit {
-  background: var(--accent-color);
-}
-
-.boot-seg__cell.is-failed {
-  background: light-dark(#e2543e, #ff8a5c);
+.boot-panel__status {
+  padding: 0;
+  padding-inline-start: var(--step);
+  text-align: end;
+  white-space: nowrap;
+  color: var(--page-color);
 }
 
 /* The home page music demo: Saria's Song as one piano roll with a
