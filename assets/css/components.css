@@ -283,10 +283,30 @@
   }
 }
 
+/* Experiment badge: marks an experiment preview page as not production.
+   Copied from the aria-lens experiment page. Sits on the --step grid: the
+   line is one step tall with one step of space below it. */
+.experiment-line {
+  margin: 0 0 var(--step);
+  line-height: var(--step);
+}
+
+.tag {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-color);
+  border: 1px solid var(--accent-color);
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
 /*
   The boot screen, borrowed wholesale from git-merge.com's own page load: a
-  short fake startup log that resolves line by line and then gets out of the
-  way.
+  short startup log that resolves line by line, each line when the work it
+  names actually finishes, and then gets out of the way.
 
   It covers the page rather than replacing it, so the real content is in the
   DOM and laid out the whole time. The padding below deliberately repeats
