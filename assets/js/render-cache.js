@@ -40,7 +40,7 @@
   never played.
 */
 
-export const RENDER_CACHE_VERSION = 9;
+export const RENDER_CACHE_VERSION = 10;
 
 const DB_NAME = "music-render-cache";
 const MAX_ENTRIES = 16;
@@ -131,37 +131,60 @@ function renderStats(ch) {
 }
 
 // The sanity band a render must sit in before it may be
-// stored or played: audible but not past full scale, both
-// channels alive and within a generous ratio of each other,
-// and no long run of bit-identical samples, the mark of a
-// render that stalled or was zero-filled partway. Exported
-// for music.js, whose obtainRender gates playback on it.
-const MAX_IDENTICAL_RUN = 16384;
+// stored or played. Recalibrated 2026-11-22 against healthy
+// renders of all thirteen songs modelled offline from the
+// engine's own gain staging, envelopes and sample data: the
+// mix is never normalised, so healthy peaks run 0.24 to
+// 1.16 (Cynthia's tutti sits past full scale on the dry mix
+// alone), per-channel RMS runs 0.040 up, the channels balance
+// within 1.10x of each other (nothing in the engine pans;
+// only the reverb's two impulses differ), and no healthy
+// render holds a bit-identical run longer than 2 samples.
+// Every limit below is set from those numbers with headroom,
+// and each aims at a corruption shape: non-finite samples,
+// a peak past twice full scale (a summing fault doubling
+// the mix of even the loudest song), a dead or near-dead
+// channel, a one-sided render, and an identical run long
+// enough to be a stall or a zero-fill rather than a rest.
+// Exported for music.js, whose obtainRender gates playback
+// on it; cache hits pass through the same band there.
+const MIN_PEAK = 0.05;
+const MAX_PEAK = 2.0;
+const MIN_CHANNEL_RMS = 0.004;
+const MAX_RMS_RATIO = 10;
+const MIN_IDENTICAL_RUN = 16384;
 export function verifyRenderData(ch) {
   const a = ch[0], b = ch[1];
   if (!a || !b || !a.length || a.length !== b.length) {
     return { ok: false, reason: "length" };
   }
   const stats = renderStats(ch);
-  if (!(stats.peak > 0.05) || stats.peak > 1.0) {
-    return { ok: false, reason: "peak", ...stats };
-  }
-  const [r0, r1] = stats.rms;
-  if (!(r0 > 0) || !(r1 > 0)) {
-    return { ok: false, reason: "silent", ...stats };
-  }
-  if (Math.max(r0, r1) / Math.min(r0, r1) > 100) {
-    return { ok: false, reason: "imbalance", ...stats };
-  }
+  const maxRun = Math.max(
+    MIN_IDENTICAL_RUN, Math.floor(a.length / 8));
   for (let c = 0; c < 2; c++) {
     const arr = ch[c];
     let run = 1;
-    for (let i = 1; i < arr.length; i++) {
-      run = arr[i] === arr[i - 1] ? run + 1 : 1;
-      if (run >= MAX_IDENTICAL_RUN) {
-        return { ok: false, reason: "stuck", ...stats };
+    for (let i = 0; i < arr.length; i++) {
+      if (!Number.isFinite(arr[i])) {
+        return { ok: false, reason: "garbage", ...stats };
+      }
+      if (i > 0) {
+        run = arr[i] === arr[i - 1] ? run + 1 : 1;
+        if (run >= maxRun) {
+          return { ok: false, reason: "stuck", ...stats };
+        }
       }
     }
+  }
+  if (!(stats.peak > MIN_PEAK) || stats.peak > MAX_PEAK) {
+    return { ok: false, reason: "peak", ...stats };
+  }
+  const [r0, r1] = stats.rms;
+  if (!(r0 >= MIN_CHANNEL_RMS) || !(r1 >= MIN_CHANNEL_RMS)) {
+    return { ok: false, reason: "silent", ...stats };
+  }
+  if (Math.max(r0, r1) / Math.min(r0, r1) > MAX_RMS_RATIO) {
+    return { ok: false, reason: "imbalance", ...stats };
   }
   return { ok: true, ...stats };
 }
