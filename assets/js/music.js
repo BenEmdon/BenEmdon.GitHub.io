@@ -56,11 +56,18 @@ function storedMode() {
 const nextMode = (mode) => MODES[(MODES.indexOf(mode) + 1) % MODES.length];
 
 function setUpThemeToggle() {
-  const toggle = document.querySelector("[data-theme-toggle]");
-  if (!toggle) return;
-  const label = toggle.querySelector("[data-theme-label]");
+  const sceneButton = document.querySelector("[data-theme-scene-button]");
+  if (!sceneButton) return;
+  const sceneCurrent = document.querySelector("[data-theme-scene-current]");
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
   let mode = storedMode();
+  let sceneCycleStarted = false;
+  // The mode word beside the scene is a tap's receipt, not a permanent
+  // readout: a tap shows it, it stays for about 2.5 seconds, then the
+  // control is the picture alone again. The theme does not revert when
+  // the word hides, and a fresh tap restarts the window.
+  let sceneRevealed = false;
+  let sceneRevealTimer;
 
   const resolvedDark = () =>
     mode === "dark" || (mode === "system" && systemDark.matches);
@@ -70,18 +77,39 @@ function setUpThemeToggle() {
     ? createThemeScene(sceneCanvas, { dark: resolvedDark() })
     : null;
 
+  function persistMode() {
+    try {
+      localStorage.setItem(THEME_KEY, mode);
+    } catch {
+      // Private-mode Safari refuses writes; the choice holds this visit.
+    }
+  }
+
+  // Where a scene click goes. The plain cycle is light, dark, system,
+  // and back to light. One exception: the first click out of system
+  // mode jumps to the opposite of whatever system is resolving to, so
+  // the click always lands on a visible change; after that the plain
+  // cycle runs from wherever it landed.
+  function nextSceneMode() {
+    if (!sceneCycleStarted && mode === "system") {
+      return resolvedDark() ? "light" : "dark";
+    }
+    return nextMode(mode);
+  }
+
   function applyMode() {
     if (mode === "system") {
       delete document.documentElement.dataset.theme;
     } else {
       document.documentElement.dataset.theme = mode;
     }
-    const resolved = systemDark.matches ? "dark" : "light";
-    if (label) label.textContent = mode;
-    toggle.setAttribute(
+    if (sceneCurrent) {
+      sceneCurrent.textContent = mode;
+      sceneCurrent.hidden = !sceneRevealed;
+    }
+    sceneButton.setAttribute(
       "aria-label",
-      `Theme: ${mode === "system" ? `system (${resolved})` : mode}. ` +
-        `Switch to ${nextMode(mode)}.`
+      `Theme: ${mode}. Activate to switch to ${nextSceneMode()}`
     );
     themeScene?.setDark(resolvedDark(), reduced.matches);
   }
@@ -90,14 +118,19 @@ function setUpThemeToggle() {
     if (mode === "system") applyMode();
   });
 
-  toggle.addEventListener("click", () => {
-    mode = nextMode(mode);
-    try {
-      localStorage.setItem(THEME_KEY, mode);
-    } catch {
-      // Private-mode Safari refuses writes; the choice holds this visit.
-    }
+  // The picture is the control: clicking it advances the cycle, shows
+  // the word, and restarts the word's window on every tap.
+  sceneButton.addEventListener("click", () => {
+    mode = nextSceneMode();
+    sceneCycleStarted = true;
+    sceneRevealed = true;
+    persistMode();
     applyMode();
+    clearTimeout(sceneRevealTimer);
+    sceneRevealTimer = setTimeout(() => {
+      sceneRevealed = false;
+      applyMode();
+    }, 2500);
   });
 
   applyMode();
@@ -112,7 +145,7 @@ function setUpKeys() {
   const sections = document.querySelectorAll(".section");
   const keys = document.querySelector("[data-keys]");
   const keysToggle = document.querySelector("[data-keys-toggle]");
-  const themeToggle = document.querySelector("[data-theme-toggle]");
+  const themeToggle = document.querySelector("[data-theme-scene-button]");
   if (!sections.length || !keys || !keysToggle) return;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
