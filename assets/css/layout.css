@@ -314,8 +314,15 @@
   line-height: var(--step);
 }
 
+/* The controls sit out the footer's baseline alignment. A picture has
+   no text baseline to align by, and on touch devices the ? keys button
+   is display:none, which leaves the scene as the controls' only item:
+   baseline alignment then seated the row by the picture's bottom edge
+   and it rode 8px high against the Ottawa text. Centring seats the
+   controls in the same step band as the text on every device. */
 .footer__controls {
   display: flex;
+  align-self: center;
   align-items: center;
   gap: var(--step);
 }
