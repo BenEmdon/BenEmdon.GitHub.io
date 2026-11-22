@@ -8,7 +8,12 @@
   OfflineAudioContext into a single buffer, and playback is that
   buffer on loop, so the phone's main thread does nothing per note
   and cannot stutter it. An edit re-renders and swaps in at the
-  loop boundary.
+  loop boundary. Finished renders are kept in a persistent cache
+  (render-cache.js, shared with the home page demo), so a repeat
+  play on a later visit reads instead of rendering; a heavy song
+  (a thousand notes or more) renders its channels in parallel
+  across several offline contexts and mixes them, which the
+  linearity of the chain makes exact.
 
   Two voice families. The chip voices are the fixed channels the
   old hardware had: pulse waves at real duty cycles (PeriodicWave,
@@ -31,6 +36,7 @@
 
 import { createThemeScene } from "./theme-scene.js";
 import { animateWordmark } from "./wordmark.js";
+import { renderCacheKey, readRender, writeRender } from "./render-cache.js";
 
 /* ---------- theme ---------- */
 
@@ -1002,8 +1008,19 @@ function scheduleSample(ctx, outs, n, t, dur) {
 
 // The whole loop, rendered once. Playback is then a single
 // looping buffer source: nothing is scheduled live, ever.
-async function renderSong(song) {
-  const sr = 44100;
+//
+// One graph builder serves both render paths: it wires the
+// chain (master gain, one convolver send, the chip kit) and
+// schedules the given channels' notes, in order. The single
+// render builds it with every channel; the parallel render
+// builds it once per bin of channels, in separate contexts.
+//
+// beforeChannel, when given, is called with a channel's
+// index and the count of noise draws accounted for so far,
+// and returns how many further draws it consumed; the
+// parallel builder uses it to keep the seeded draw sequence
+// aligned with the single render's (see buildBinGraph).
+function buildOfflineGraph(song, chanIdxs, sr, beforeChannel) {
   const stepDur = 60 / song.tempo / 4;
   const dur = song.steps * stepDur;
   const ctx = new OfflineAudioContext(2, Math.ceil(dur * sr), sr);
@@ -1024,21 +1041,194 @@ async function renderSong(song) {
     noise: noiseBuffer(ctx),
   };
   const outs = { dry: master, verb };
-  for (const ch of song.channels) {
-    for (const n of ch.notes) {
+  let noiseAccounted = 0;
+  for (const ci of chanIdxs) {
+    if (beforeChannel) noiseAccounted += beforeChannel(ci, noiseAccounted);
+    for (const n of song.channels[ci].notes) {
       const t = n.step * stepDur, d = n.len * stepDur;
       if (INSTRUMENTS[n.inst].kind === "sample") scheduleSample(ctx, outs, n, t, d);
       else scheduleChip(ctx, master, kit, n, t, d);
+      if (INSTRUMENTS[n.inst].kind === "noise") noiseAccounted++;
     }
   }
-  const t0 = performance.now();
-  const buffer = await ctx.startRendering();
+  return ctx;
+}
+
+function renderResult(song, buffer, renderMs) {
+  const stepDur = 60 / song.tempo / 4;
+  const dur = song.steps * stepDur;
   return {
     buffer, dur, stepDur,
     loopStart: song.loopStep * stepDur,
     loopDur: dur - song.loopStep * stepDur,
-    renderMs: performance.now() - t0,
+    renderMs,
   };
+}
+
+async function renderSong(song) {
+  const sr = 44100;
+  const ctx = buildOfflineGraph(
+    song, song.channels.map((_, i) => i), sr, null);
+  const t0 = performance.now();
+  const buffer = await ctx.startRendering();
+  return renderResult(song, buffer, performance.now() - t0);
+}
+
+/* ----- channel-parallel rendering, for heavy songs ----- */
+
+// The chain is linear (gains and one convolution, nothing
+// that squashes), so a song's channels can be rendered in
+// separate offline contexts at the same time and summed:
+// the mix is the same audio, summed in a different order.
+// Splitting is gated to heavy songs, because each context
+// pays for its own full-length convolver and the light
+// songs measure flat or slower split. Channels are packed
+// into balanced bins by note count, at most one context
+// per hardware thread (capped at 8), so no context carries
+// much more than its share. Each finished bin is mixed in
+// and released on arrival, which keeps peak memory near
+// the mixed buffer plus one bin instead of every bin.
+const PARALLEL_MIN_NOTES = 1000;
+const PARALLEL_SEED = 0x9e3779b9;
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// How many Math.random draws the single render has spent on
+// noise-note offsets by the time it reaches channel chanIdx:
+// one per noise note in the channels before it. (The reverb
+// impulse is the only other draw, and it comes first.)
+function noiseDrawsBefore(song, chanIdx) {
+  let c = 0;
+  for (let i = 0; i < chanIdx; i++) {
+    for (const n of song.channels[i].notes) {
+      if (INSTRUMENTS[n.inst].kind === "noise") c++;
+    }
+  }
+  return c;
+}
+
+function planBins(song) {
+  const maxBins = Math.max(1, Math.min(
+    navigator.hardwareConcurrency || 4, 8, song.channels.length));
+  const bins = Array.from({ length: maxBins }, () => ({ chans: [], notes: 0 }));
+  const bySize = song.channels
+    .map((ch, i) => ({ i, n: ch.notes.length }))
+    .sort((a, b) => b.n - a.n);
+  for (const c of bySize) {
+    let lightest = bins[0];
+    for (const b of bins) if (b.notes < lightest.notes) lightest = b;
+    lightest.chans.push(c.i);
+    lightest.notes += c.n;
+  }
+  return bins
+    .filter((b) => b.chans.length)
+    .map((b) => b.chans.sort((a, b) => a - b));
+}
+
+// One bin's graph, built under a seeded Math.random, the
+// method the render-lab harness verified: with the seed
+// reset per bin, the reverb impulse is drawn identically in
+// every bin (and as in a seeded single render), and before
+// each channel the generator is fast-forwarded past the
+// noise draws of the channels that precede it in the song
+// but are not in this bin, so every noise note's offset
+// lands where the single render put it. The result is that
+// the parallel mix matches the single render to float
+// rounding, and a heavy song renders the same way every
+// time. Math.random is restored before this returns; graph
+// building is synchronous, so nothing else can interleave.
+function buildBinGraph(song, bin, sr) {
+  const realRandom = Math.random;
+  Math.random = mulberry32(PARALLEL_SEED);
+  try {
+    return buildOfflineGraph(song, bin, sr, (ci, accounted) => {
+      const skip = noiseDrawsBefore(song, ci) - accounted;
+      for (let i = 0; i < skip; i++) Math.random();
+      return skip;
+    });
+  } finally {
+    Math.random = realRandom;
+  }
+}
+
+function makeStereoBuffer(frames, sr) {
+  try {
+    return new AudioBuffer({ length: frames, numberOfChannels: 2, sampleRate: sr });
+  } catch {
+    return new OfflineAudioContext(1, 1, sr).createBuffer(2, frames, sr);
+  }
+}
+
+async function renderSongParallel(song) {
+  const sr = 44100;
+  const stepDur = 60 / song.tempo / 4;
+  const frames = Math.ceil(song.steps * stepDur * sr);
+  const bins = planBins(song);
+  const ctxs = bins.map((bin) => buildBinGraph(song, bin, sr));
+  const mixed = makeStereoBuffer(frames, sr);
+  const t0 = performance.now();
+  await Promise.all(ctxs.map((ctx, i) =>
+    ctx.startRendering().then((buf) => {
+      for (let ch = 0; ch < 2; ch++) {
+        const acc = mixed.getChannelData(ch);
+        const d = buf.getChannelData(ch);
+        for (let f = 0; f < frames; f++) acc[f] += d[f];
+      }
+      ctxs[i] = null; // release the bin as soon as it is mixed in
+    })
+  ));
+  return renderResult(song, mixed, performance.now() - t0);
+}
+
+// The render entry point everywhere below: parallel for
+// heavy songs, the plain single render otherwise, and the
+// single render again if anything in the parallel path
+// fails.
+async function renderSongBest(song) {
+  const notes = song.channels.reduce((a, c) => a + c.notes.length, 0);
+  if (notes >= PARALLEL_MIN_NOTES && planBins(song).length > 1) {
+    try {
+      return await renderSongParallel(song);
+    } catch {
+      // A failed context or a refused buffer falls back to
+      // the single render for this song, as if never split.
+    }
+  }
+  return renderSong(song);
+}
+
+/* ----- obtaining a render: cache first ----- */
+
+// A render, from wherever it comes: the persistent cache if
+// this exact song has been rendered on an earlier visit, a
+// fresh render (written through to the cache) otherwise.
+// The status line hears the difference through the result's
+// fromCache flag, so a cache hit never claims a render time.
+// announce is for the foreground play path; a background
+// re-render while a loop is playing leaves the status alone.
+async function obtainRender(song, { announce = true } = {}) {
+  const key = renderCacheKey(song);
+  const hit = await readRender(key);
+  if (hit) {
+    const stepDur = 60 / song.tempo / 4;
+    return {
+      buffer: hit.buffer, dur: hit.dur, stepDur,
+      loopStart: hit.loopStart, loopDur: hit.dur - hit.loopStart,
+      renderMs: 0, fromCache: true,
+    };
+  }
+  if (announce) setStatus("rendering…");
+  const rendered = await renderSongBest(song);
+  writeRender(key, rendered);
+  return rendered;
 }
 
 /* ---------- player ---------- */
@@ -1066,8 +1256,7 @@ async function startPlayback() {
   await player.ctx.resume();
   await loadSamples();
   if (player.dirty || !player.rendered) {
-    setStatus("rendering…");
-    player.rendered = await renderSong(player.song);
+    player.rendered = await obtainRender(player.song);
     player.dirty = false;
     player.pending = null;
     window.__lastRender = player.rendered;
@@ -1162,7 +1351,7 @@ function songChanged(parsed, { restart = false } = {}) {
     startPlayback();
     return;
   }
-  renderSong(parsed).then((rendered) => {
+  obtainRender(parsed, { announce: false }).then((rendered) => {
     if (player.song === parsed && player.playing) {
       player.pending = rendered;
       window.__lastRender = rendered;
@@ -1194,7 +1383,9 @@ function readyText() {
   if (!s) return "";
   let msg = `${s.steps} steps · ${s.channels.length} channels · ${s.tempo} bpm`;
   if (player.rendered && !player.dirty && !player.pending) {
-    msg += ` · rendered in ${Math.round(player.rendered.renderMs)} ms`;
+    msg += player.rendered.fromCache
+      ? " · from cache"
+      : ` · rendered in ${Math.round(player.rendered.renderMs)} ms`;
   }
   if (s.warnings.length) msg += ` · ${s.warnings[0]}`;
   return msg;
@@ -1535,3 +1726,9 @@ if (wordmark && !window.matchMedia("(hover: hover)").matches) {
 setUpThemeToggle();
 setUpKeys();
 loadSong("storms");
+
+// A handle for checking the maker end to end.
+window.__musicMaker = {
+  SONGS, parseSong, renderSong, renderSongParallel, renderSongBest,
+  planBins, renderCacheKey, player, PARALLEL_SEED,
+};
