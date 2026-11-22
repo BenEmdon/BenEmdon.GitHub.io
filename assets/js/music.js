@@ -37,7 +37,7 @@
 import { createThemeScene } from "./theme-scene.js";
 import { animateWordmark, setUpStaticWordmark } from "./wordmark.js";
 import { renderCacheKey, readRender, writeRender, verifyRenderData } from "./render-cache.js";
-import { runBoot } from "./boot.js";
+import { runBoot, registerTask } from "./boot.js";
 
 /* ---------- boot ---------- */
 
@@ -941,6 +941,13 @@ function loadSamples() {
   if (samplesPromise) return samplesPromise;
   const decoder = new OfflineAudioContext(1, 1, 44100);
   const jobs = [];
+  // The one sample load reports itself to the corner loader,
+  // registered here where the memoised promise is created:
+  // its share is the fraction of files settled, and it
+  // completes when the load does. The loader only observes;
+  // the load below runs exactly as it did.
+  const work = registerTask("loading samples");
+  let settledFiles = 0;
   INSTRUMENTS.forEach((inst, idx) => {
     if (inst.kind !== "sample") return;
     sampleSets.set(idx, []);
@@ -954,10 +961,18 @@ function loadSamples() {
       );
     }
   });
+  for (const job of jobs) {
+    job.then(() => {
+      settledFiles += 1;
+      work.update(jobs.length ? settledFiles / jobs.length : 1);
+    });
+  }
   samplesPromise = Promise.all(jobs).then(() => {
     for (const set of sampleSets.values()) set.sort((a, b) => a[0] - b[0]);
     samplesReady = true;
+    work.complete();
   });
+  samplesPromise.catch(() => work.fail("samples failed to load"));
   return samplesPromise;
 }
 
@@ -1494,19 +1509,55 @@ async function obtainRender(song, { announce = true } = {}) {
 }
 
 async function obtainVerifiedRender(song, key, announce) {
+  // Every gated render registers with the corner loader and
+  // reports its stages as they happen: samples, the render,
+  // the verification, and, when a wrong-but-complete render
+  // earns the single retry, a step backwards to rendering
+  // again, which the loader shows as this task's progress
+  // reverting. The loader only observes; the gate below runs
+  // exactly as it did, and a failure reaches the handle
+  // through this catch, with the error's own message.
+  const work = registerTask("rendering " + songName(song));
+  try {
+    return await renderVerified(song, key, announce, work);
+  } catch (err) {
+    work.fail(err && err.message ? err.message : "render failed");
+    throw err;
+  }
+}
+
+// The display name the details block derives from the first
+// header line, "Name: Game (System, Year)": the part before
+// the colon, with the comment marker stripped.
+function songName(song) {
+  const head = (song.header || [])
+    .map((l) => l.replace(/^;\s*/, "").trim())
+    .filter((l) => l.length);
+  return (head[0] || "song").split(":")[0].trim() || "song";
+}
+
+async function renderVerified(song, key, announce, work) {
+  work.status("loading samples");
   if (announce && !samplesReady) setStatus("loading samples\u2026");
   await loadSamples();
+  work.update(0.25);
   const hit = await readRender(key);
   if (hit && checkBuffer(hit.buffer).ok) {
     const stepDur = 60 / song.tempo / 4;
+    work.status("from cache");
+    work.complete();
     return {
       buffer: hit.buffer, dur: hit.dur, stepDur,
       loopStart: hit.loopStart, loopDur: hit.dur - hit.loopStart,
       renderMs: 0, fromCache: true,
     };
   }
+  work.status("rendering");
+  work.update(0.4);
   if (announce) setStatus("rendering\u2026");
   let rendered = await renderSongBest(song);
+  work.status("verifying");
+  work.update(0.8);
   if (announce) setStatus("verifying\u2026");
   let check = checkBuffer(rendered.buffer);
   if (!check.ok) {
@@ -1516,6 +1567,8 @@ async function obtainVerifiedRender(song, key, announce) {
     // verification too, nothing is stored and nothing plays,
     // and the throw tells every caller so, carrying the
     // reason the final check gave.
+    work.status("rendering again");
+    work.update(0.4);
     if (announce) setStatus("rendering\u2026");
     rendered = await renderSong(song);
     check = checkBuffer(rendered.buffer);
@@ -1527,6 +1580,7 @@ async function obtainVerifiedRender(song, key, announce) {
       throw err;
     }
   }
+  work.complete();
   writeRender(key, rendered);
   return rendered;
 }

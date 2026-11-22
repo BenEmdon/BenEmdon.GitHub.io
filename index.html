@@ -63,7 +63,7 @@
     <link rel="stylesheet" href="assets/css/tokens.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="assets/css/layout.css?v=20261122c" />
-    <link rel="stylesheet" href="assets/css/components.css?v=20261122c" />
+    <link rel="stylesheet" href="assets/css/components.css?v=20261122d" />
 
     <!-- Visit counting: GoatCounter. No cookies, no fingerprinting, no
          persistent identifier, nothing personal stored, so there is nothing
@@ -101,12 +101,6 @@
   </head>
 
   <body>
-    <!-- The indicator's slot: a slim space reserved at the top of the
-         layout on every page, whether or not the indicator runs on this
-         load. boot.js squeezes the bar into it on follow-up loads; the
-         rest of the time it sits empty. -->
-    <div class="boot-slot" data-boot-slot aria-hidden="true"></div>
-
     <!-- The boot screen. Ships hidden and empty: without JS it never appears,
          and a crawler is handed the real page rather than a splash. main.js
          fills it and takes it away again. aria-hidden because it is theatre;
