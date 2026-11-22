@@ -222,12 +222,35 @@
   overflow-x: auto;
 }
 
+/* The grid column hugs the widest strip, which makes it
+   the song's full width rather than one panel width. The
+   strips were already that wide and overflowed to exactly
+   this extent, so the panel scrolls exactly as far as it
+   did; what changes is the channel headers' containing
+   block, which is now the whole song, the range their
+   sticky pin needs (see .gchan). */
+.music-panel > [data-grid] {
+  width: max-content;
+}
+
 .gchan {
   display: flex;
   align-items: baseline;
   gap: calc(var(--step) / 2);
   margin-block-start: var(--step-half);
   font-size: var(--text-small);
+  /* The header hugs its text and sticks at the panel's
+     content inset, the same pin as the pitch labels below
+     it, so the channel and its instruments stay readable
+     at the left edge for the whole scroll, however far the
+     playhead's follow has travelled. Nothing passes under
+     it (the header has its own row), so it needs no
+     background of its own. Its range is the grid column,
+     which is the song's full width: see the [data-grid]
+     rule under .music-panel. */
+  position: sticky;
+  left: var(--step-half);
+  width: fit-content;
   /* Rendering containment for the scroll: a channel section
      far from the viewport is skipped whole, its contents
      unpainted, until it nears the screen. A page of eight
@@ -316,11 +339,29 @@
   background-repeat: repeat-x, repeat-y;
 }
 
+/* The pitch labels: one per lane, in flow down the strip,
+   each a lane pitch tall (25px of box, the text centred in
+   the 24px under a 1px top pad, which is exactly where the
+   old absolutely placed box put it: centre at lane*25 + 13,
+   the blocks' own centre). Sticky at the panel's content
+   inset, so the rail stays pinned at the left edge while
+   the note layer scrolls and follows the playhead under it:
+   pinned means pinned, the labels never slide or drift,
+   they are simply always at the edge. The background is
+   the panel's own, so blocks pass hidden beneath the rail
+   rather than showing through it, and a tap on the rail
+   lands outside .glayer, which the grid's click handler
+   already ignores, so the notes under the rail cannot be
+   edited by accident. No top is set: nothing sticks
+   vertically. */
 .glabel {
-  position: absolute;
-  left: 0;
+  position: sticky;
+  left: var(--step-half);
+  z-index: 1;
   width: 3.4rem;
-  height: 24px;
+  height: 25px;
+  padding-block-start: 1px;
+  background: var(--page-subtle);
   display: flex;
   align-items: center;
   justify-content: flex-end;
