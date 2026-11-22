@@ -205,7 +205,7 @@ const INSTRUMENTS = [
   // square's harmonics off past a knee, filter what is left,
   // and start slower. See shapedWave.
   { name: "synth lead", kind: "lead", wave: "lead", cutoff: 2600, attack: 0.025, level: 0.9, detune: 5 },
-  { name: "soft square", kind: "lead", wave: "soft", cutoff: 3800, attack: 0.012, level: 0.9 },
+  { name: "soft square", kind: "lead", wave: "soft", cutoff: 2400, attack: 0.018, level: 0.9, pluck: 0.3 },
 ];
 const AUDIO_BASE = "assets/audio/";
 
@@ -955,6 +955,22 @@ function chipEnvelope(gain, t, dur, peak, attack = 0.004) {
   p.linearRampToValueAtTime(0, t + dur);
 }
 
+// A plucked envelope for a lead voice: the chip envelope's
+// attack and release, but instead of holding near the peak
+// it decays toward a low sustain, the way a picked string
+// or a struck bar settles. sustain is the fraction of peak
+// it settles to, reached within about 150 ms. Cynthia's
+// soft square (@13) is the only voice that asks for it:
+// its sources are an agogo and a guitar, and both decay.
+function pluckEnvelope(gain, t, dur, peak, attack, sustain) {
+  const p = gain.gain;
+  p.setValueAtTime(0, t);
+  p.linearRampToValueAtTime(peak, t + attack);
+  p.setTargetAtTime(peak * sustain, t + attack, 0.045);
+  p.cancelAndHoldAtTime(Math.max(t + attack, t + dur - 0.012));
+  p.linearRampToValueAtTime(0, t + dur);
+}
+
 function scheduleChip(ctx, out, kit, n, t, dur) {
   const inst = INSTRUMENTS[n.inst];
   const peak = (n.vol / 15) * 0.4;
@@ -977,7 +993,8 @@ function scheduleChip(ctx, out, kit, n, t, dur) {
     // lead) a second oscillator a few cents off for body: the
     // sampled-synth character the pulse waves are too raw for.
     const g = ctx.createGain();
-    chipEnvelope(g, t, dur, peak * (inst.level ?? 1), inst.attack ?? 0.004);
+    if (inst.pluck) pluckEnvelope(g, t, dur, peak * (inst.level ?? 1), inst.attack ?? 0.004, inst.pluck);
+    else chipEnvelope(g, t, dur, peak * (inst.level ?? 1), inst.attack ?? 0.004);
     const flt = ctx.createBiquadFilter();
     flt.type = "lowpass";
     flt.frequency.value = inst.cutoff;
@@ -1110,7 +1127,7 @@ function buildOfflineGraph(song, chanIdxs, sr, beforeChannel) {
       0.125: dutyWave(ctx, 0.125), 0.25: dutyWave(ctx, 0.25),
       0.5: dutyWave(ctx, 0.5), 0.75: dutyWave(ctx, 0.75),
     },
-    waves: { lead: shapedWave(ctx, 9), soft: shapedWave(ctx, 14) },
+    waves: { lead: shapedWave(ctx, 9), soft: shapedWave(ctx, 8) },
     tri: triWave(ctx),
     noise: noiseBuffer(ctx),
   };

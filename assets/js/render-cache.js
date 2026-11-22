@@ -32,7 +32,7 @@
   it existed.
 */
 
-export const RENDER_CACHE_VERSION = 5;
+export const RENDER_CACHE_VERSION = 6;
 
 const DB_NAME = "music-render-cache";
 const MAX_ENTRIES = 16;
