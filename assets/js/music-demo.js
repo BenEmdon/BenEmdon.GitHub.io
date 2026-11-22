@@ -28,6 +28,7 @@
 */
 
 import { renderCacheKey, readRender, writeRender } from "./render-cache.js";
+import { announceBootTask } from "./boot-tasks.js";
 
 /* ---------- instruments ---------- */
 
@@ -666,8 +667,28 @@ if (roll && playButton) {
   // song never changes here, so one segment serves the visit.
   const demo = {
     ctx: null, out: null, src: null, seg: null,
-    rendered: null, playing: false, rendering: false, raf: 0,
+    rendered: null, renderPromise: null, playing: false, rendering: false, raf: 0,
   };
+
+  // The one road to a rendered loop, shared by the background
+  // preload below and by play(): whichever asks first starts the
+  // work, and the other waits on the same promise instead of
+  // rendering twice. A failure clears the promise, so a later press
+  // of play retries rather than inheriting the preload's bad luck.
+  function ensureRender(onRendering) {
+    if (demo.rendered) return Promise.resolve(demo.rendered);
+    if (demo.renderPromise) return demo.renderPromise;
+    demo.renderPromise = (async () => {
+      await loadSamples();
+      const rendered = await obtainRender(song, onRendering);
+      demo.rendered = rendered;
+      return rendered;
+    })();
+    demo.renderPromise.catch(() => {
+      demo.renderPromise = null;
+    });
+    return demo.renderPromise;
+  }
 
   function stepAt(now) {
     const { startCtxTime, rendered } = demo.seg;
@@ -734,21 +755,32 @@ if (roll && playButton) {
     runPlayhead();
   }
 
+  function ensureCtx() {
+    if (demo.ctx) return;
+    demo.ctx = new AudioContext();
+    demo.out = demo.ctx.createGain();
+    demo.out.connect(demo.ctx.destination);
+  }
+
   async function play() {
     if (demo.rendering || demo.playing) return;
-    if (demo.rendered) { startSource(); return; }
+    if (demo.rendered) {
+      // The background preload can land a buffer before any press of
+      // play, in which case the playback context does not exist yet:
+      // the first version of the preload missed this, and a press on a
+      // preloaded demo threw inside startSource instead of playing.
+      ensureCtx();
+      await demo.ctx.resume();
+      startSource();
+      return;
+    }
     demo.rendering = true;
     setButton("rendering…", false, true);
     try {
-      if (!demo.ctx) {
-        demo.ctx = new AudioContext();
-        demo.out = demo.ctx.createGain();
-        demo.out.connect(demo.ctx.destination);
-      }
+      ensureCtx();
       await demo.ctx.resume();
-      await loadSamples();
       if (!demo.rendered) {
-        demo.rendered = await obtainRender(song, () => {
+        demo.rendered = await ensureRender(() => {
           if (status) status.textContent = "rendering the loop";
         });
       }
@@ -782,9 +814,10 @@ if (roll && playButton) {
   restartButton?.addEventListener("click", () => {
     // Back to step 0 and playing from the top. Before the
     // first render this is simply play, which starts at 0 too.
+    // Play covers both cases, and it builds the context a preloaded
+    // buffer still needs before startSource can touch it.
     if (demo.rendering) return;
-    if (demo.rendered) startSource();
-    else play();
+    play();
   });
 
   // Repaint when the theme flips, from the toggle or the OS.
@@ -794,6 +827,35 @@ if (roll && playButton) {
 
   paintNotes();
   paint(-1);
+
+  // The render, started in the background at load rather than on the
+  // first press of play: the samples fetch and decode while the
+  // visitor reads, the OfflineAudioContext renders without blocking
+  // the page's own work, and the finished buffer simply waits in
+  // demo.rendered for play to pick up. The boot log's music task is
+  // this promise, so its line resolves when the render (or the cache
+  // read) truly finishes, and says which of the two it was. Deferred
+  // one tick so the module's own first paint is not the thing it
+  // delays. A failure is swallowed here on purpose: the demo stays
+  // exactly as usable as it was when rendering waited for play, and
+  // play itself will retry and report honestly if it fails again.
+  const musicBootT0 = performance.now();
+  announceBootTask(
+    "music",
+    new Promise((resolve, reject) => {
+      setTimeout(() => {
+        ensureRender().then(
+          (rendered) =>
+            resolve({
+              fromCache: !!rendered.fromCache,
+              renderMs: rendered.renderMs,
+              ms: performance.now() - musicBootT0,
+            }),
+          reject
+        );
+      }, 0);
+    })
+  );
 
   // A handle for checking the demo end to end: the parsed song,
   // the rendered buffer once it exists, and the output node the
