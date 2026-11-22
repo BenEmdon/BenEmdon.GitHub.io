@@ -667,7 +667,12 @@ html[data-boot-hide] main {
    it: it is an inspection view, not the ceremony. An
    earlier panel layout (its own header of figures beside
    the painting, its own line list) is retired; the
-   figures live in the view's lines and on the chip. */
+   figures live in the view's lines and on the chip. The
+   insets repeat the body's own (its block start and its
+   gutter), which in flow are what position the boot
+   screen: as a fixed element the view sits outside that
+   padding, so it carries the same values itself and its
+   painting lands where the boot's lands. */
 .boot--view {
   position: fixed;
   inset-block-start: 0;
@@ -675,6 +680,8 @@ html[data-boot-hide] main {
   z-index: 99;
   max-height: 100dvh;
   overflow-y: auto;
+  padding-block-start: var(--step-2);
+  padding-inline: var(--page-gutter);
   border-block-end: 1px solid var(--page-rule);
 }
 
