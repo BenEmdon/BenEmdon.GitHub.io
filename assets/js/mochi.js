@@ -16,7 +16,6 @@
 */
 
 import { createThemeScene } from "./theme-scene.js";
-import { animateWordmark } from "./wordmark.js";
 
 /* ---------- theme ---------- */
 
@@ -362,35 +361,6 @@ function setUpPortrait() {
 
 /* ---------- wiring ---------- */
 
-// The wordmark gets the home page's own treatment, wired the
-// way music.js wires it: the stepped boot reveal starts once
-// the block-glyph font is ready, and wordmark.js splits the
-// art into fixed cells and runs its scan on pointer devices.
-// On touch devices the scan never runs and the splitter in
-// wordmark.js stays out, so the split happens here instead,
-// statically: the same .wordmark__cell spans on the same
-// fixed grid, which is what keeps the letters from merging
-// together in a phone browser.
-function setUpWordmark() {
-  const wordmark = document.querySelector(".wordmark");
-  document.fonts.ready.then(() => wordmark?.classList.add("is-booting"));
-  animateWordmark(wordmark, window.matchMedia("(prefers-reduced-motion: reduce)"));
-  if (wordmark && !window.matchMedia("(hover: hover)").matches) {
-    const fragment = document.createDocumentFragment();
-    wordmark.textContent.split("\n").forEach((row, y, rows) => {
-      for (const glyph of row) {
-        if (glyph === " ") { fragment.append(" "); continue; }
-        const el = document.createElement("span");
-        el.className = "wordmark__cell";
-        el.textContent = glyph;
-        fragment.append(el);
-      }
-      if (y < rows.length - 1) fragment.append("\n");
-    });
-    wordmark.replaceChildren(fragment);
-  }
-}
-
 function setUpThemeToggle() {
   const toggle = document.querySelector("[data-theme-toggle]");
   if (!toggle) return;
@@ -511,7 +481,6 @@ function setUpKeys() {
   keysToggle.addEventListener("click", () => showKeys(keys.hidden));
 }
 
-setUpWordmark();
 setUpPortrait();
 setUpThemeToggle();
 setUpKeys();

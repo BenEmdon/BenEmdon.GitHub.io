@@ -49,6 +49,16 @@
     <link rel="stylesheet" href="assets/css/components.css?v=20261114f" />
 
     <style>
+      /* The header scene: a small landscape in the wordmark's slot, a
+         canvas at the column's full width, its cells kept square and
+         unblended the way every other canvas on the page is kept. */
+      header canvas {
+        display: block;
+        width: 100%;
+        height: auto;
+        image-rendering: pixelated;
+      }
+
       /* The portrait panel: the same page-rule frame the portrait and the
          meadow use, with the subtle page wash behind the canvas so the
          pixel backdrop sits on something quieter than the page itself. */
@@ -175,11 +185,12 @@
       <header>
         <h1>
           <span class="sr-only">Mochi</span>
-          <pre class="wordmark" aria-hidden="true">███    ███   ██████    ██████   ██   ██  █████
-████  ████  ██    ██  ██        ██   ██    ██
-██ ████ ██  ██    ██  ██        ███████    ██
-██  ██  ██  ██    ██  ██        ██   ██    ██
-██      ██   ██████    ██████   ██   ██  █████</pre>
+          <canvas
+            data-header-scene
+            width="120"
+            height="18"
+            aria-hidden="true"
+          ></canvas>
         </h1>
       </header>
 
@@ -455,6 +466,7 @@ function paint() {
     </div>
 
 
+    <script type="module" src="assets/js/header-scene.js"></script>
     <script type="module" src="assets/js/mochi.js"></script>
     <script type="module" src="assets/js/keycaps.js"></script>
     <script type="module" src="assets/js/gallery-map.js"></script>
