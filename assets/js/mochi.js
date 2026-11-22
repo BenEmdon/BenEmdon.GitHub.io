@@ -381,28 +381,36 @@ function setUpWordmark() {
 }
 
 function setUpThemeToggle() {
-  const sceneButton = document.querySelector("[data-theme-scene-button]");
-  if (!sceneButton) return;
-  const sceneCurrent = document.querySelector("[data-theme-scene-current]");
+  const controlEls = document.querySelectorAll("[data-theme-scene-control]");
+  if (!controlEls.length) return;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
   let mode = storedMode();
   let sceneCycleStarted = false;
-  // The mode word beside the scene is a tap's receipt, not a permanent
-  // readout: a tap shows it, it stays for about 2.5 seconds, then the
-  // control is the picture alone again. The theme does not revert when
-  // the word hides, and a fresh tap restarts the window.
-  let sceneRevealed = false;
-  let sceneRevealTimer;
 
   const resolvedDark = () =>
     mode === "dark" || (mode === "system" && systemDark.matches);
 
   // The same little landscape the home page masthead wears, drawn by
-  // the same module: day in light, night in dark, swapped cell by cell.
-  const sceneCanvas = document.querySelector("[data-theme-scene]");
-  const themeScene = sceneCanvas
-    ? createThemeScene(sceneCanvas, { dark: resolvedDark() })
-    : null;
+  // the same module: day in light, night in dark, swapped cell by
+  // cell. It lives twice on the page, masthead and footer system
+  // line, and one mode drives both. Each control keeps its own
+  // painter and its own word window: the mode word beside a scene is
+  // a tap's receipt, not a permanent readout, and the receipt shows
+  // where the tap landed. The theme does not revert when the word
+  // hides, and a fresh tap restarts the window on the control that
+  // was tapped.
+  const controls = [...controlEls].map((controlEl) => {
+    const canvas = controlEl.querySelector("[data-theme-scene]");
+    return {
+      button: controlEl.querySelector("[data-theme-scene-button]"),
+      current: controlEl.querySelector("[data-theme-scene-current]"),
+      scene: canvas
+        ? createThemeScene(canvas, { dark: resolvedDark() })
+        : null,
+      revealed: false,
+      revealTimer: undefined,
+    };
+  });
 
   function persistMode() {
     try {
@@ -430,15 +438,17 @@ function setUpThemeToggle() {
     } else {
       document.documentElement.dataset.theme = mode;
     }
-    if (sceneCurrent) {
-      sceneCurrent.textContent = mode;
-      sceneCurrent.hidden = !sceneRevealed;
+    for (const control of controls) {
+      if (control.current) {
+        control.current.textContent = mode;
+        control.current.hidden = !control.revealed;
+      }
+      control.button?.setAttribute(
+        "aria-label",
+        `Theme: ${mode}. Activate to switch to ${nextSceneMode()}`
+      );
+      control.scene?.setDark(resolvedDark(), reduced.matches);
     }
-    sceneButton.setAttribute(
-      "aria-label",
-      `Theme: ${mode}. Activate to switch to ${nextSceneMode()}`
-    );
-    themeScene?.setDark(resolvedDark(), reduced.matches);
   }
 
   // Only in system mode does the OS still get a vote.
@@ -447,21 +457,59 @@ function setUpThemeToggle() {
   });
 
   // The picture is the control: clicking it advances the cycle, shows
-  // the word, and restarts the word's window on every tap.
-  sceneButton.addEventListener("click", () => {
-    mode = nextSceneMode();
-    sceneCycleStarted = true;
-    sceneRevealed = true;
-    persistMode();
-    applyMode();
-    clearTimeout(sceneRevealTimer);
-    sceneRevealTimer = setTimeout(() => {
-      sceneRevealed = false;
+  // the word beside that picture, and restarts that word's window on
+  // every tap.
+  for (const control of controls) {
+    control.button?.addEventListener("click", () => {
+      mode = nextSceneMode();
+      sceneCycleStarted = true;
+      control.revealed = true;
+      persistMode();
       applyMode();
-    }, 2500);
-  });
+      clearTimeout(control.revealTimer);
+      control.revealTimer = setTimeout(() => {
+        control.revealed = false;
+        applyMode();
+      }, 2500);
+    });
+  }
 
   applyMode();
+}
+
+/* ---------- clock ---------- */
+
+// The footer system line is the same on every page, this one
+// included: Ottawa, and Ottawa's time. Mirrors the home page's clock
+// in main.js: his time, not the reader's (the footer says Ottawa),
+// and landed on the minute rather than drifting a second past it.
+function setUpClock() {
+  const clock = document.querySelector("[data-clock]");
+  const clockTime = document.querySelector("[data-clock-time]");
+  const hours = document.querySelector("[data-clock-hours]");
+  const minutes = document.querySelector("[data-clock-minutes]");
+  if (!clock || !clockTime || !hours || !minutes) return;
+
+  const inOttawa = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Toronto",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+
+  function tick() {
+    const now = new Date();
+    const parts = Object.fromEntries(
+      inOttawa.formatToParts(now).map(({ type, value }) => [type, value])
+    );
+    hours.textContent = parts.hour;
+    minutes.textContent = parts.minute;
+    clockTime.dateTime = `${parts.hour}:${parts.minute}`;
+    clock.hidden = false;
+    setTimeout(tick, 60_000 - (now.getSeconds() * 1000 + now.getMilliseconds()));
+  }
+
+  tick();
 }
 
 /* ---------- keys ---------- */
@@ -536,6 +584,7 @@ function setUpKeys() {
 setUpWordmark();
 setUpPortrait();
 setUpThemeToggle();
+setUpClock();
 setUpKeys();
 
 /* ---------- the pixel lab ---------- */
