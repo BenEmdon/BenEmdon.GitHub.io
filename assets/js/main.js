@@ -416,7 +416,9 @@ function setUp() {
   // startup process and resolves only when that process actually
   // finishes, with the value the process itself reports. The three
   // tasks are the scene (the portrait dither plus the meadow, which
-  // announces itself from meadow.js), the music demo's render or cache
+  // announces itself from meadow.js once its reveal has finished
+  // generating, or at first paint when the figure is off-screen and
+  // nothing is generating yet), the music demo's render or cache
   // read (announced from music-demo.js, which now renders in the
   // background at load instead of waiting for a first press of play),
   // and the footer clock's first tick, resolved from tick() below.
@@ -437,9 +439,9 @@ function setUp() {
   // and the ground row is one deep cluster the trunk lands in, a shadow
   // rather than a lawn. The colours themselves live in components.css as
   // the .boot__tree custom properties. It builds beside the log while the
-  // lines resolve: ground first, apex last, one row per motion step, so
-  // it is finished inside the log's last beat and the screen's total wait
-  // is unchanged.
+  // lines resolve: ground first, apex last, two rows per motion step, so
+  // the whole tree stands in about half a second, and the screen's exit
+  // waits for it plus a short hold (see the gate below).
   const TREE = [
     ".....M.....",
     "....LLD....",
@@ -473,19 +475,25 @@ function setUp() {
   // same width from frame to frame.
   const SPINNER = [..."⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"];
 
-  // No schedule at all: a line resolves when its task resolves, and the
-  // screen leaves when the last task does, subject to one floor: the
-  // screen stays at least BOOT_FLOOR_MS once it has appeared, so a fully
-  // cached load does not flash past unread. The floor pads nothing a
-  // line quotes: every duration stays the task's real measured time.
+  // No schedule at all: a line resolves when its task resolves. The
+  // screen leaves when the last task does, with one gate on top: the
+  // exit also waits until the tree beside the log has fully grown,
+  // plus a short hold after its last row, so the finished tree is
+  // actually seen before the screen goes. The tree takes about half
+  // a second to grow and the hold is 450 ms, so a cached load's whole
+  // boot lands at about a second; a task that genuinely runs longer
+  // (a first music render) still holds the screen for its real
+  // duration and quotes its real time. Neither the gate nor the hold
+  // pads anything a line quotes: every duration stays the task's real
+  // measured time.
   // The other number is the per-task timeout, the safety valve: a task
   // that hangs (a stalled image, a wedged audio render) reports "still
   // working" at the timeout and stops holding the screen, while the
   // work itself carries on in the background and the page underneath
-  // stays usable. The skip ignores the floor too: any key or click
+  // stays usable. The skip ignores the gate too: any key or click
   // cuts to the page at once.
   const TASK_TIMEOUT = 12000;
-  const BOOT_FLOOR_MS = 750;
+  const BOOT_HOLD_MS = 450;
 
   const boot = document.querySelector("[data-boot]");
 
@@ -497,8 +505,6 @@ function setUp() {
     const logo = wordmark.cloneNode(true);
     boot.querySelector("[data-boot-logo]").append(logo);
     boot.hidden = false;
-    // The floor is measured from the moment the screen appears.
-    const bootShownAt = performance.now();
 
     // The clone is taken before the block glyphs have loaded, since they are
     // served display=block and the boot starts immediately. Rather than hold
@@ -517,9 +523,14 @@ function setUp() {
       }
     }, 80);
 
-    // The tree builds one row per motion step, ground first. Rows are
+    // The tree builds two rows per motion step, ground first. Rows are
     // pre-built as detached cells and placed group by group; a cell is
     // either there, fully coloured, or not there. Nothing slides or fades.
+    // Two rows per step land all thirteen rows in seven steps, about
+    // half a second: one row per step took the better part of a second,
+    // and the screen used to leave with the tree half grown. The moment
+    // the last row lands is recorded, because the exit gate below waits
+    // on it.
     const treeBox = boot.querySelector("[data-boot-tree]");
     const treeRows = TREE.map((row, y) => {
       const cells = [];
@@ -535,13 +546,21 @@ function setUp() {
     }).reverse();
 
     let treeRow = 0;
+    let treeGrownAt = null;
     const grow = setInterval(() => {
       if (treeRow >= treeRows.length) {
         clearInterval(grow);
         return;
       }
-      treeBox.append(...treeRows[treeRow]);
-      treeRow += 1;
+      for (let n = 0; n < 2 && treeRow < treeRows.length; n++) {
+        treeBox.append(...treeRows[treeRow]);
+        treeRow += 1;
+      }
+      if (treeRow >= treeRows.length) {
+        clearInterval(grow);
+        treeGrownAt = performance.now();
+        maybeExit();
+      }
     }, 75);
 
     // The progress row: every cell starts as track, and settling a line
@@ -618,16 +637,30 @@ function setUp() {
     ];
 
     let settled = 0;
+    let tasksSettled = false;
+    let exitScheduled = false;
+
+    // The exit needs both halves: every task settled, and the tree
+    // fully grown plus the hold after its last row. Whichever half
+    // lands second runs this check. A scheduled exit sits in timers,
+    // so a skip still clears it and cuts straight to the page.
+    function maybeExit() {
+      if (!tasksSettled || treeGrownAt === null || exitScheduled) return;
+      const remaining = treeGrownAt + BOOT_HOLD_MS - performance.now();
+      if (remaining > 0) {
+        exitScheduled = true;
+        timers.push(setTimeout(done, remaining));
+      } else {
+        done();
+      }
+    }
+
     const settle = () => {
       settled += 1;
       progressTarget = settled * (PROGRESS_CELLS / BOOT_TASKS.length);
       if (settled !== BOOT_TASKS.length) return;
-      // Leave at max(the floor, real completion): hold only for what is
-      // left of the floor, never past it once the work is done. The
-      // scheduled exit sits in timers, so a skip still clears it.
-      const remaining = BOOT_FLOOR_MS - (performance.now() - bootShownAt);
-      if (remaining > 0) timers.push(setTimeout(done, remaining));
-      else done();
+      tasksSettled = true;
+      maybeExit();
     };
 
     for (const task of BOOT_TASKS) {
