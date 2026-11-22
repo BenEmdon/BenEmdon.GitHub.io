@@ -17,7 +17,7 @@
 
 import { createThemeScene } from "./theme-scene.js";
 import { animateWordmark, setUpStaticWordmark } from "./wordmark.js";
-import { runBoot } from "./boot.js?v=20261122p";
+import { runBoot } from "./boot.js?v=20261122q";
 
 /* ---------- theme ---------- */
 

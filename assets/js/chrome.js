@@ -90,7 +90,6 @@ const NAV_LINKS = [
   { href: "index.html", label: "home" },
   { href: "music.html", label: "music" },
   { href: "art.html", label: "art" },
-  { href: "mochi.html", label: "mochi" },
 ];
 
 function currentPage() {

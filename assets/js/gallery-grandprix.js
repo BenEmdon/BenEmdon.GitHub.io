@@ -43,7 +43,7 @@
   floodlights just on and warm, the crowd and kerbs a touch brighter.
 */
 
-import { registerTask } from "./boot.js?v=20261122p";
+import { registerTask } from "./boot.js?v=20261122q";
 (() => {
   // The scene's first paint is loader work: the task
   // registers here and completes on that paint, below.

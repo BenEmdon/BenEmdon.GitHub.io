@@ -46,7 +46,7 @@
          both nav rows, the scene controls, the footer, and the keys
          panel are rendered from it below. A plain script, not a
          module: it has to be loaded before the body parses. -->
-    <script src="assets/js/chrome.js?v=20261122a"></script>
+    <script src="assets/js/chrome.js?v=20261122b"></script>
 
     <!-- Body/UI text: Iosevka, the same base typeface opentui.com's own
          "OpenTUI Mono" is a custom build of (confirmed via their public
@@ -343,12 +343,12 @@
         <canvas class="meadow__canvas" data-meadow-canvas width="144" height="60" aria-hidden="true"></canvas>
       </figure>
 
-      <!-- Experiment: the artist's signature for the meadow, and the one
-           door to the Mochi page. A paragraph under the figure rather than
-           a figcaption inside it: the figure carries role="img", which
-           would swallow the link into the image's label. -->
+      <!-- The artist's signature for the meadow. A paragraph under the
+           figure rather than a figcaption inside it: the figure carries
+           role="img", which would swallow the text into the image's
+           label. -->
       <p class="meadow__cap">
-        by <a href="mochi.html">Mochi</a>
+        by Mochi
       </p>
 
       <script>window.SiteChrome && SiteChrome.nav("bottom")</script>
@@ -357,9 +357,9 @@
 
     <script>window.SiteChrome && SiteChrome.keys([["1","whoami"],["2","about"],["3","interesting"],["4","music"],["5","work"],["6","elsewhere"]])</script>
 
-    <script type="module" src="assets/js/main.js?v=20261122p"></script>
+    <script type="module" src="assets/js/main.js?v=20261122q"></script>
     <script type="module" src="assets/js/meadow.js"></script>
     <script type="module" src="assets/js/keycaps.js"></script>
-    <script type="module" src="assets/js/music-demo.js?v=20261122p"></script>
+    <script type="module" src="assets/js/music-demo.js?v=20261122q"></script>
   </body>
 </html>
