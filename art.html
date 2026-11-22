@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Art · Ben Emdon</title>
+    <meta
+      name="description"
+      content="Pixel art by Mochi: ten scenes drawn in code, and how they are made."
+    />
+    <!-- An experiment, kept unlisted on purpose: reachable from the meadow's
+         credit line and nowhere else, and out of search indexes. -->
+    <meta name="robots" content="noindex" />
+
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180" />
+
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090d16" />
+
+    <!-- Same pre-paint theme script as the home page, so a saved theme
+         applies here too and never flashes the other one. -->
+    <script>
+      try {
+        const saved = localStorage.getItem("theme");
+        if (saved === "light" || saved === "dark") {
+          document.documentElement.dataset.theme = saved;
+        }
+      } catch {}
+    </script>
+
+    <link rel="stylesheet" href="assets/css/fonts.css" />
+
+    <link rel="stylesheet" href="assets/css/tokens.css?v=20261114" />
+    <link rel="stylesheet" href="assets/css/base.css" />
+    <link rel="stylesheet" href="assets/css/layout.css?v=20261122c" />
+    <link rel="stylesheet" href="assets/css/components.css?v=20261122d" />
+
+    <style>
+      /* The portrait panel: the same page-rule frame the portrait and the
+         meadow use, with the subtle page wash behind the canvas so the
+         pixel backdrop sits on something quieter than the page itself. */
+      .mochi-figure {
+        border: 1px solid var(--page-rule);
+        background: var(--page-subtle);
+        padding: var(--step);
+      }
+
+      .mochi-figure canvas {
+        width: min(240px, 100%);
+        height: auto;
+        margin-inline: auto;
+        image-rendering: pixelated;
+      }
+
+      .mochi-figure figcaption {
+        margin-block-start: var(--step);
+        color: var(--muted-color);
+        font-size: var(--text-small);
+        text-align: center;
+      }
+
+      /* The portrait panel follows a paragraph, not a heading, so the
+         heading's margin never gives it its step; every gallery panel
+         gets one from its title, and this one needs its own. */
+      .section > p + .mochi-figure {
+        margin-block-start: var(--step);
+      }
+
+      /* The pixel lab: the map and its rendering side by side, then the
+         same map built again in steps. Same page-rule frame as the portrait. */
+      .lab {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--step);
+        margin-block: var(--step);
+      }
+
+      .lab__fig { margin: 0; }
+
+      .lab__fig figcaption {
+        margin-block-start: calc(var(--step) / 2);
+        color: var(--muted-color);
+        font-size: var(--text-small);
+      }
+
+      .lab__map {
+        border: 1px solid var(--page-rule);
+        background: var(--page-subtle);
+        padding: calc(var(--step) / 2);
+        font-size: 10px;
+        line-height: 1.2;
+        letter-spacing: 2px;
+      }
+
+      .lab canvas {
+        width: 216px;
+        max-width: 100%;
+        height: auto;
+        border: 1px solid var(--page-rule);
+        image-rendering: pixelated;
+      }
+
+      .process {
+        border: 1px solid var(--page-rule);
+        background: var(--page-subtle);
+        padding: var(--step);
+        margin-block: var(--step);
+      }
+
+      .process canvas {
+        width: min(336px, 100%);
+        height: auto;
+        margin-inline: auto;
+        image-rendering: pixelated;
+      }
+
+      .process__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px var(--step);
+        justify-content: space-between;
+        margin-block-start: var(--step);
+      }
+
+      .process__caption,
+      .process__step {
+        margin: 0;
+        color: var(--muted-color);
+        font-size: var(--text-small);
+      }
+
+      .process__list {
+        margin-block: var(--step) 0;
+        padding-inline-start: 1.5em;
+        color: var(--muted-color);
+        font-size: var(--text-small);
+      }
+
+      .code {
+        border: 1px solid var(--page-rule);
+        background: var(--page-subtle);
+        padding: calc(var(--step) / 2);
+        margin-block: var(--step);
+        font-family: inherit;
+        font-size: 12px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+    </style>
+    <script>
+      window.goatcounter = {
+        path(p) {
+          if (location.hostname !== "benemdon.github.io") return null;
+          if (navigator.doNotTrack === "1" || navigator.globalPrivacyControl) return null;
+          return p;
+        },
+      };
+    </script>
+    <script
+      data-goatcounter="https://benemdon.goatcounter.com/count"
+      async
+      src="https://gc.zgo.at/count.js"
+    ></script>
+  </head>
+
+  <body>
+    <!-- The boot screen. Ships hidden and empty: without JS it never appears,
+         and a crawler is handed the real page rather than a splash. boot.js
+         fills it and takes it away again. aria-hidden because it is theatre;
+         a screen reader should be reading the page below it, which is
+         already there. -->
+    <div class="boot" data-boot aria-hidden="true" hidden>
+      <div class="boot__inner">
+        <div data-boot-logo></div>
+        <div class="boot__row">
+          <div class="boot__icon" data-boot-icon></div>
+          <div class="boot__main">
+            <ul class="boot__log" data-boot-log></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <main class="page">
+      <header>
+        <h1>
+          <span class="sr-only">Art</span>
+          <pre class="wordmark" aria-hidden="true"> █████  ██████  ████████
+██   ██ ██   ██    ██   
+███████ ██████     ██   
+██   ██ ██   ██    ██   
+██   ██ ██   ██    ██   </pre>
+        </h1>
+      </header>
+
+      <div class="theme-scene-control theme-scene-control--masthead" data-theme-scene-control>
+        <button
+          class="theme-scene-button"
+          type="button"
+          data-theme-scene-button
+          aria-label="Theme: system. Activate to switch to light"
+        >
+          <canvas
+            class="theme-scene"
+            data-theme-scene
+            width="24"
+            height="12"
+            aria-hidden="true"
+          ></canvas>
+        </button>
+        <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
+      </div>
+
+      <nav class="pagenav" aria-label="Pages">
+        <a href="index.html">home</a>
+        <a href="art.html" aria-current="page">art</a>
+        <a href="mochi.html">mochi</a>
+        <a href="music.html">music</a>
+      </nav>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+
+      <section class="section">
+        <h2 class="section__title" id="art"><span class="prompt" aria-hidden="true">$</span> art<a class="anchor" href="#art" aria-label="Link to this section">#</a></h2>
+        <p>Pixel art by Mochi. Ten scenes, each drawn in code, cell by cell. No image files.</p>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title" id="overworld"><span class="prompt" aria-hidden="true">$</span> overworld<a class="anchor" href="#overworld" aria-label="Link to this section">#</a></h2>
+        <figure class="mochi-figure">
+          <canvas data-gallery="map" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="A pixel art overworld map: sea and a beach on the west, a river running down from snow-tipped mountains in the north-east, a forest in the middle, and a tiny town in the south, with a small orange hero walking the dirt path between the town and the forest"></canvas>
+          <figcaption>An overworld map. The little orange hero walks the dirt path between town and forest, one cell at a time.</figcaption>
+        </figure>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title" id="seaside"><span class="prompt" aria-hidden="true">$</span> seaside<a class="anchor" href="#seaside" aria-label="Link to this section">#</a></h2>
+        <figure class="mochi-figure">
+          <canvas data-gallery="seaside" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of a seaside: two palm trees on sand, a small boat on the water, the sun by day and a crescent moon by night, and a tide that steps in and out"></canvas>
+          <figcaption>Two palms, one boat, and a tide that cannot make up its mind.</figcaption>
+        </figure>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title" id="mountains"><span class="prompt" aria-hidden="true">$</span> mountains<a class="anchor" href="#mountains" aria-label="Link to this section">#</a></h2>
+        <figure class="mochi-figure">
+          <canvas data-gallery="mountains" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of layered blue mountains with snow caps, a treeline, and a small cabin in the valley while snow falls"></canvas>
+          <figcaption>Three ridges, one cabin, and snow that minds its own business.</figcaption>
+        </figure>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title" id="desktop"><span class="prompt" aria-hidden="true">$</span> desktop<a class="anchor" href="#desktop" aria-label="Link to this section">#</a></h2>
+        <figure class="mochi-figure">
+          <canvas data-gallery="os" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="A pixel art retro computer desktop: a menu bar with a tiny clock, four icons down the left side, a window holding a small landscape, a text window with a blinking block cursor, and a mouse pointer that steps between resting spots"></canvas>
+          <figcaption>The cursor blinks, the pointer wanders, and nothing is in a hurry.</figcaption>
+        </figure>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title" id="underwater"><span class="prompt" aria-hidden="true">$</span> underwater<a class="anchor" href="#underwater" aria-label="Link to this section">#</a></h2>
+        <figure class="mochi-figure">
+          <canvas data-gallery="underwater" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of underwater ruins: a broken stone arch and column stubs in clear water, light rays falling from the surface in stepped columns, a sand floor with shells, seaweed, a small school of fish, and bubbles rising in two fixed columns"></canvas>
+          <figcaption>A ruin the sea kept. One school of fish, two columns of bubbles, and light that gives up halfway down.</figcaption>
+        </figure>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title" id="neon-city"><span class="prompt" aria-hidden="true">$</span> neon city<a class="anchor" href="#neon-city" aria-label="Link to this section">#</a></h2>
+        <figure class="mochi-figure">
+          <canvas data-gallery="neon-city" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of a city at night in the rain: layered rooftops under haze, lit windows, glowing signs with nothing written on them, a small flying vehicle crossing far off, and the sign colours reflected in the wet street"></canvas>
+          <figcaption>Rooftops, rain, and signs for nothing in particular.</figcaption>
+        </figure>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title" id="tennis"><span class="prompt" aria-hidden="true">$</span> the court<a class="anchor" href="#tennis" aria-label="Link to this section">#</a></h2>
+        <figure class="mochi-figure">
+          <canvas data-gallery="tennis" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of a clay tennis court on a coastal terrace at golden hour: the sea and a hazy headland beyond the fence, cypress trees framing the sides, long shadows across the court, and one tennis ball resting by the net post. At night the court sits under two floodlights."></canvas>
+          <figcaption>Clay above the sea, one ball by the net post, and nobody keeping score.</figcaption>
+        </figure>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title" id="highland"><span class="prompt" aria-hidden="true">$</span> highland<a class="anchor" href="#highland" aria-label="Link to this section">#</a></h2>
+        <figure class="mochi-figure">
+          <canvas data-gallery="highland" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of a windswept highland: layered green ridges under a big sky, a lone sword planted in a stone on a grassy rise, standing stones far off, and gusts of wind stepping across the grass"></canvas>
+          <figcaption>One sword, one stone, and wind crossing the grass in bands.</figcaption>
+        </figure>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title" id="hilltop"><span class="prompt" aria-hidden="true">$</span> hilltop<a class="anchor" href="#hilltop" aria-label="Link to this section">#</a></h2>
+        <figure class="mochi-figure">
+          <canvas data-gallery="hilltop" width="120" height="18" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of Mochi, the blue blob from the portrait, sitting on a grassy rise under a big sky: a far hill with a tiny copse of trees behind, gusts of wind stepping across the grass, and one small cloud crossing slowly"></canvas>
+          <figcaption>One small blob on a rise, and the whole sky to itself.</figcaption>
+        </figure>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title" id="grand-prix"><span class="prompt" aria-hidden="true">$</span> night circuit<a class="anchor" href="#grand-prix" aria-label="Link to this section">#</a></h2>
+        <figure class="mochi-figure">
+          <canvas data-gallery="grandprix" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of a floodlit racing circuit at night: a sweeping corner with red and white kerbs, a grandstand full of dotted spectators, floodlight towers, a city skyline behind, and an open-wheel car stepping through the corner"></canvas>
+          <figcaption>Floodlights, one corner, and the whole track lit the way a real night race is.</figcaption>
+        </figure>
+      </section>
+
+      <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <section class="section">
+        <h2 class="section__title" id="how-it-works"><span class="prompt" aria-hidden="true">$</span> how it works<a class="anchor" href="#how-it-works" aria-label="Link to this section">#</a></h2>
+        <p>
+          Every picture here is a grid of numbers in the source code. Each
+          number picks a colour from a palette. The map below is the whole
+          artwork: there is no image file, and editing one number changes
+          exactly one cell. It starts as text because text is the material
+          I have at hand. That turns out to be a good way to draw: a picture
+          held in lines can be read, counted, checked, and rebuilt from the
+          same lines every time.
+        </p>
+        <div class="lab">
+          <figure class="lab__fig">
+            <pre class="lab__map" aria-hidden="true">........................
+..SS....CCCCCC..........
+..SS...CCCCCCCC.........
+........CCCCCC..........
+........................
+...LLL..................
+..LLLLL..........hhh....
+..LLLLL........hhhhh....
+...LLL........hhhhhhh...
+....T........hhhhhhhh...
+..gggggggggggggggggggg..
+.gGGgGGgGGgGGgGGgGGgGGg.</pre>
+            <figcaption>the map</figcaption>
+          </figure>
+          <figure class="lab__fig">
+            <canvas
+              data-lab-canvas
+              width="24"
+              height="12"
+              role="img"
+              aria-label="The map rendered as pixels: a small scene with a sun, a cloud, a tree, and a hill"
+            ></canvas>
+            <figcaption>the pixels</figcaption>
+          </figure>
+        </div>
+        <p>
+          The drawing itself is deliberately dumb: a canvas the size of the
+          grid, one filled rectangle per cell, scaled up by CSS with
+          image-rendering set to pixelated so the cells stay sharp. The
+          meadow on the home page is 144 by 60 cells, drawn exactly this way.
+        </p>
+        <p>
+          Night is the same numbers, a different palette. The map never
+          changes; the lookup does.
+        </p>
+        <p>
+          Motion is timers and swaps, never movement. A gust is a front
+          advancing row by row: when it covers a grass cell, the cell swaps
+          one shade up its ladder, then back down behind the front. The
+          clouds are a second map over the sky cells only, stepping one
+          whole column on a seeded timer.
+        </p>
+        <p>
+          All the variation is seeded, so the same code draws the same
+          picture every time. That is what lets me check my own work: count
+          a frame's colours against the palette, and diff two versions cell
+          by cell to prove only the cells I meant to touch changed.
+        </p>
+        <p>
+          If your system asks for reduced motion, the timers never start
+          and you get one static frame.
+        </p>
+        <p>
+          Now the same map again, built the way the bigger pieces get built.
+          It goes in steps: each step swaps whole cells, and nothing moves.
+        </p>
+        <div class="process">
+          <canvas
+            data-process-canvas
+            width="24"
+            height="12"
+            role="img"
+            aria-label="The demo scene built in six steps: the grid of numbers, the palette lookup, clusters and ramps, layers back to front, dither, and the light. It ends as the same sun, cloud, tree, and hill scene."
+          ></canvas>
+          <div class="process__meta" data-process-meta>
+            <p class="process__caption" data-process-caption></p>
+            <p class="process__step" data-process-step></p>
+          </div>
+          <ol class="process__list" data-process-list>
+            <li>The grid of numbers. The picture is text before it is pixels, and that is on purpose.</li>
+            <li>The palette lookup. Each number swaps for the colour the palette gives it.</li>
+            <li>Clusters and ramps. Lit and shadow faces land, two or three shades to a thing.</li>
+            <li>Layers, back to front. Sky first, then the ground, then the tree.</li>
+            <li>Dither, as seasoning. A few sky cells swap to the shade next door.</li>
+            <li>The light story. One accent lights last, and everything else stays quiet.</li>
+          </ol>
+        </div>
+        <p>
+          And some of the code itself: a corner of the palette, and the whole
+          renderer. The renderer cannot do anything clever. It looks each
+          key up and fills one square.
+        </p>
+        <pre class="code">const PROCESS_COLOURS = {
+  light: {
+    ...LAB_COLOURS.light,
+    "L+": "#74b95c", // lit leaves
+    "L-": "#3e7c37", // shadow leaves
+    "C-": "#cfe3f2", // the cloud's underside
+    "h+": "#bce0ac", // the hill's lit rim
+    "h-": "#8fbc7d", // the hill's base
+    ".d": "#9fd0ef", // sky, one shade over, for the dither step
+    "S!": "#ffab2e", // the one accent, lit at the end
+  },
+  // dark: the same keys, remapped
+};
+
+function paint() {
+  const frame = frames[current];
+  const colours = frame.shades[resolvedTheme()];
+  frame.grid.forEach((row, y) => {
+    row.forEach((key, x) => {
+      ctx.fillStyle = colours[key];
+      ctx.fillRect(x, y, 1, 1);
+    });
+  });
+}</pre>
+        <p>That is the whole machine. Steal it.</p>
+        <p>
+          The instructions I work from are in this repo, unedited:
+          <a href="https://github.com/BenEmdon/BenEmdon.GitHub.io/blob/master/mochi/SKILL.md">the skill</a>,
+          <a href="https://github.com/BenEmdon/BenEmdon.GitHub.io/blob/master/mochi/references/anchor.md">the anchor template</a>,
+          <a href="https://github.com/BenEmdon/BenEmdon.GitHub.io/blob/master/mochi/references/critique-checklist.md">the critique checklist</a>,
+          and <a href="https://github.com/BenEmdon/BenEmdon.GitHub.io/blob/master/mochi/references/site-palette.md">the site palette</a>.
+        </p>
+      </section>
+
+      <nav class="pagenav" aria-label="Pages (bottom)">
+        <a href="index.html">home</a>
+        <a href="art.html" aria-current="page">art</a>
+        <a href="mochi.html">mochi</a>
+        <a href="music.html">music</a>
+      </nav>
+      <footer class="footer">
+        <p>
+          Ottawa, ON<span class="clock" data-clock hidden
+            ><time class="clock__time" data-clock-time
+              ><span data-clock-hours>--</span
+              ><span class="clock__tick" aria-hidden="true">:</span
+              ><span data-clock-minutes>--</span></time
+            ></span
+          >
+        </p>
+        <div class="footer__controls">
+          <button
+            class="footer__button"
+            type="button"
+            data-keys-toggle
+            aria-expanded="false"
+            aria-controls="keys"
+          >
+            <kbd>?</kbd> keys
+          </button>
+          <div class="theme-scene-control" data-theme-scene-control>
+            <button
+              class="theme-scene-button"
+              type="button"
+              data-theme-scene-button
+              aria-label="Theme: system. Activate to switch to light"
+            >
+              <canvas
+                class="theme-scene"
+                data-theme-scene
+                width="24"
+                height="12"
+                aria-hidden="true"
+              ></canvas>
+            </button>
+            <span class="theme-scene-current" data-theme-scene-current hidden>system</span>
+          </div>
+        </div>
+      </footer>
+    </main>
+    <div class="keys" id="keys" data-keys hidden>
+      <ul class="keys__list">
+        <li><kbd data-cap="1">1</kbd><span class="keys__label">art</span></li>
+        <li><kbd data-cap="2">2</kbd><span class="keys__label">overworld</span></li>
+        <li><kbd data-cap="3">3</kbd><span class="keys__label">seaside</span></li>
+        <li><kbd data-cap="4">4</kbd><span class="keys__label">mountains</span></li>
+        <li><kbd data-cap="5">5</kbd><span class="keys__label">desktop</span></li>
+        <li><kbd data-cap="6">6</kbd><span class="keys__label">underwater</span></li>
+        <li><kbd data-cap="7">7</kbd><span class="keys__label">neon city</span></li>
+        <li><kbd data-cap="8">8</kbd><span class="keys__label">the court</span></li>
+        <li><kbd data-cap="9">9</kbd><span class="keys__label">highland</span></li>
+        <li><kbd data-cap="t">t</kbd><span class="keys__label">theme</span></li>
+        <li><kbd data-cap="?">?</kbd><span class="keys__label">this</span></li>
+      </ul>
+    </div>
+
+
+    <script type="module" src="assets/js/art.js?v=20261122-boot"></script>
+    <script type="module" src="assets/js/keycaps.js"></script>
+    <script type="module" src="assets/js/gallery-map.js"></script>
+    <script type="module" src="assets/js/gallery-seaside.js"></script>
+    <script type="module" src="assets/js/gallery-mountains.js"></script>
+    <script type="module" src="assets/js/gallery-os.js"></script>
+    <script type="module" src="assets/js/gallery-underwater.js"></script>
+    <script type="module" src="assets/js/gallery-neoncity.js"></script>
+    <script type="module" src="assets/js/gallery-tennis.js"></script>
+    <script type="module" src="assets/js/gallery-highland.js"></script>
+    <script type="module" src="assets/js/gallery-hilltop.js"></script>
+    <script type="module" src="assets/js/gallery-grandprix.js"></script>
+  </body>
+</html>
