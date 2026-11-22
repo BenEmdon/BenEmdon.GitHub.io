@@ -515,3 +515,18 @@
   font-size: var(--text-small);
   color: var(--muted-color);
 }
+
+/* The demo is a block like any other on the page: a whole step clear
+   of the song name above it and the link line below, not flush
+   against either. */
+.music-demo {
+  margin-block: var(--step);
+}
+
+/* Touch targets on the same terms as the music maker's own buttons
+   and the footer buttons: two whole steps tall on coarse pointers. */
+@media (max-width: 34rem), (pointer: coarse) {
+  .music-demo__button {
+    min-height: calc(var(--step) * 2);
+  }
+}

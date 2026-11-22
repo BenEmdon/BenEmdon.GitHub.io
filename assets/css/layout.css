@@ -246,6 +246,15 @@
   color: var(--accent-color);
 }
 
+/* The interesting section's list is a direct child of its section, so
+   nothing else gives it the step every other block gets from its
+   predecessor; without this it sits flush on its intro line. The work
+   entries' lists live inside .entry, whose grid places them, and this
+   rule must not reach those. */
+.section > .entry__list {
+  margin-block-start: var(--step);
+}
+
 /* ---------- links ---------- */
 
 .links {
