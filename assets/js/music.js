@@ -196,7 +196,7 @@ const INSTRUMENTS = [
   { name: "harp", kind: "sample", verb: 0.35,
     files: [[48, "harp-48.mp3"], [72, "harp-72.mp3"]] },
   { name: "piano", kind: "sample", verb: 0.4,
-    files: [[48, "piano-48.mp3"], [60, "piano-60.mp3"], [72, "piano-72.mp3"], [84, "piano-84.mp3"]] },
+    files: [[48, "piano-48.mp3"], [60, "piano-60.mp3"], [72, "piano-72.mp3"], [84, "piano-84.mp3"], [36, "piano-36.mp3"]] },
 ];
 const AUDIO_BASE = "assets/audio/";
 
