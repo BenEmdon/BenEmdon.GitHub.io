@@ -220,15 +220,25 @@ function setUpKeys() {
     }
   }
 
-  const centreLine = new IntersectionObserver(
+  // The frame's scroll source: a zero-height band a third of
+  // the way down the viewport, two-thirds toward the top
+  // (Ben's call, 2026-11-22). Insetting the root 33.333% from
+  // the top and 66.667% from the bottom leaves no box, so a
+  // section "intersects" exactly while it straddles that
+  // line, and the framed section sits in the upper part of
+  // the screen with more of what follows in view. On a
+  // desktop the pointer is the frame's source instead: the
+  // hover rule in layout.css stands this one down while the
+  // mouse is over any section. Dead centre was the old line.
+  const focusLine = new IntersectionObserver(
     (entries) => {
       if (performance.now() < jumpingUntil) return;
       const arrived = entries.findLast((entry) => entry.isIntersecting);
       if (arrived) frame(arrived.target);
     },
-    { rootMargin: "-50% 0px -50% 0px" }
+    { rootMargin: "-33.333% 0px -66.667% 0px" }
   );
-  for (const section of sections) centreLine.observe(section);
+  for (const section of sections) focusLine.observe(section);
 
   function showKeys(open) {
     keys.hidden = !open;
@@ -2283,11 +2293,16 @@ function* channelStripSteps(ch, song) {
   play.className = "gplay";
   play.hidden = true;
   layer.appendChild(play);
+  // The pitch labels are in-flow sticky spans (see .glabel
+  // in music.css): one per lane, stacked down the strip in
+  // row order, each a lane pitch tall, and stuck to the
+  // panel's left edge while the layer scrolls under them.
+  // No per-label position is set here; the stack is the
+  // position.
   for (let i = 0; i < rows.length; i++) {
     const label = document.createElement("span");
     label.className = "glabel";
     label.textContent = pitchName(rows[i]);
-    label.style.top = `${i * LANE_PITCH + 1}px`;
     strip.appendChild(label);
   }
   entry.strip = strip;
