@@ -81,6 +81,20 @@ const SPINNER_HOLD_MS = 1000;
 // stacked.
 const SPINNER_MIN_MS = 1000;
 
+// The completed painting's dwell (Ben, 2026-11-22: "The
+// corner loader should show the completed image for like
+// 300 milliseconds after it completes"): once the fill
+// reaches whole, the chip stays on the finished painting
+// for this long before removal begins. It is additive
+// with the waits above, never a replacement for them:
+// removal happens at the latest of the minimum, the
+// settle hold, and the dwell counted from the moment the
+// painting became whole. Without it, a batch whose hold
+// ran out during the play-out lost its chip on the very
+// step the last cell landed, and the finished picture
+// was never actually seen.
+const COMPLETED_DWELL_MS = 300;
+
 // Which surface a load gets, as a pure decision so it can be
 // exercised outside a browser: badge pages always boot in full,
 // reduced motion never boots, the home page boots in full on
@@ -519,7 +533,8 @@ let loaderBatch = null;
 // finished chip is owed is the later of its minimum on
 // screen, counted from its mount, and its settle hold,
 // counted from its batch's close, plus its painting
-// played out to whole. It is not a dead remnant: its
+// played out to whole and the completed painting's dwell
+// after that. It is not a dead remnant: its
 // painting plays out to whole on the fill step while it
 // retires (a finished batch's picture completes as an
 // animation, never a snap), its count and latency are its
@@ -574,10 +589,12 @@ function openLoaderBatch(startedAt) {
     // moves the level, and every view renders the level, so
     // the two paintings show the same cells at every moment.
     filled: 0,
+    wholeAt: null, // when the fill first reached whole; the dwell counts from here
     chip: null, // { el, icon, count, time, cells, rendered, owner }
     view: null, // { el, icon, cells, rendered, log, rows, onKey }
     fillTimer: null,
     holdTimer: null,
+    dwellTimer: null, // the wake-up for a removal waiting out the dwell
     watchTimer: null,
     spinTimer: null,
     spinFrame: 0,
@@ -843,6 +860,7 @@ function adoptSpinner(batch) {
   const { view } = retiredChip;
   clearTimeout(retiredChip.timer);
   if (retiredChip.fillTimer) clearInterval(retiredChip.fillTimer);
+  if (retiredChip.dwellTimer) clearTimeout(retiredChip.dwellTimer);
   retiredChip = null;
   view.owner = batch;
   batch.chip = view;
@@ -911,9 +929,29 @@ function stepBatchFill(batch, target) {
   } else if (batch.filled > target) {
     batch.filled = Math.max(target, batch.filled - perStep);
   }
+  // The moment the painting becomes whole starts the
+  // completed dwell; a level that steps back down off
+  // whole (a running batch whose progress reverted) has
+  // no completed painting to dwell on, and a later
+  // completion starts a fresh dwell.
+  if (batch.filled >= ICON_TOTAL) {
+    if (batch.wholeAt == null) batch.wholeAt = performance.now();
+  } else if (batch.wholeAt != null) {
+    batch.wholeAt = null;
+  }
   for (const view of batchIconViews(batch)) {
     syncIconView(view, batch.filled);
   }
+}
+
+// Whether the completed painting has been on screen for
+// its dwell yet. A batch whose painting never reached
+// whole has no dwell to wait out.
+function completedDwellElapsed(batch) {
+  return (
+    batch.wholeAt == null ||
+    performance.now() >= batch.wholeAt + COMPLETED_DWELL_MS
+  );
 }
 
 function stepLoaderFill(batch) {
@@ -933,18 +971,33 @@ function stepLoaderFill(batch) {
   maybeFinishClosedBatch(batch);
 }
 
-// A closed batch's chip leaves when both halves are done:
-// its hold has run out, and its painting has played out to
-// whole on the fill step. Whichever half lands last calls
-// this. On the retimed pacing a fast batch's play-out runs
-// past its hold (up to a second and a half from the mount),
-// so the hold alone no longer removes it; the two waits are
-// a maximum, never a sum, so nothing is stacked. While the
-// view is open the batch stays, as it always has:
-// dismissing the view ends it through teardown.
+// A closed batch's chip leaves when all three are done:
+// its hold has run out, its painting has played out to
+// whole on the fill step, and the completed painting has
+// then dwelt on screen for its ~300 ms. Whichever lands
+// last finishes the batch. On the retimed pacing a fast
+// batch's play-out runs past its hold (up to a second and
+// a half from the mount), so the hold alone no longer
+// removes it; the waits are a maximum, never a sum, so
+// nothing is stacked. The dwell is the one wait counted
+// from the painting rather than the batch: when it is the
+// last one out, nothing else is left running to call this
+// again (the fill timer stops at whole), so it leaves a
+// wake-up timer behind. While the view is open the batch
+// stays, as it always has: dismissing the view ends it
+// through teardown.
 function maybeFinishClosedBatch(batch) {
   if (!batch.closed || !batch.holdElapsed || batch.view) return;
   if (batch.chip && batch.filled < ICON_TOTAL) return;
+  if (batch.chip && !completedDwellElapsed(batch)) {
+    if (!batch.dwellTimer) {
+      batch.dwellTimer = setTimeout(() => {
+        batch.dwellTimer = null;
+        maybeFinishClosedBatch(batch);
+      }, Math.max(0, batch.wholeAt + COMPLETED_DWELL_MS - performance.now()));
+    }
+    return;
+  }
   teardownLoaderBatch(batch);
 }
 
@@ -987,6 +1040,7 @@ function ensureSpinner(batch) {
     // its retirement is moot, and it bars nothing.
     clearTimeout(retiredChip.timer);
     if (retiredChip.fillTimer) clearInterval(retiredChip.fillTimer);
+    if (retiredChip.dwellTimer) clearTimeout(retiredChip.dwellTimer);
     retiredChip = null;
   }
   if (retiredChip) {
@@ -1027,10 +1081,14 @@ function renderLoader(batch) {
   if (batch.view) renderBootView(batch);
 }
 
-// A retired chip leaves the corner when both halves of its
-// retirement are done: the time it was owed has run out,
-// and its painting has played out to whole on the fill
-// step. Whichever half lands last calls this. While the
+// A retired chip leaves the corner when its retirement
+// is done: the time it was owed has run out, its painting
+// has played out to whole on the fill step, and the
+// completed painting has then dwelt on screen for its
+// ~300 ms, the same dwell a live batch's chip gets.
+// Whichever lands last calls this; when the dwell is the
+// last one out it leaves a wake-up timer behind, since
+// the retirement's fill timer stops at whole. While the
 // retired batch's view is open the chip stays, as it
 // always has: dismissing the view removes the chip with
 // its batch, through teardown.
@@ -1038,7 +1096,20 @@ function finishRetiredChip(retired) {
   if (retiredChip !== retired) return;
   if (!retired.gateElapsed || retired.batch.filled < ICON_TOTAL) return;
   if (retired.batch.view) return;
+  if (!completedDwellElapsed(retired.batch)) {
+    if (!retired.dwellTimer) {
+      retired.dwellTimer = setTimeout(() => {
+        retired.dwellTimer = null;
+        finishRetiredChip(retired);
+      }, Math.max(
+        0,
+        retired.batch.wholeAt + COMPLETED_DWELL_MS - performance.now()
+      ));
+    }
+    return;
+  }
   if (retired.fillTimer) clearInterval(retired.fillTimer);
+  if (retired.dwellTimer) clearTimeout(retired.dwellTimer);
   retired.view.el.remove();
   retiredChip = null;
 }
@@ -1058,6 +1129,8 @@ function teardownLoaderBatch(batch, { keepChip = false } = {}) {
   batch.watchTimer = null;
   if (batch.holdTimer) clearTimeout(batch.holdTimer);
   batch.holdTimer = null;
+  if (batch.dwellTimer) clearTimeout(batch.dwellTimer);
+  batch.dwellTimer = null;
   if (batch.spinTimer) clearInterval(batch.spinTimer);
   batch.spinTimer = null;
   if (batch.view) {
@@ -1072,6 +1145,7 @@ function teardownLoaderBatch(batch, { keepChip = false } = {}) {
     // the element goes with its batch.
     clearTimeout(retiredChip.timer);
     if (retiredChip.fillTimer) clearInterval(retiredChip.fillTimer);
+    if (retiredChip.dwellTimer) clearTimeout(retiredChip.dwellTimer);
     retiredChip.view.el.remove();
     retiredChip = null;
   }
@@ -1086,7 +1160,8 @@ function teardownLoaderBatch(batch, { keepChip = false } = {}) {
     // screen, counted from its mount, and its settle hold,
     // counted from the close; its painting plays out to
     // whole across that time on the retirement's own step,
-    // and the chip leaves only once both are done. The
+    // and the chip leaves only once both are done and the
+    // completed painting has dwelt. The
     // gate was once the minimum alone, so a batch that
     // closed after its chip's first second (a long render,
     // above all: the music pipeline's next step always
@@ -1120,6 +1195,7 @@ function teardownLoaderBatch(batch, { keepChip = false } = {}) {
         batch,
         timer: null,
         fillTimer: null,
+        dwellTimer: null,
         gateElapsed: false,
       };
       retiredChip = retired;
