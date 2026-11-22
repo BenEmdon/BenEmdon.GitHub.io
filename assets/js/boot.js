@@ -5,11 +5,18 @@
   the framed field filling in beside it) shows once per session,
   on whichever page the visit lands on first. Every later load in
   the same session gets the small surface instead: a segmented
-  pixel bar at the top of the page, one segment per task the page
-  loads, each segment lighting as its task finishes, with the
-  count beside it. When the last task settles the bar reports the
-  total time the page's tasks really took, holds for about a
-  second, and is removed in one step.
+  pixel bar in the slim slot reserved at the top of every page's
+  layout, one segment per task the page loads, each segment
+  lighting as its task finishes, with the count beside it. When
+  the last task settles the bar reports the total time the page's
+  tasks really took, holds for about a second, and is removed in
+  one step, leaving the slot empty.
+
+  Neither surface overlays the page. The full screen takes its
+  own block in the layout at the top of the page, under the slot,
+  and the indicator's slot is part of the layout on every load,
+  so nothing is ever covered and nothing shifts: the page makes
+  room at its top and the boot squeezes into it.
 
   Both surfaces run off the same task list the page hands in:
   { label, promise, format } entries whose promises resolve only
@@ -42,6 +49,14 @@ const TASK_TIMEOUT = 12000;
 // seen. The fill takes about half a second once the tasks allow
 // it, and the hold is 450 ms.
 const BOOT_HOLD_MS = 450;
+
+// The full screen's floor: however fast the work runs, the screen
+// stays up a second and a half in total, so the ceremony has time
+// to read as one. The extra is hold at the floor, never padded
+// numbers: the log lines keep the durations they really measured
+// and the fill still tracks the tasks. Work slower than the floor
+// takes as long as it takes, as it always has.
+const BOOT_FLOOR_MS = 1500;
 
 // How long the finished indicator stays up before it is removed:
 // long enough to read the count and the total, no longer.
@@ -163,6 +178,9 @@ function runFullBoot(tasks) {
     // run the same paint-in the real one does, the moment it can.
     document.fonts.ready.then(() => logo.classList.add("is-booting"));
   }
+  // The screen's own zero for the floor below: the total is
+  // measured from the moment the screen becomes visible.
+  const startedAt = performance.now();
   boot.hidden = false;
 
   const timers = [];
@@ -255,13 +273,18 @@ function runFullBoot(tasks) {
   let exitScheduled = false;
 
   // The exit needs both halves: every task settled, and the
-  // picture fully filled plus the hold after its last cell.
-  // Whichever half lands second runs this check. A scheduled exit
-  // sits in timers, so a skip still clears it and cuts straight to
-  // the page.
+  // picture fully filled plus the hold after its last cell. It
+  // also waits out the floor, so a fast load still gets the full
+  // second and a half of screen. Whichever lands last runs this
+  // check. A scheduled exit sits in timers, so a skip still
+  // clears it and cuts straight to the page.
   function maybeExit() {
     if (!tasksSettled || iconFilledAt === null || exitScheduled) return;
-    const remaining = iconFilledAt + BOOT_HOLD_MS - performance.now();
+    const earliest = Math.max(
+      iconFilledAt + BOOT_HOLD_MS,
+      startedAt + BOOT_FLOOR_MS
+    );
+    const remaining = earliest - performance.now();
     if (remaining > 0) {
       exitScheduled = true;
       timers.push(setTimeout(done, remaining));
@@ -353,7 +376,13 @@ function runIndicator(tasks, t0) {
   text.className = "boot-ind__text";
   text.textContent = `0 of ${tasks.length}`;
   bar.append(text);
-  document.body.prepend(bar);
+  // The bar renders inside the slot reserved at the top of every
+  // page's layout, so it never covers anything. A page whose
+  // markup has no slot gets it at the top of the body instead,
+  // still in the flow.
+  const slot = document.querySelector("[data-boot-slot]");
+  if (slot) slot.append(bar);
+  else document.body.prepend(bar);
 
   let settled = 0;
   let loaded = 0;
@@ -361,7 +390,9 @@ function runIndicator(tasks, t0) {
   // Every task settled, one way or another: report what actually
   // loaded and how long the page's tasks really took, measured
   // from the start the page handed in, then hold briefly and take
-  // the row away in one step. No fade: the row is there, then it
+  // the bar out of its slot in one step. The slot stays behind,
+  // empty: it is part of the layout on every load, not something
+  // the bar brought with it. No fade: the bar is there, then it
   // is not, the way every other pixel on the site behaves.
   const finish = () => {
     const total = Math.round(performance.now() - t0);
