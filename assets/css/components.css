@@ -477,6 +477,9 @@
   display: flex;
   align-items: center;
   gap: calc(var(--step) / 2);
+  /* One whole step below the roll, on the same rhythm as the
+     demo block's own margins. */
+  margin-top: var(--step);
 }
 
 .music-demo__button {
