@@ -1306,8 +1306,21 @@ async function renderSong(song) {
   const ctx = buildOfflineGraph(
     song, song.channels.map((_, i) => i), sr, null);
   const t0 = performance.now();
-  const buffer = await ctx.startRendering();
-  return renderResult(song, buffer, performance.now() - t0);
+  // The single render is one render, so it reports itself to
+  // the corner loader as one task, however it was reached:
+  // a light song on the plain path, the parallel path's
+  // fallback, or the verification retry. The loader only
+  // observes; the render runs exactly as it did, and a
+  // failure reaches the handle before it propagates.
+  const work = registerTask("rendering " + songName(song));
+  try {
+    const buffer = await ctx.startRendering();
+    work.complete();
+    return renderResult(song, buffer, performance.now() - t0);
+  } catch (err) {
+    work.fail(err && err.message ? err.message : "render failed");
+    throw err;
+  }
 }
 
 /* ----- channel-parallel rendering, for heavy songs ----- */
@@ -1415,6 +1428,16 @@ function mixBuffers(a, b, frames, sr) {
   return ctx.startRendering();
 }
 
+// A bin's loader label: the song's name, then the channel
+// or channels the bin carries, by their letters, so the
+// loader's expanded panel reads as the steps the render
+// really took.
+function binLabel(song, bin) {
+  const letters = bin.map((ci) => song.channels[ci].letter);
+  return songName(song) + " · channel" +
+    (letters.length > 1 ? "s " : " ") + letters.join("+");
+}
+
 async function renderSongParallel(song) {
   const sr = 44100;
   const stepDur = 60 / song.tempo / 4;
@@ -1422,6 +1445,15 @@ async function renderSongParallel(song) {
   const bins = planBins(song);
   const ctxs = bins.map((bin) => buildBinGraph(song, bin, sr));
   const t0 = performance.now();
+  // Each bin reports itself to the corner loader as its own
+  // task, registered once every graph is built, so a build
+  // failure registers nothing and falls back clean. A bin
+  // render has no internal progress to report, so its task
+  // sits at zero while the render runs and completes when
+  // the render settles; a failed bin fails its task with
+  // the reason and rethrows, so renderSongBest's fallback
+  // sees the failure exactly as it did.
+  const binWork = bins.map((bin) => registerTask(binLabel(song, bin)));
   // The pairwise mixdown chain: mixes run one at a time, in
   // arrival order, so the buffers alive at once stay at the
   // mixdown, the arriving bin and the mix being rendered. A
@@ -1444,10 +1476,18 @@ async function renderSongParallel(song) {
     });
   };
   await Promise.all(ctxs.map((ctx, i) =>
-    ctx.startRendering().then((buf) => {
-      ctxs[i] = null; // release the bin as soon as it has rendered
-      mixIn(buf);
-    })
+    ctx.startRendering().then(
+      (buf) => {
+        ctxs[i] = null; // release the bin as soon as it has rendered
+        binWork[i].complete();
+        mixIn(buf);
+      },
+      (err) => {
+        binWork[i].fail(
+          err && err.message ? err.message : "render failed");
+        throw err;
+      }
+    )
   ));
   await chain;
   if (mixError) throw mixError;
@@ -1509,21 +1549,64 @@ async function obtainRender(song, { announce = true } = {}) {
 }
 
 async function obtainVerifiedRender(song, key, announce) {
-  // Every gated render registers with the corner loader and
-  // reports its stages as they happen: samples, the render,
-  // the verification, and, when a wrong-but-complete render
-  // earns the single retry, a step backwards to rendering
-  // again, which the loader shows as this task's progress
-  // reverting. The loader only observes; the gate below runs
-  // exactly as it did, and a failure reaches the handle
-  // through this catch, with the error's own message.
-  const work = registerTask("rendering " + songName(song));
-  try {
-    return await renderVerified(song, key, announce, work);
-  } catch (err) {
-    work.fail(err && err.message ? err.message : "render failed");
-    throw err;
+  // The gate registers no task of its own: each step of the
+  // work reports itself to the corner loader as its own
+  // task, so the batch for one render reads as the steps it
+  // really took. The samples load registers inside
+  // loadSamples, a parallel render registers one task per
+  // bin inside renderSongParallel, a single render registers
+  // one inside renderSong, and verification registers its
+  // own below. The loader only observes; the gate runs
+  // exactly as it did, and each failure reaches the task
+  // that owns the step that failed.
+  if (announce && !samplesReady) setStatus("loading samples\u2026");
+  await loadSamples();
+  const hit = await readRender(key);
+  if (hit && checkBuffer(hit.buffer).ok) {
+    // A cache hit renders nothing, but the stored buffer
+    // still passes the band above before it may play, so
+    // verification is the step that ran: its task completes
+    // on the spot, carrying the honest label.
+    const stepDur = 60 / song.tempo / 4;
+    const work = registerTask("verifying " + songName(song));
+    work.status("from cache");
+    work.complete();
+    return {
+      buffer: hit.buffer, dur: hit.dur, stepDur,
+      loopStart: hit.loopStart, loopDur: hit.dur - hit.loopStart,
+      renderMs: 0, fromCache: true,
+    };
   }
+  if (announce) setStatus("rendering\u2026");
+  let rendered = await renderSongBest(song);
+  const work = registerTask("verifying " + songName(song));
+  if (announce) setStatus("verifying\u2026");
+  let check = checkBuffer(rendered.buffer);
+  if (!check.ok) {
+    // A wrong-but-complete render, the failure the parallel
+    // path can produce without throwing, earns exactly one
+    // retry through the plain single render, which registers
+    // its own task like any single render. The verification
+    // task stays open across the retry: verification is not
+    // done until a buffer passes. If the retry fails
+    // verification too, nothing is stored and nothing plays,
+    // the task fails with the check's reason, and the throw
+    // tells every caller so.
+    if (announce) setStatus("rendering\u2026");
+    rendered = await renderSong(song);
+    check = checkBuffer(rendered.buffer);
+    if (!check.ok) {
+      const err = verifyError(check.reason);
+      work.fail(err.message);
+      if (announce) {
+        setStatus(renderFailureText(err, "so nothing was played."), true);
+      }
+      throw err;
+    }
+  }
+  work.complete();
+  writeRender(key, rendered);
+  return rendered;
 }
 
 // The display name the details block derives from the first
@@ -1534,55 +1617,6 @@ function songName(song) {
     .map((l) => l.replace(/^;\s*/, "").trim())
     .filter((l) => l.length);
   return (head[0] || "song").split(":")[0].trim() || "song";
-}
-
-async function renderVerified(song, key, announce, work) {
-  work.status("loading samples");
-  if (announce && !samplesReady) setStatus("loading samples\u2026");
-  await loadSamples();
-  work.update(0.25);
-  const hit = await readRender(key);
-  if (hit && checkBuffer(hit.buffer).ok) {
-    const stepDur = 60 / song.tempo / 4;
-    work.status("from cache");
-    work.complete();
-    return {
-      buffer: hit.buffer, dur: hit.dur, stepDur,
-      loopStart: hit.loopStart, loopDur: hit.dur - hit.loopStart,
-      renderMs: 0, fromCache: true,
-    };
-  }
-  work.status("rendering");
-  work.update(0.4);
-  if (announce) setStatus("rendering\u2026");
-  let rendered = await renderSongBest(song);
-  work.status("verifying");
-  work.update(0.8);
-  if (announce) setStatus("verifying\u2026");
-  let check = checkBuffer(rendered.buffer);
-  if (!check.ok) {
-    // A wrong-but-complete render, the failure the parallel
-    // path can produce without throwing, earns exactly one
-    // retry through the plain single render. If that fails
-    // verification too, nothing is stored and nothing plays,
-    // and the throw tells every caller so, carrying the
-    // reason the final check gave.
-    work.status("rendering again");
-    work.update(0.4);
-    if (announce) setStatus("rendering\u2026");
-    rendered = await renderSong(song);
-    check = checkBuffer(rendered.buffer);
-    if (!check.ok) {
-      const err = verifyError(check.reason);
-      if (announce) {
-        setStatus(renderFailureText(err, "so nothing was played."), true);
-      }
-      throw err;
-    }
-  }
-  work.complete();
-  writeRender(key, rendered);
-  return rendered;
 }
 
 function checkBuffer(buffer) {
