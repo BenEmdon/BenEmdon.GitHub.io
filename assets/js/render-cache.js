@@ -30,9 +30,17 @@
   miss or a no-op: the cache is an optimisation, and both
   pages fall back to rendering exactly as they did before
   it existed.
+
+  Every entry also carries a content signature and level
+  stats (peak, per-channel RMS) computed from the channel
+  data at write time. A read recomputes both from the stored
+  arrays and compares before any buffer is built: a mismatch
+  deletes the entry and reads as a miss, so a render that was
+  corrupted in storage, or stored by a broken engine, is
+  never played.
 */
 
-export const RENDER_CACHE_VERSION = 7;
+export const RENDER_CACHE_VERSION = 8;
 
 const DB_NAME = "music-render-cache";
 const MAX_ENTRIES = 16;
@@ -70,6 +78,92 @@ export function renderCacheKey(song) {
     }
   }
   return "v" + RENDER_CACHE_VERSION + "-" + hashMaterial(m);
+}
+
+
+// The signature and stats an entry is checked against. The
+// signature is FNV-1a over the two channels' sample bits,
+// taken at a stride so at most about 64k samples per channel
+// are probed however long the loop is, with both lengths and
+// the stride mixed in first: cheap on a multi-million-frame
+// buffer, and any change to the stored samples in a probed
+// position, or to a length, changes it.
+const sigScratch = new DataView(new ArrayBuffer(4));
+function floatBits(x) {
+  sigScratch.setFloat32(0, x);
+  return sigScratch.getUint32(0);
+}
+
+function renderSignature(ch) {
+  let h = 0x811c9dc5;
+  const mixByte = (b) => { h = Math.imul(h ^ b, 0x01000193); };
+  const mixWord = (w) => {
+    mixByte(w & 0xff); mixByte((w >>> 8) & 0xff);
+    mixByte((w >>> 16) & 0xff); mixByte(w >>> 24);
+  };
+  mixWord(ch[0].length); mixWord(ch[1].length);
+  for (let c = 0; c < 2; c++) {
+    const arr = ch[c];
+    const n = arr.length;
+    const stride = Math.max(1, Math.floor(n / 65536));
+    mixWord(stride);
+    for (let i = 0; i < n; i += stride) mixWord(floatBits(arr[i]));
+    if (n) mixWord(floatBits(arr[n - 1]));
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
+// Peak and per-channel RMS over the full data: one pass, in
+// the same order every time, so a recomputation over
+// identical data gives identical numbers.
+function renderStats(ch) {
+  let peak = 0, sum0 = 0, sum1 = 0;
+  const a = ch[0], b = ch[1];
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i], y = b[i];
+    const ax = Math.abs(x), ay = Math.abs(y);
+    if (ax > peak) peak = ax;
+    if (ay > peak) peak = ay;
+    sum0 += x * x; sum1 += y * y;
+  }
+  const n = a.length || 1;
+  return { peak, rms: [Math.sqrt(sum0 / n), Math.sqrt(sum1 / n)] };
+}
+
+// The sanity band a render must sit in before it may be
+// stored or played: audible but not past full scale, both
+// channels alive and within a generous ratio of each other,
+// and no long run of bit-identical samples, the mark of a
+// render that stalled or was zero-filled partway. Exported
+// for music.js, whose obtainRender gates playback on it.
+const MAX_IDENTICAL_RUN = 16384;
+export function verifyRenderData(ch) {
+  const a = ch[0], b = ch[1];
+  if (!a || !b || !a.length || a.length !== b.length) {
+    return { ok: false, reason: "length" };
+  }
+  const stats = renderStats(ch);
+  if (!(stats.peak > 0.05) || stats.peak > 1.0) {
+    return { ok: false, reason: "peak", ...stats };
+  }
+  const [r0, r1] = stats.rms;
+  if (!(r0 > 0) || !(r1 > 0)) {
+    return { ok: false, reason: "silent", ...stats };
+  }
+  if (Math.max(r0, r1) / Math.min(r0, r1) > 100) {
+    return { ok: false, reason: "imbalance", ...stats };
+  }
+  for (let c = 0; c < 2; c++) {
+    const arr = ch[c];
+    let run = 1;
+    for (let i = 1; i < arr.length; i++) {
+      run = arr[i] === arr[i - 1] ? run + 1 : 1;
+      if (run >= MAX_IDENTICAL_RUN) {
+        return { ok: false, reason: "stuck", ...stats };
+      }
+    }
+  }
+  return { ok: true, ...stats };
 }
 
 function openDb() {
@@ -159,12 +253,36 @@ export async function readRender(key) {
     if (!entry.ch || entry.ch.length !== 2) return null;
     if (entry.ch[0].length !== entry.frames ||
         entry.ch[1].length !== entry.frames) return null;
+    // The stored signature and stats are recomputed from the
+    // arrays themselves before any buffer is built: samples
+    // that changed in storage, or an entry written without
+    // them, never become a buffer. The entry is deleted, so
+    // the miss is paid once, not on every visit.
+    const stats = renderStats(entry.ch);
+    if (!entry.sig || entry.sig !== renderSignature(entry.ch) ||
+        entry.peak !== stats.peak || !entry.rms ||
+        Math.abs(entry.rms[0] - stats.rms[0]) >
+          1e-9 * Math.max(1, stats.rms[0]) ||
+        Math.abs(entry.rms[1] - stats.rms[1]) >
+          1e-9 * Math.max(1, stats.rms[1])) {
+      await deleteEntry(db, key);
+      return null;
+    }
     const buffer = makeBuffer(entry);
     touchMeta(db, key);
     return { buffer, dur: entry.dur, loopStart: entry.loopStart };
   } catch {
     return null;
   }
+}
+
+async function deleteEntry(db, key) {
+  try {
+    const tx = db.transaction(["renders", "meta"], "readwrite");
+    tx.objectStore("renders").delete(key);
+    tx.objectStore("meta").delete(key);
+    await txDone(tx);
+  } catch { /* a failed delete costs a re-check on the next read */ }
 }
 
 async function putEntry(db, entry, meta) {
@@ -223,6 +341,10 @@ export async function writeRender(key, rendered) {
         new Float32Array(buf.getChannelData(1)),
       ],
     };
+    const stats = renderStats(entry.ch);
+    entry.sig = renderSignature(entry.ch);
+    entry.peak = stats.peak;
+    entry.rms = stats.rms;
     const meta = { key, at: Date.now(), bytes: entry.frames * 8 };
     try {
       await putEntry(db, entry, meta);
