@@ -99,6 +99,30 @@
   color: var(--accent-color);
 }
 
+/* The lamp ladder (experiment/wordmark-lamp): the same distance
+   machinery as the pool, a different ladder. Where the pool holds one
+   hue from ink to accent, the lamp's rungs travel in hue as they step:
+   the core is the accent shifted warm, toward the violet end of blue
+   (hue 236 light, 232 dark), the middle rung sits near the accent's own
+   hue, and the outer rung steps cool, toward cyan (196 light, 192
+   dark), a 40 degree spread the pool's 2 to 4 degrees never makes.
+   Lightness steps down from the core the way the pool's does, so
+   distance still reads as falloff; only the hue moves. Every rung was
+   checked against its page ground before it was written down: the
+   palest light-theme rung, the warm core, holds 10.2 to 1 on white,
+   past the accent's own 6.8, so no letter edge breaks mid-sweep. */
+.wordmark__cell.is-lamp-1 {
+  color: light-dark(#153d4c, #b8e0ea);
+}
+
+.wordmark__cell.is-lamp-2 {
+  color: light-dark(#1b3d79, #9dbde7);
+}
+
+.wordmark__cell.is-lamp-3 {
+  color: light-dark(#2931a3, #949fe6);
+}
+
 .tagline {
   color: var(--muted-color);
 }
