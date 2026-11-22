@@ -1,30 +1,32 @@
 /*
-  Gallery: dither installation, reimagined (2026-11-22).
+  Gallery: dither installation, art quality pass (2026-11-22).
 
-  The idea, carried over from PR #31 (experiment/dither-installation-v2):
-  layered pixel scenes built back to front, dither used only in the big
-  quiet areas (sky, water) between two neighbouring shades, and a coarser
-  dithered cover that clears in stepped blocks, sky layer first and the
-  foreground last, when a panel is hovered, focused, or tapped.
+  Ben's verdict on the first staging: "You can do better art! Give it a
+  go." This pass keeps the layered reveal, the fixed grid, solid palette
+  colours and the section's place on the art page, and rebuilds the two
+  scenes for detail inside surfaces and shading depth.
 
-  What changed in the reimagining:
+  Anchor (per the local_pixel_art skill):
+  - Subjects: Parliament Hill (Centre Block and Peace Tower) and the
+    Rideau Canal locks. Grid 144 x 72, up from 144 x 54 for detail room.
+  - Palette: stored below as data, hue-shifted ramps per material
+    (stone 4, copper roof 3, foliage 3 plus a muted far ramp, water 5,
+    sky 4). 37 slots total across both themes; each scene uses a subset.
+  - Light: one source, high left. Lit faces take the lighter ramp step,
+    right and under faces the darker one, everywhere.
+  - Layers, back to front: sky / far bank / subject / foreground.
+    Far layers use muted, lighter slots so value separates the depth.
+  - Smallest subject: the Peace Tower clock, 6 x 6 cells, must read as
+    a clock face with hands at 1x.
+  - Dither: only between neighbouring shades, only in the sky band
+    boundaries and in open water. Fallback is the flat band step, and
+    band centres stay flat.
+  - Trees: no discs. Conifers are trunks with stepped tiers, broadleaf
+    canopies are stacked clusters shaded per cluster, denser than v1.
 
-  - The piece now lives where scene work lives: the art gallery, at the
-    same 144 x 54 wide format as its neighbours, instead of two square
-    panels and a footer band on the home page.
-  - The dome fix. V2 drew its treelines as a row of identical discs
-    (discV every 18 cells) and its foreground trees as bigger discs, so
-    at 1x the trees read as bridge domes. No tree here is a disc. A
-    conifer is a visible trunk with stepped triangular tiers whose width
-    shrinks in uneven steps toward a pointed tip. A broadleaf is a trunk
-    with a canopy built from stacked rectangular clusters with notched
-    corners and a flat-ish top. Both read as trees in silhouette.
-  - Both themes are first-class: each scene is one grid of palette slots
-    and two lookups, light and dark, repainted on theme change.
-
-  The pixel rule holds throughout: a fixed grid, whole-cell swaps to
-  solid palette colours on a tick, no drift, no fades, no transforms.
-  Reduced motion gets the finished scenes in one cut, no cover.
+  The pixel rule holds: whole-cell swaps to solid palette colours on a
+  tick, no drift, no fades, no transforms. Reduced motion gets the
+  finished scenes in one cut, no cover.
 */
 
 (() => {
@@ -32,40 +34,59 @@
   if (!panels.length) return;
 
   const W = 144;
-  const H = 54;
+  const H = 72;
 
   /* ---------- palette as data: one slot grid, two lookups ---------- */
 
   const S = {
-    SKY: 0, SKY_D: 1, SUN: 2, CLOUD: 3, CLOUD_SH: 4,
-    FAR: 5, FAR_TREE: 6, TREE: 7, TREE_DK: 8, TRUNK: 9,
-    BLDG: 10, BLDG_LT: 11, GROUND: 12, GROUND_DK: 13,
-    WATER: 14, WATER_DK: 15, ACCENT: 16, PAPER: 17, BOAT: 18,
+    SKY_A: 0, SKY_B: 1, SKY_C: 2, SKY_D: 3, SUN: 4, CLOUD: 5, CLOUD_SH: 6,
+    FAR: 7, FAR_TREE: 8, FAR_DK: 9,
+    STONE_DK: 10, STONE: 11, STONE_LT: 12, STONE_PALE: 13,
+    ROOF_DK: 14, ROOF: 15, ROOF_LT: 16,
+    GLASS: 17, PAPER: 18, GLASS_DK: 19,
+    TREE_DK: 20, TREE: 21, TREE_LT: 22, TRUNK: 23,
+    GROUND_DK: 24, GROUND: 25, GROUND_LT: 26,
+    WATER_DEEP: 27, WATER_DK: 28, WATER: 29, WATER_LT: 30, WATER_SP: 31,
+    ACCENT: 32, BOAT: 33, TIMBER: 34, TIMBER_DK: 35, PATH: 36,
   };
 
   const PALETTES = {
     light: [
-      "#d9e9f6", "#bcd6ef", "#ffab2e", "#ffffff", "#cfe3f2",
-      "#8fb0d4", "#7fae7a", "#2f6b3a", "#1e4d2a", "#5d3d24",
-      "#33507c", "#557fb2", "#4c8a44", "#35702e",
-      "#84b1dc", "#4a7396", "#1e5aa8", "#f4f9fd", "#b3543f",
+      "#9ec2e6", "#bcd6ef", "#d9e9f6", "#eaf3fb", "#ffab2e", "#ffffff", "#cfe3f2",
+      "#a9bedd", "#8fbc8a", "#6f9a72",
+      "#243a5c", "#33507c", "#557fb2", "#8aa8cc",
+      "#173d27", "#1e6b3a", "#35975a",
+      "#ffd98a", "#f4f9fd", "#16283f",
+      "#14301c", "#2f6b3a", "#4a8a52", "#5d3d24",
+      "#2e5d27", "#35702e", "#4c8a44",
+      "#2f5678", "#4a7396", "#84b1dc", "#a9cdec", "#e6f2fb",
+      "#1e5aa8", "#b3543f", "#6b4423", "#4a2c14", "#d8c9a3",
     ],
     dark: [
-      "#0b1727", "#132a46", "#e8f1fa", "#1c324e", "#142539",
-      "#203c63", "#1d4a3a", "#1a5c40", "#0f3d2a", "#66452a",
-      "#101f36", "#26466e", "#14402a", "#0d3320",
-      "#10233a", "#203c63", "#6ea8e1", "#cfe0f2", "#c96a4a",
+      "#0b1727", "#122740", "#1a3552", "#233d5c", "#e8b34b", "#2a4666", "#1c324e",
+      "#2a4066", "#24503c", "#183d2c",
+      "#0c1828", "#16283f", "#26466e", "#3a5a85",
+      "#0a2417", "#12402a", "#1d5c38",
+      "#ffd98a", "#dbe9f7", "#081120",
+      "#0a2a1a", "#1a5c40", "#2a7a52", "#66452a",
+      "#0d3320", "#14402a", "#1d5c38",
+      "#0a1a2c", "#162c48", "#2a4a75", "#4a739e", "#a9cdec",
+      "#6ea8e1", "#c96a4a", "#7a5230", "#4a3018", "#5c5340",
     ],
   };
 
-  // Cover tone per slot: the cover is the same scene flattened to three
-  // tones on a coarser Bayer grain, accents held back until the reveal.
+  // Dither partner per slot: the neighbouring shade in the same ramp.
+  const DPAIR = [];
+  DPAIR[S.SKY_A] = S.SKY_B; DPAIR[S.SKY_B] = S.SKY_C; DPAIR[S.SKY_C] = S.SKY_D;
+  DPAIR[S.WATER] = S.WATER_DK; DPAIR[S.WATER_LT] = S.WATER;
+
+  // Cover tone per slot: the cover is the scene flattened to three tones.
   const COVER_TONE = [
-    2, 2, 2, 2, 2, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 2, 0,
+    2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 2, 2, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 2, 2, 1, 0, 0, 0, 2,
   ];
   const COVER_SLOTS = {
-    light: [S.BLDG, S.FAR, S.SKY],
-    dark: [S.BLDG, S.FAR, S.SKY_D],
+    light: [S.STONE_DK, S.FAR, S.SKY_C],
+    dark: [S.STONE_DK, S.FAR, S.SKY_D],
   };
 
   const BAYER = [
@@ -81,11 +102,11 @@
     return ((n ^ (n >> 16)) >>> 0) / 4294967296;
   }
 
-  /* ---------- scene building: slot, layer, and dither maps ---------- */
+  /* ---------- scene building ---------- */
 
   function makeScene() {
     return {
-      slot: new Int8Array(W * H).fill(S.SKY),
+      slot: new Int8Array(W * H).fill(S.SKY_C),
       lyr: new Uint8Array(W * H),
       dth: new Uint8Array(W * H),
     };
@@ -99,141 +120,245 @@
     for (let yy = y; yy < y + h; yy += 1)
       for (let xx = x; xx < x + w; xx += 1) set(s, layer, xx, yy, slot, dither);
   }
+  // A short horizontal cluster run, the smallest texture unit used here.
+  function run(s, layer, x, y, len, slot) { rect(s, layer, x, y, len, 1, slot); }
 
-  // A conifer: trunk first, then stepped tiers. Tier widths shrink in
-  // uneven steps (5, 4, 3, 2, 1 half-widths) so the silhouette is a
-  // jagged triangle with a point, never an arc. The trunk stays visible
-  // below the lowest tier: that gap is what makes it read as a tree.
-  function conifer(s, layer, cx, base, height, body, dark) {
-    const trunkH = Math.max(2, Math.round(height * 0.18));
+  /* Stonework: a base shade, a darker course line every four rows drawn
+     in broken segments, and seeded 2 to 3 cell texture clusters in the
+     neighbouring shades. No single-pixel texture anywhere. */
+  function stone(s, layer, x, y, w, h, base, seed = 0, course = S.STONE_DK) {
+    rect(s, layer, x, y, w, h, base);
+    for (let yy = y + 3; yy < y + h - 1; yy += 4)
+      for (let xx = x + 1; xx < x + w - 3; xx += 5)
+        if (hash(xx + seed, yy) < 0.75) run(s, layer, xx, yy, 3, course);
+    for (let yy = y + 1; yy < y + h - 1; yy += 2)
+      for (let xx = x + 1; xx < x + w - 3; xx += 4) {
+        const r = hash(xx * 3 + seed, yy * 7);
+        if (r < 0.16) run(s, layer, xx, yy, 2, S.STONE_LT);
+        else if (r > 0.88) run(s, layer, xx, yy, 2, S.STONE_DK);
+      }
+    // Lit left edge, shaded right edge: the one light source.
+    rect(s, layer, x, y, 1, h, S.STONE_LT);
+    rect(s, layer, x + w - 1, y, 1, h, S.STONE_DK);
+  }
+
+  /* A window rhythm: 2 x 3 windows on a fixed pitch, dark glass with a
+     pale lintel row, a seeded few lit warm. */
+  function windows(s, layer, x0, y0, cols, rows, pitchX = 6, pitchY = 7, seed = 0) {
+    for (let r = 0; r < rows; r += 1)
+      for (let c = 0; c < cols; c += 1) {
+        const wx = x0 + c * pitchX, wy = y0 + r * pitchY;
+        run(s, layer, wx, wy - 1, 2, S.STONE_PALE);
+        rect(s, layer, wx, wy, 2, 3, hash(wx + seed, wy) < 0.22 ? S.GLASS : S.GLASS_DK);
+      }
+  }
+
+  /* A stepped gable roof in three discrete shades: lit slope, mid cap,
+     dark underside row. Steps only, no diagonal pixels runs of one. */
+  function gable(s, layer, cx, topY, halfW, h, seed = 0) {
+    for (let r = 0; r < h; r += 1) {
+      const hw = Math.max(1, Math.round(halfW * (r + 1) / h));
+      const y = topY + r;
+      rect(s, layer, cx - hw, y, hw, 1, S.ROOF_LT);
+      rect(s, layer, cx, y, hw, 1, S.ROOF);
+      if (r === h - 1) rect(s, layer, cx - hw, y + 1, hw * 2, 1, S.ROOF_DK);
+    }
+  }
+
+  /* Conifer: trunk, then stepped tiers. Each tier is shaded in three
+     vertical steps (dark left under, body, one lit column right of the
+     centre where the light lands), and tier widths shrink unevenly. */
+  function conifer(s, layer, cx, base, height, body, dark, light) {
+    const trunkH = Math.max(2, Math.round(height * 0.16));
     rect(s, layer, cx, base - trunkH + 1, 1, trunkH, S.TRUNK);
-    const tiers = 5;
+    const tiers = 6;
     const tierH = Math.max(1, Math.floor((height - trunkH) / tiers));
+    const widths = [6, 5, 5, 3, 2, 1];
     for (let t = 0; t < tiers; t += 1) {
-      const half = tiers - t; // 5,4,3,2,1
+      const half = widths[t];
       const y0 = base - trunkH - (t + 1) * tierH + 1;
       for (let yy = y0; yy < y0 + tierH; yy += 1)
         for (let xx = cx - half; xx <= cx + half; xx += 1)
-          set(s, layer, xx, yy, xx < cx ? dark : body);
+          set(s, layer, xx, yy, xx < cx - 1 ? dark : xx > cx ? light : body);
     }
-    set(s, layer, cx, base - trunkH - tiers * tierH, body); // the tip
+    set(s, layer, cx, base - trunkH - tiers * tierH, light);
   }
 
-  // A broadleaf: trunk, then a canopy of stacked rectangular clusters.
-  // Widths go 4, 6, 7, 6, 4 with the corners cut, so the top is flat-ish
-  // and the edges step. No curves anywhere, so nothing reads as a dome.
-  function broadleaf(s, layer, cx, base, height, body, dark) {
+  /* Broadleaf: trunk and branch, then a canopy of stacked clusters.
+     Each cluster is shaded on its own: lit top row, body, dark base
+     row, so the bundle seams stay visible instead of one flat mass. */
+  function broadleaf(s, layer, cx, base, height, body, dark, light) {
     const trunkH = Math.max(3, Math.round(height * 0.3));
     rect(s, layer, cx, base - trunkH + 1, 1, trunkH, S.TRUNK);
-    rect(s, layer, cx - 2, base - trunkH - 1, 1, 2, S.TRUNK); // a branch
-    const rows = [4, 6, 7, 6, 4];
+    rect(s, layer, cx - 2, base - trunkH - 1, 1, 2, S.TRUNK);
+    rect(s, layer, cx + 1, base - trunkH, 1, 2, S.TRUNK);
     const top = base - height;
-    rows.forEach((half, r) => {
-      const y = top + r;
-      for (let xx = cx - half; xx <= cx + half; xx += 1)
-        set(s, layer, xx, y, (r === rows.length - 1 || xx < cx - 2) ? dark : body);
-    });
+    const clusters = [
+      [cx - 4, top + 3, 9, 4], [cx - 6, top + 5, 13, 4],
+      [cx - 3, top, 7, 4], [cx + 1, top + 2, 6, 3],
+    ];
+    for (const [x, y, w, h] of clusters) {
+      rect(s, layer, x, y, w, h, body);
+      run(s, layer, x + 1, y, w - 2, light);
+      rect(s, layer, x, y + h - 1, w, 1, dark);
+      set(s, layer, x, y, dark); set(s, layer, x + w - 1, y, dark);
+    }
   }
 
+  /* Sky in four flat bands. Dither lives only in the two rows at each
+     band boundary; band centres stay flat. */
   function sky(s, sunX, sunY) {
-    for (let y = 0; y < H; y += 1)
-      for (let x = 0; x < W; x += 1) set(s, 0, x, y, S.SKY, 1);
-    // The sun is the one disc in either scene. Trees never are.
+    const bands = [[0, 10, S.SKY_A], [10, 22, S.SKY_B], [22, 34, S.SKY_C], [34, H, S.SKY_D]];
+    for (const [y0, y1, slot] of bands)
+      for (let y = y0; y < y1; y += 1)
+        for (let x = 0; x < W; x += 1) set(s, 0, x, y, slot);
+    // Flat fallback in use: full-width boundary dither read as dotted
+    // lines at 1x in pass 1, so the bands step flat, no dither rows.
     for (let yy = -3; yy <= 3; yy += 1)
       for (let xx = -3; xx <= 3; xx += 1)
         if (xx * xx + yy * yy <= 10) set(s, 0, sunX + xx, sunY + yy, S.SUN);
-    // Flat-bottomed clouds: rectangular clusters, one shade step under.
-    for (const [cx, cy, w] of [[30, 8, 16], [96, 5, 12], [118, 12, 18]]) {
-      rect(s, 0, cx, cy, w, 2, S.CLOUD);
+    // Flat-bottomed clouds with a shaded underside and a lit top step.
+    for (const [cx, cy, w] of [[26, 10, 18], [92, 7, 13], [114, 15, 20]]) {
       rect(s, 0, cx + 3, cy - 1, w - 7, 1, S.CLOUD);
+      rect(s, 0, cx, cy, w, 2, S.CLOUD);
       rect(s, 0, cx, cy + 2, w, 1, S.CLOUD_SH);
+      run(s, 0, cx + 4, cy + 2, w - 9, S.CLOUD_SH);
     }
-    // Birds: three single dark cells and a step, the v2 motif kept.
-    for (const [bx, by] of [[52, 10], [60, 7]]) {
-      set(s, 0, bx, by, S.BLDG); set(s, 0, bx + 2, by - 1, S.BLDG);
-      set(s, 0, bx + 4, by, S.BLDG);
+    for (const [bx, by] of [[54, 12], [63, 9]]) {
+      set(s, 0, bx, by, S.STONE_DK); set(s, 0, bx + 2, by - 1, S.STONE_DK);
+      set(s, 0, bx + 4, by, S.STONE_DK);
     }
   }
 
-  /* Scene 1: Parliament hill, pines in front of the far bank. */
+  /* ---------- Scene 1: Parliament Hill ---------- */
   function buildHill() {
     const s = makeScene();
-    sky(s, 124, 9);
-    // Mid layer: far buildings, then a treeline of conifers and
-    // broadleafs at varied heights in front of them.
-    for (const [x, y, w, h] of [[2, 22, 18, 16], [104, 20, 22, 18], [128, 24, 14, 14]])
+    sky(s, 124, 10);
+    // Far bank: muted blocks, value held back so the subject pops.
+    for (const [x, y, w, h] of [[0, 34, 16, 14], [106, 32, 20, 16], [130, 36, 14, 12]]) {
       rect(s, 1, x, y, w, h, S.FAR);
-    const midBase = 38;
-    [8, 22, 38, 56, 88, 106, 124, 138].forEach((x, i) => {
-      if (i % 3 === 2) broadleaf(s, 1, x, midBase, 13 + (i % 2) * 2, S.FAR_TREE, S.TREE_DK);
-      else conifer(s, 1, x, midBase, 12 + ((i * 5) % 4), S.FAR_TREE, S.TREE_DK);
-    });
-    // Front layer: Centre Block and the Peace Tower.
-    rect(s, 2, 52, 26, 40, 14, S.BLDG);
-    rect(s, 2, 56, 23, 32, 3, S.BLDG);
-    rect(s, 2, 69, 12, 6, 14, S.BLDG);
-    rect(s, 2, 70, 9, 4, 3, S.BLDG);
-    rect(s, 2, 71, 6, 2, 3, S.BLDG);
-    rect(s, 2, 70, 16, 4, 4, S.ACCENT); // the clock
-    rect(s, 2, 71, 17, 2, 2, S.PAPER);
-    for (let wy = 29; wy < 38; wy += 4)
-      for (let wx = 56; wx < 88; wx += 6)
-        rect(s, 2, wx, wy, 2, 2, hash(wx, wy) < 0.15 ? S.SUN : S.PAPER);
-    rect(s, 2, 30, 30, 16, 10, S.BLDG_LT);
-    rect(s, 2, 98, 28, 18, 12, S.BLDG_LT);
-    // Ground and the foreground trees: bigger, trunks clear of the grass.
-    rect(s, 2, 0, 40, W, 14, S.GROUND);
-    rect(s, 2, 0, 40, W, 2, S.GROUND_DK);
-    conifer(s, 2, 12, 52, 20, S.TREE, S.TREE_DK);
-    conifer(s, 2, 132, 53, 22, S.TREE, S.TREE_DK);
-    broadleaf(s, 2, 30, 51, 15, S.TREE, S.TREE_DK);
-    broadleaf(s, 2, 114, 50, 14, S.TREE, S.TREE_DK);
-    // A pale path up the middle.
-    for (let y = 42; y < H; y += 1) {
-      const half = 2 + Math.floor((y - 42) * 0.3);
-      rect(s, 2, 72 - half, y, half * 2, 1, S.CLOUD_SH);
+      windows(s, 1, x + 3, y + 3, Math.floor(w / 6), 1, 6, 7, 5);
     }
+    const midBase = 48;
+    [6, 18, 30, 42, 96, 108, 120, 132, 140].forEach((x, i) => {
+      if (i % 3 === 1) broadleaf(s, 1, x, midBase, 14 + (i % 2) * 3, S.FAR_TREE, S.FAR_DK, S.FAR_TREE);
+      else conifer(s, 1, x, midBase, 13 + ((i * 5) % 5), S.FAR_TREE, S.FAR_DK, S.FAR_TREE);
+    });
+    // West and East blocks: stone, own gables, own window rhythm.
+    stone(s, 2, 24, 42, 20, 16, S.STONE, 11);
+    gable(s, 2, 34, 36, 10, 6);
+    windows(s, 2, 28, 46, 3, 2, 6, 7, 21);
+    stone(s, 2, 100, 42, 20, 16, S.STONE, 31);
+    gable(s, 2, 110, 36, 10, 6);
+    windows(s, 2, 104, 46, 3, 2, 6, 7, 41);
+    // Centre Block: stone body, stepped roof in three shades, a
+    // central gable, and a regular window rhythm over two floors.
+    stone(s, 2, 46, 40, 52, 18, S.STONE_LT, 51, S.STONE);
+    rect(s, 2, 46, 38, 52, 2, S.ROOF_DK);
+    gable(s, 2, 72, 30, 15, 8);
+    windows(s, 2, 50, 44, 8, 2, 6, 7, 61);
+    rect(s, 2, 70, 52, 4, 6, S.GLASS_DK); // the door
+    run(s, 2, 70, 51, 4, S.STONE_PALE);
+    // Peace Tower: stepped spire with a finial, a clock with hands,
+    // a lit shaft with slit windows, and a flared base.
+    rect(s, 2, 71, 2, 2, 3, S.STONE_DK);
+    for (let r = 0; r < 6; r += 1) rect(s, 2, 72 - Math.floor(r / 2), 5 + r, 2 + Math.floor(r / 2) * 1, 1, r < 2 ? S.ROOF_LT : S.ROOF);
+    rect(s, 2, 69, 11, 6, 3, S.ROOF_DK);
+    stone(s, 2, 68, 14, 8, 26, S.STONE_LT, 71, S.STONE);
+    rect(s, 2, 69, 16, 6, 6, S.ACCENT); // clock surround
+    rect(s, 2, 70, 17, 4, 4, S.PAPER); // clock face
+    set(s, 2, 72, 18, S.STONE_DK); set(s, 2, 72, 19, S.STONE_DK);
+    set(s, 2, 71, 19, S.STONE_DK); set(s, 2, 72, 17, S.STONE_DK);
+    rect(s, 2, 71, 25, 2, 3, S.GLASS_DK);
+    rect(s, 2, 71, 31, 2, 3, S.GLASS_DK);
+    rect(s, 2, 66, 38, 12, 2, S.STONE);
+    // Ground: three grass shades in clusters, a pale path to the door.
+    rect(s, 2, 0, 58, W, 14, S.GROUND);
+    rect(s, 2, 0, 58, W, 2, S.GROUND_DK);
+    for (let y = 60; y < H - 1; y += 2)
+      for (let x = 1; x < W - 4; x += 4) {
+        const r = hash(x * 5, y * 3);
+        if (r < 0.2) run(s, 2, x, y, 3, S.GROUND_LT);
+        else if (r > 0.86) run(s, 2, x, y, 2, S.GROUND_DK);
+      }
+    for (let y = 59; y < H; y += 1) {
+      const half = 2 + Math.floor((y - 59) * 0.35);
+      rect(s, 2, 72 - half, y, half * 2, 1, S.PATH);
+      run(s, 2, 72 - half, y, 2, S.GROUND_LT);
+    }
+    // Foreground trees: denser, varied, trunks clear of the grass.
+    conifer(s, 2, 10, 70, 26, S.TREE, S.TREE_DK, S.TREE_LT);
+    conifer(s, 2, 134, 71, 28, S.TREE, S.TREE_DK, S.TREE_LT);
+    conifer(s, 2, 44, 68, 17, S.TREE, S.TREE_DK, S.TREE_LT);
+    broadleaf(s, 2, 26, 69, 19, S.TREE, S.TREE_DK, S.TREE_LT);
+    broadleaf(s, 2, 118, 68, 18, S.TREE, S.TREE_DK, S.TREE_LT);
+    broadleaf(s, 2, 58, 67, 13, S.TREE, S.TREE_DK, S.TREE_LT);
     return s;
   }
 
-  /* Scene 2: the Rideau Canal, a stepped bridge and a boat. */
+  /* ---------- Scene 2: the Rideau Canal locks ---------- */
   function buildCanal() {
     const s = makeScene();
-    sky(s, 22, 8);
-    // Mid layer: far-bank buildings and a mixed treeline.
-    for (const [x, y, w, h] of [[6, 24, 16, 12], [96, 22, 20, 14], [124, 26, 16, 10]])
+    sky(s, 20, 9);
+    // Far bank: muted buildings behind a dense mixed treeline.
+    for (const [x, y, w, h] of [[4, 30, 18, 14], [98, 28, 22, 16], [126, 32, 16, 12]]) {
       rect(s, 1, x, y, w, h, S.FAR);
-    [16, 34, 62, 84, 108, 130].forEach((x, i) => {
-      if (i % 2) broadleaf(s, 1, x, 36, 12, S.FAR_TREE, S.TREE_DK);
-      else conifer(s, 1, x, 36, 13, S.FAR_TREE, S.TREE_DK);
+      windows(s, 1, x + 3, y + 3, Math.floor(w / 6), 1, 6, 7, 7);
+    }
+    [10, 22, 34, 48, 62, 84, 96, 110, 124, 136].forEach((x, i) => {
+      if (i % 2) broadleaf(s, 1, x, 44, 13 + (i % 3), S.FAR_TREE, S.FAR_DK, S.FAR_TREE);
+      else conifer(s, 1, x, 44, 14 + ((i * 3) % 4), S.FAR_TREE, S.FAR_DK, S.FAR_TREE);
     });
-    // The bridge: deck, railing, two piers, and a stepped arch opening
-    // left as water between the piers. Steps, not a curve.
-    rect(s, 1, 12, 34, 120, 2, S.BLDG);
-    rect(s, 1, 12, 36, 120, 3, S.BLDG_LT);
-    rect(s, 1, 24, 39, 8, 9, S.BLDG);
-    rect(s, 1, 112, 39, 8, 9, S.BLDG);
-    rect(s, 1, 56, 39, 32, 2, S.BLDG_LT); // arch shoulders
-    rect(s, 1, 60, 41, 24, 2, S.BLDG_LT);
-    // Front layer: the water, dithered between its two shades.
-    for (let y = 39; y < H; y += 1)
-      for (let x = 0; x < W; x += 1) set(s, 2, x, y, S.WATER, 1);
-    rect(s, 1, 24, 39, 8, 9, S.BLDG); // piers stand in the water
-    rect(s, 1, 112, 39, 8, 9, S.BLDG);
-    rect(s, 1, 56, 39, 32, 2, S.BLDG_LT);
-    rect(s, 1, 60, 41, 24, 2, S.BLDG_LT);
-    // Reflection dashes: short runs, hashed per run, never orphans.
-    for (let y = 44; y < H - 2; y += 2)
-      for (let x = 2; x < W - 6; x += 3)
-        if (hash(Math.floor(x / 3), y) < 0.18) rect(s, 2, x, y, 3, 1, S.WATER_DK);
-    // A boat: stepped hull, paper cabin, triangular sail in whole steps.
-    rect(s, 2, 62, 46, 22, 2, S.BOAT);
-    rect(s, 2, 64, 48, 18, 1, S.BOAT);
-    rect(s, 2, 68, 43, 8, 3, S.PAPER);
-    rect(s, 2, 79, 36, 1, 10, S.BLDG);
-    for (let y = 37; y < 46; y += 1) rect(s, 2, 81, y, Math.max(1, Math.round((46 - y) / 2)), 1, S.PAPER);
-    // Near bank.
-    rect(s, 2, 0, 52, W, 2, S.GROUND_DK);
+    // The bridge, mid layer: deck, railing posts, piers, stepped arch.
+    rect(s, 1, 8, 42, 128, 2, S.STONE);
+    for (let x = 12; x < 134; x += 6) rect(s, 1, x, 40, 1, 2, S.STONE_DK);
+    rect(s, 1, 8, 39, 128, 1, S.STONE_LT);
+    rect(s, 1, 8, 44, 128, 2, S.STONE_LT);
+    stone(s, 1, 20, 46, 9, 12, S.STONE, 13);
+    stone(s, 1, 115, 46, 9, 12, S.STONE, 23);
+    rect(s, 1, 52, 46, 40, 2, S.STONE_LT);
+    rect(s, 1, 57, 48, 30, 2, S.STONE_LT);
+    // Open water: flat mid shade, dither patches toward the dark shade,
+    // and reflected light as broken clusters of 2 to 4 cells.
+    for (let y = 46; y < H; y += 1)
+      for (let x = 0; x < W; x += 1) set(s, 2, x, y, S.WATER, hash(x >> 2, y >> 1) < 0.15 ? 1 : 0);
+    rect(s, 2, 0, 46, W, 2, S.WATER_DK);
+    for (let y = 50; y < 62; y += 2)
+      for (let x = 2; x < W - 5; x += 3) {
+        const r = hash(Math.floor(x / 3) * 7, y);
+        if (r < 0.16) run(s, 2, x, y, 3, S.WATER_LT);
+        else if (r > 0.9) run(s, 2, x, y, 2, S.WATER_SP);
+      }
+    stone(s, 1, 20, 46, 9, 12, S.STONE, 13); // piers stand in the water
+    stone(s, 1, 115, 46, 9, 12, S.STONE, 23);
+    rect(s, 1, 52, 46, 40, 2, S.STONE_LT);
+    rect(s, 1, 57, 48, 30, 2, S.STONE_LT);
+    // A boat on the upper reach: stepped hull, cabin, stepped sail.
+    rect(s, 2, 26, 54, 22, 2, S.BOAT);
+    rect(s, 2, 28, 56, 17, 1, S.TIMBER_DK);
+    rect(s, 2, 32, 51, 8, 3, S.PAPER);
+    run(s, 2, 32, 50, 8, S.BOAT);
+    rect(s, 2, 43, 44, 1, 10, S.STONE_DK);
+    for (let y = 45; y < 54; y += 1) rect(s, 2, 45, y, Math.max(1, Math.round((54 - y) / 2)), 1, S.PAPER);
+    run(s, 2, 28, 58, 14, S.WATER_SP); // its wake reflection
+    // Lock walls: stonework flanking the gates at the near end.
+    stone(s, 2, 0, 60, 34, 12, S.STONE, 91);
+    stone(s, 2, 110, 60, 34, 12, S.STONE, 97);
+    rect(s, 2, 0, 59, 34, 1, S.STONE_PALE);
+    rect(s, 2, 110, 59, 34, 1, S.STONE_PALE);
+    // Lock gates: two timber panels meeting at the centre, each with
+    // horizontal iron bands and a stepped diagonal beam.
+    for (const gx of [36, 74]) {
+      rect(s, 2, gx, 60, 34, 12, S.TIMBER);
+      for (let x = gx + 4; x < gx + 34; x += 5) rect(s, 2, x, 60, 1, 12, S.TIMBER_DK);
+      rect(s, 2, gx, 62, 34, 1, S.STONE_DK);
+      rect(s, 2, gx, 68, 34, 1, S.STONE_DK);
+      for (let d = 0; d < 10; d += 1) rect(s, 2, gx + 2 + d * 3, 70 - d, 3, 1, S.TIMBER_DK);
+      rect(s, 2, gx, 59, 34, 1, S.TIMBER_DK);
+    }
+    rect(s, 2, 71, 58, 2, 14, S.STONE_DK); // centre meeting post
+    run(s, 2, 40, 58, 20, S.WATER_LT); // light held above the gates
+    run(s, 2, 84, 58, 20, S.WATER_LT);
     return s;
   }
 
@@ -259,19 +384,11 @@
         const i = y * W + x;
         const o = i * 4;
         let slot = s.slot[i];
-        // Dither only where flagged (sky, water): swap to the paired
-        // shade on Bayer cells. Pairs are sky/sky-deep and water pair.
-        if (s.dth[i] && bayerAt(x, y) > 0.55) {
-          if (slot === S.SKY) slot = S.SKY_D;
-          else if (slot === S.WATER) slot = S.WATER_DK;
-        }
+        if (s.dth[i] && DPAIR[slot] !== undefined && bayerAt(x, y) > 0.55) slot = DPAIR[slot];
         const fc = palRgb[slot];
         final.data[o] = fc[0]; final.data[o + 1] = fc[1]; final.data[o + 2] = fc[2]; final.data[o + 3] = 255;
         const cc = coverRgb[COVER_TONE[s.slot[i]]];
-        // Coarser cover grain: Bayer sampled at half resolution.
-        const tone = COVER_TONE[s.slot[i]];
-        const cc2 = coverRgb[Math.max(0, Math.min(2, tone + (bayerAt(x >> 1, y >> 1) > 0.7 && tone < 2 ? 0 : 0)))];
-        cover.data[o] = cc2[0]; cover.data[o + 1] = cc2[1]; cover.data[o + 2] = cc2[2]; cover.data[o + 3] = 255;
+        cover.data[o] = cc[0]; cover.data[o + 1] = cc[1]; cover.data[o + 2] = cc[2]; cover.data[o + 3] = 255;
       }
     }
     return { final, cover };
