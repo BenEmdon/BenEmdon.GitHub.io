@@ -1,5 +1,5 @@
 import { attach } from "./dither.js";
-import { animateWordmark } from "./wordmark.js";
+import { animateWordmarkLamp } from "./wordmark.js";
 import { createThemeScene } from "./theme-scene.js";
 import { announceBootTask, whenBootTask } from "./boot-tasks.js";
 import { runBoot } from "./boot.js?v=20261122q";
@@ -939,7 +939,7 @@ function setUp() {
   // always eventually added.
   document.fonts.ready.then(() => wordmark?.classList.add("is-booting"));
 
-  animateWordmark(wordmark, reduced);
+  animateWordmarkLamp(wordmark, reduced);
 
   /* ---------- boot ---------- */
 
