@@ -340,11 +340,16 @@ function setUp() {
 
   const sections = document.querySelectorAll(".section");
 
-  // A zero-height band pinned to the middle of the viewport: inset the root
-  // 50% from top and bottom and no box is left, so a section "intersects"
-  // exactly while it straddles the centre line. Sections do not overlap, so at
-  // most one qualifies at a time. Cheaper and steadier than measuring rects on
-  // every scroll event.
+  // A zero-height band a third of the way down the viewport, two-thirds
+  // toward the top (Ben's call, 2026-11-22): inset the root 33.333% from the
+  // top and 66.667% from the bottom and no box is left, so a section
+  // "intersects" exactly while it straddles that line, and the framed section
+  // sits in the upper part of the screen with more of what follows in view.
+  // Sections do not overlap, so at most one qualifies at a time. Cheaper and
+  // steadier than measuring rects on every scroll event. On a desktop the
+  // pointer is the frame's source instead: the hover rule in layout.css
+  // stands this one down while the mouse is over any section. Dead centre
+  // was the old line.
   // While a keyed jump is in flight the observer stands down: see frame().
   let jumpingUntil = 0;
 
@@ -352,21 +357,21 @@ function setUp() {
     for (const other of sections) other.classList.toggle("is-active", other === section);
   }
 
-  const centreLine = new IntersectionObserver(
+  const focusLine = new IntersectionObserver(
     (entries) => {
       if (performance.now() < jumpingUntil) return;
 
       // Between two sections sit a divider and its margins, about 72px where
-      // nothing is at the centre. Clearing the frame there makes it strobe, so
-      // whichever section reached the middle last keeps it until the next one
+      // nothing is at the line. Clearing the frame there makes it strobe, so
+      // whichever section reached the line last keeps it until the next one
       // arrives.
       const arrived = entries.findLast((entry) => entry.isIntersecting);
       if (arrived) frame(arrived.target);
     },
-    { rootMargin: "-50% 0px -50% 0px" }
+    { rootMargin: "-33.333% 0px -66.667% 0px" }
   );
 
-  for (const section of sections) centreLine.observe(section);
+  for (const section of sections) focusLine.observe(section);
 
   /* ---------- keys ---------- */
 
@@ -378,7 +383,7 @@ function setUp() {
     keysToggle.setAttribute("aria-expanded", String(open));
   }
 
-  // Landing a section at the top of the viewport puts the centre line past the
+  // Landing a section at the top of the viewport puts the focus line past the
   // short ones and into whatever follows, so the frame would confirm the wrong
   // section. Rather than move the line, hold the observer off for the length of
   // the scroll and frame the target directly; once the lock lapses there is no
