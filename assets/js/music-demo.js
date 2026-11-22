@@ -19,7 +19,15 @@
   by whole bars instead. The controls are play and restart,
   and the status line says what the render cost and that the
   song loops.
+
+  The render comes from the persistent cache the maker uses
+  (render-cache.js): both pages derive the same key from the
+  parsed song, so a render stored by either is read back by
+  both, and the status line then says "from cache" instead
+  of quoting a render time.
 */
+
+import { renderCacheKey, readRender, writeRender } from "./render-cache.js";
 
 /* ---------- instruments ---------- */
 
@@ -535,6 +543,29 @@ async function renderSong(song) {
   };
 }
 
+// The render, from the shared persistent cache when this
+// exact song was rendered before, rendered and stored
+// otherwise. onRendering runs only when a real render is
+// about to happen, so a cache hit never shows a rendering
+// state; the result's fromCache flag drives the status
+// wording.
+async function obtainRender(song, onRendering) {
+  const key = renderCacheKey(song);
+  const hit = await readRender(key);
+  if (hit) {
+    const stepDur = 60 / song.tempo / 4;
+    return {
+      buffer: hit.buffer, dur: hit.dur, stepDur,
+      loopStart: hit.loopStart, loopDur: hit.dur - hit.loopStart,
+      renderMs: 0, fromCache: true,
+    };
+  }
+  if (onRendering) onRendering();
+  const rendered = await renderSong(song);
+  writeRender(key, rendered);
+  return rendered;
+}
+
 /* ---------- the demo ---------- */
 
 const roll = document.querySelector("[data-music-demo-roll]");
@@ -674,8 +705,9 @@ if (roll && playButton) {
 
   function renderNote() {
     if (status && demo.rendered) {
-      status.textContent =
-        `rendered in ${Math.round(demo.rendered.renderMs)} ms · loops`;
+      status.textContent = demo.rendered.fromCache
+        ? "from cache · loops"
+        : `rendered in ${Math.round(demo.rendered.renderMs)} ms · loops`;
     }
   }
 
@@ -707,7 +739,6 @@ if (roll && playButton) {
     if (demo.rendered) { startSource(); return; }
     demo.rendering = true;
     setButton("rendering…", false, true);
-    if (status) status.textContent = "rendering the loop";
     try {
       if (!demo.ctx) {
         demo.ctx = new AudioContext();
@@ -716,7 +747,11 @@ if (roll && playButton) {
       }
       await demo.ctx.resume();
       await loadSamples();
-      if (!demo.rendered) demo.rendered = await renderSong(song);
+      if (!demo.rendered) {
+        demo.rendered = await obtainRender(song, () => {
+          if (status) status.textContent = "rendering the loop";
+        });
+      }
     } catch {
       demo.rendering = false;
       setButton("play", false, false);
