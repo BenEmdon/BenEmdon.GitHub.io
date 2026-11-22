@@ -277,11 +277,15 @@
 
 /* Code on this page soft-wraps like everywhere else on the site:
    it never scrolls sideways. It also sits a step clear of the
-   paragraphs around it, like every other block on the page. */
+   paragraphs around it, like every other block on the page, and
+   wears the same framed panel as the code on the Mochi page. */
 .code {
   white-space: pre-wrap;
   overflow-wrap: break-word;
   margin-block: var(--step);
+  border: 1px solid var(--page-rule);
+  background: var(--page-subtle);
+  padding: var(--step-half);
 }
 
 .music-text:focus-visible {
