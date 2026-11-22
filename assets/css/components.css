@@ -285,8 +285,8 @@
 
 /*
   The boot screen, borrowed wholesale from git-merge.com's own page load: a
-  short fake startup log that resolves line by line and then gets out of the
-  way.
+  short startup log that resolves line by line, each line when the work it
+  names actually finishes, and then gets out of the way.
 
   It covers the page rather than replacing it, so the real content is in the
   DOM and laid out the whole time. The padding below deliberately repeats

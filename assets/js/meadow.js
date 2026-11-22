@@ -56,6 +56,13 @@
   and the clouds pass behind them like everything else that is not sky.
 */
 
+import { announceBootTask } from "./boot-tasks.js";
+
+// The boot log's zero for this module: the scene task it announces
+// below is measured from here, so the duration it reports covers the
+// whole build that follows, geometry and first paint alike.
+const bootT0 = performance.now();
+
 /* ---------- anchor ---------- */
 
 const W = 144;
@@ -1149,6 +1156,11 @@ for (const figure of document.querySelectorAll("[data-meadow]")) {
   if (reduced.matches) glowRung = 1;
 
   applyTheme();
+
+  // The scene is built and its first frame is painted: the boot log's
+  // scene task can resolve. (The reveal itself still waits for the
+  // figure to scroll into view, as it always has.)
+  announceBootTask("meadow", Promise.resolve({ ms: performance.now() - bootT0 }));
 
   // The weather's timetable: cross, rest, cross. Timeouts rather than
   // an interval for the rests, so at rest the scene costs nothing at

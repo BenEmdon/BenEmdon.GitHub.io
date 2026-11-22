@@ -1,6 +1,7 @@
 import { attach } from "./dither.js";
 import { animateWordmark } from "./wordmark.js";
 import { createThemeScene } from "./theme-scene.js";
+import { announceBootTask, whenBootTask } from "./boot-tasks.js";
 
 const THEME_KEY = "theme";
 // The cycle the toggle walks. "system" is where everyone starts, and it is
@@ -23,6 +24,8 @@ const nextMode = (mode) => MODES[(MODES.indexOf(mode) + 1) % MODES.length];
 
 function setUp() {
   const repaints = [];
+  // The boot log's zero: every duration it quotes is measured from here.
+  const bootT0 = performance.now();
 
   // Read by the portrait dissolve and by keyed jumps, so it sits above both
   // rather than inside whichever one happened to need it first.
@@ -34,6 +37,15 @@ function setUp() {
   // one lands as a separate frame rather than reading as a fade.
   const DISSOLVE_STEPS = 8;
 
+  // The portrait half of the boot log's scene task: resolved once the
+  // dither has decoded the photo and painted its first frame.
+  let resolvePortrait;
+  let rejectPortrait;
+  const portraitTask = new Promise((resolve, reject) => {
+    resolvePortrait = resolve;
+    rejectPortrait = reject;
+  });
+
   for (const frame of document.querySelectorAll("[data-dither]")) {
     const canvas = frame.querySelector("[data-dither-canvas]");
     const photo = frame.querySelector("img");
@@ -41,6 +53,7 @@ function setUp() {
     attach(canvas, photo)
       .then((portrait) => {
         repaints.push(portrait.repaint);
+        resolvePortrait(performance.now() - bootT0);
 
         let step = 0;
         let timer;
@@ -90,8 +103,8 @@ function setUp() {
         }
       })
       // Without the dither the photo simply shows through, so there is nothing
-      // to clean up on failure.
-      .catch(() => {});
+      // to clean up on failure; the boot task still has to hear about it.
+      .catch((err) => rejectPortrait(err));
   }
 
   /* ---------- hiring sparkle ---------- */
@@ -358,25 +371,23 @@ function setUp() {
 
   /* ---------- boot ---------- */
 
-  // Every value here is read back out of the page's own state: the theme the
-  // toggle above just applied, the Ottawa time the footer clock is about to
-  // start telling, and the command palette's own count. The log is a bit of
-  // theatre; it is not the place to introduce a fact.
-  const themeValue =
-    mode === "system" ? `system (${systemDark.matches ? "dark" : "light"})` : mode;
-  const ottawaTime = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Toronto",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).format(new Date());
+  // The log is an instrument now, not theatre: every line names a real
+  // startup process and resolves only when that process actually
+  // finishes, with the value the process itself reports. The three
+  // tasks are the scene (the portrait dither plus the meadow, which
+  // announces itself from meadow.js), the music demo's render or cache
+  // read (announced from music-demo.js, which now renders in the
+  // background at load instead of waiting for a first press of play),
+  // and the footer clock's first tick, resolved from tick() below.
+  let resolveClock;
+  const clockTask = new Promise((resolve) => {
+    resolveClock = resolve;
+  });
+  announceBootTask("clock", clockTask);
 
-  const BOOT_LOG = [
-    ["loading type", "iosevka (the good one)"],
-    ["restoring theme", themeValue],
-    ["syncing clock", `ottawa ${ottawaTime}`],
-    ["indexing palette", "13 commands"],
-  ];
+  const sceneTask = Promise.all([portraitTask, whenBootTask("meadow")]).then(
+    () => performance.now() - bootT0
+  );
 
   // A spruce, drawn as data: one character per cell on an 11 x 13 grid.
   // L, M and D are the canopy ramp, lit from the upper left: the lit shade
@@ -421,14 +432,19 @@ function setUp() {
   // same width from frame to frame.
   const SPINNER = [..."⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"];
 
-  // Roughly 1.3s of log, plus however long main.js took to arrive. Slow enough
-  // that each line lands as its own event and the spinner gets a few frames on
-  // screen before it resolves, rather than the whole thing reading as one
-  // flash. Anything much past this stops being a flourish and starts being a
-  // wait, which is what the skip is for.
-  const LINE_EVERY = 140;
-  const LINE_SETTLES = 200;
-  const LAST_BEAT = 500;
+  // No schedule at all: a line resolves when its task resolves, and the
+  // screen leaves when the last task does, subject to one floor: the
+  // screen stays at least BOOT_FLOOR_MS once it has appeared, so a fully
+  // cached load does not flash past unread. The floor pads nothing a
+  // line quotes: every duration stays the task's real measured time.
+  // The other number is the per-task timeout, the safety valve: a task
+  // that hangs (a stalled image, a wedged audio render) reports "still
+  // working" at the timeout and stops holding the screen, while the
+  // work itself carries on in the background and the page underneath
+  // stays usable. The skip ignores the floor too: any key or click
+  // cuts to the page at once.
+  const TASK_TIMEOUT = 12000;
+  const BOOT_FLOOR_MS = 750;
 
   const boot = document.querySelector("[data-boot]");
 
@@ -440,6 +456,8 @@ function setUp() {
     const logo = wordmark.cloneNode(true);
     boot.querySelector("[data-boot-logo]").append(logo);
     boot.hidden = false;
+    // The floor is measured from the moment the screen appears.
+    const bootShownAt = performance.now();
 
     // The clone is taken before the block glyphs have loaded, since they are
     // served display=block and the boot starts immediately. Rather than hold
@@ -508,7 +526,10 @@ function setUp() {
       if (progressFilled >= PROGRESS_CELLS) clearInterval(fill);
     }, 75);
 
+    let bootDone = false;
     function done() {
+      if (bootDone) return;
+      bootDone = true;
       clearInterval(spin);
       clearInterval(grow);
       clearInterval(fill);
@@ -531,40 +552,88 @@ function setUp() {
       return el;
     }
 
-    BOOT_LOG.forEach(([task, value], i) => {
-      timers.push(
-        setTimeout(() => {
-          const line = document.createElement("li");
-          line.className = "boot__line";
+    // One row per task, up front with its spinner turning; the row
+    // resolves in place the moment its task settles. Nothing here is
+    // on a timer except the timeout race beside each task.
+    const BOOT_TASKS = [
+      {
+        label: "building pixel scene",
+        promise: sceneTask,
+        format: (ms) => `${Math.round(ms)} ms`,
+      },
+      {
+        label: "rendering music",
+        promise: whenBootTask("music"),
+        format: (r) =>
+          r.fromCache
+            ? `from cache · ${Math.round(r.ms)} ms`
+            : `rendered in ${Math.round(r.renderMs)} ms`,
+      },
+      {
+        label: "syncing clock",
+        promise: clockTask,
+        format: (r) => r.value,
+      },
+    ];
 
-          const mark = span("boot__mark", SPINNER[frame]);
-          const result = span("boot__value is-pending", "_");
-          marks.push(mark);
+    let settled = 0;
+    const settle = () => {
+      settled += 1;
+      progressTarget = settled * (PROGRESS_CELLS / BOOT_TASKS.length);
+      if (settled !== BOOT_TASKS.length) return;
+      // Leave at max(the floor, real completion): hold only for what is
+      // left of the floor, never past it once the work is done. The
+      // scheduled exit sits in timers, so a skip still clears it.
+      const remaining = BOOT_FLOOR_MS - (performance.now() - bootShownAt);
+      if (remaining > 0) timers.push(setTimeout(done, remaining));
+      else done();
+    };
 
-          line.append(
-            mark,
-            span("boot__task", task),
-            // Longer than any gap it has to fill; the overflow is clipped.
-            span("boot__dots", ".".repeat(80)),
-            result
-          );
-          log.append(line);
+    for (const task of BOOT_TASKS) {
+      const line = document.createElement("li");
+      line.className = "boot__line";
 
-          timers.push(
-            setTimeout(() => {
-              mark.dataset.done = "1";
-              mark.textContent = "\u2713";
-              result.className = "boot__value";
-              result.textContent = value;
-              progressTarget = (i + 1) * (PROGRESS_CELLS / BOOT_LOG.length);
-            }, LINE_SETTLES)
-          );
-        }, i * LINE_EVERY)
+      const mark = span("boot__mark", SPINNER[frame]);
+      const result = span("boot__value is-pending", "_");
+      marks.push(mark);
+
+      line.append(
+        mark,
+        span("boot__task", task.label),
+        // Longer than any gap it has to fill; the overflow is clipped.
+        span("boot__dots", ".".repeat(80)),
+        result
       );
-    });
+      log.append(line);
 
-    // A beat on the finished log, then out.
-    timers.push(setTimeout(done, BOOT_LOG.length * LINE_EVERY + LINE_SETTLES + LAST_BEAT));
+      const timedOut = new Promise((resolve) => {
+        timers.push(setTimeout(() => resolve({ timedOut: true }), TASK_TIMEOUT));
+      });
+
+      Promise.race([task.promise, timedOut]).then(
+        (value) => {
+          if (!boot.isConnected) return; // the visitor skipped ahead
+          mark.dataset.done = "1";
+          result.className = "boot__value";
+          if (value && value.timedOut) {
+            mark.textContent = "!";
+            result.textContent = "still working";
+          } else {
+            mark.textContent = "\u2713";
+            result.textContent = task.format(value);
+          }
+          settle();
+        },
+        () => {
+          if (!boot.isConnected) return;
+          mark.dataset.done = "1";
+          mark.textContent = "\u00d7";
+          result.className = "boot__value";
+          result.textContent = "failed";
+          settle();
+        }
+      );
+    }
   }
 
   /* ---------- clock ---------- */
@@ -593,6 +662,10 @@ function setUp() {
     minutes.textContent = parts.minute;
     clockTime.dateTime = `${parts.hour}:${parts.minute}`;
     clock.hidden = false;
+    // The boot log's clock line tells the truth only if it resolves
+    // here, once the footer is actually telling this time. Later ticks
+    // resolve an already-settled promise, which is a no-op.
+    resolveClock?.({ value: `ottawa ${parts.hour}:${parts.minute}` });
 
     // Land on the minute rather than drifting a second past it, which a fixed
     // 60s interval would do a little more of every hour.
