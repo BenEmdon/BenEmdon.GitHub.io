@@ -228,6 +228,26 @@
   opacity: 0.42;
 }
 
+/* Experiment (live note feedback): a note that has been edited
+   in but is not in the current render yet wears amber. It
+   clears only when the re-render actually swaps in. A note
+   deleted from the text but still sounding in the current
+   render shows as a dashed ghost until the same swap. */
+:root {
+  --pending-color: light-dark(#b97e0e, #e0a83c);
+}
+
+.cell.c-pending {
+  background: var(--pending-color);
+  border-color: var(--pending-color);
+}
+
+.cell.c-ghost {
+  background: color-mix(in srgb, var(--muted-color) 38%, transparent);
+  border-color: var(--muted-color);
+  border-style: dashed;
+}
+
 .cell.is-now {
   outline: 2px solid var(--accent-pulse-color);
   outline-offset: -1px;
