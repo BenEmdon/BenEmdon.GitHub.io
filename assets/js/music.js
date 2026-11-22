@@ -206,6 +206,11 @@ const INSTRUMENTS = [
   // and start slower. See shapedWave.
   { name: "synth lead", kind: "lead", wave: "lead", cutoff: 2600, attack: 0.025, level: 0.9, detune: 5 },
   { name: "soft square", kind: "lead", wave: "soft", cutoff: 2400, attack: 0.018, level: 0.9, pluck: 0.3 },
+  // A synthesized orchestra hit for Cynthia's channel F stabs:
+  // a saw stack plus a short noise crack, fast attack, short
+  // decay. See scheduleBrassHit. Appended only, no renumbering;
+  // no song text names it, the F routing below picks it.
+  { name: "brass hit", kind: "brasshit", cutoff: 3200, attack: 0.003, level: 0.55 },
 ];
 const AUDIO_BASE = "assets/audio/";
 
@@ -333,7 +338,12 @@ C @9 v10 o2 g4. r4 g8 r1 r8 g4. r4 g8 g8 r4 f#4. r4 f#8 r1 r8 f#4. r4 f#8 f#8 r4
 ; orchestral harp, and the last pass played it on the
 ; harp sample; in the game that figure is the piano,
 ; so the whole track moves to piano here. F: the horn,
-; orchestra hit and synth brass tracks, on strings.
+; orchestra hit and synth brass tracks, on strings,
+; except its triple-stop stabs: those were the same
+; strings recording shifted down as far as 25 semitones,
+; a slow swell where a hit should crack, so the stabs
+; now play on a synthesized brass hit (@14, a saw stack
+; with a noise crack, fast attack, short decay).
 ; G: the agogo and guitar tracks, on the soft square
 ; (@13), shaped and filtered for the same reason. H: the
 ; rip's own piano track (marked bright acoustic piano
@@ -1056,6 +1066,85 @@ function pianoRingCap(song) {
     ? 0.25 : null;
 }
 
+/* ----- Cynthia channel F: brass hit for the triple-stop stabs ----- */
+
+// Channel F merges the rip's horn, orchestra hit and synth
+// brass tracks onto strings (@8). Its spaced triple-stop
+// stabs (three notes at one step, octave stacks rooted at
+// o2, midi about 47) are the orchestra hits, and on strings
+// they are that one recording shifted down as far as 25
+// semitones: the attack stretches, the formants drop an
+// octave-plus, and a hit reads as a slow, dark swell. Those
+// stabs, and only those, play here instead: a saw stack
+// (three saw oscillators, centre and plus/minus 7 cents)
+// through a low-pass that opens at the cutoff and closes
+// toward 800 Hz, a short noise crack at the front, a 3 ms
+// attack, and a fast decay to a low sustain, so the hit
+// lands like a hit and is mostly gone inside its written
+// length. The horn line and every other F note stay on
+// strings, and no other song or channel routes here: the
+// rule keys on the Cynthia header, channel F, and a note
+// group of three or more notes sharing one step.
+function brassHitSteps(song, channel) {
+  if (!song.header.some((l) => l.includes("Champion Cynthia"))) return null;
+  if (!channel || channel.letter !== "F") return null;
+  const byStep = new Map();
+  for (const n of channel.notes) {
+    if (!byStep.has(n.step)) byStep.set(n.step, []);
+    byStep.get(n.step).push(n);
+  }
+  const steps = new Set();
+  for (const [step, group] of byStep) {
+    if (group.length >= 3) steps.add(step);
+  }
+  return steps;
+}
+
+function scheduleBrassHit(ctx, out, kit, n, t, dur) {
+  const inst = INSTRUMENTS[14];
+  const peak = (n.vol / 15) * 0.4 * (inst.level ?? 1);
+  const hitDur = Math.min(dur, 0.5);
+  const g = ctx.createGain();
+  const p = g.gain;
+  p.setValueAtTime(0, t);
+  p.linearRampToValueAtTime(peak, t + (inst.attack ?? 0.003));
+  p.setTargetAtTime(peak * 0.22, t + (inst.attack ?? 0.003), 0.07);
+  p.cancelAndHoldAtTime(Math.max(t + 0.05, t + hitDur - 0.02));
+  p.linearRampToValueAtTime(0, t + hitDur);
+  const flt = ctx.createBiquadFilter();
+  flt.type = "lowpass";
+  flt.Q.value = 0.7;
+  flt.frequency.setValueAtTime(inst.cutoff ?? 3200, t);
+  flt.frequency.exponentialRampToValueAtTime(800, t + Math.max(0.08, hitDur));
+  for (const detune of [-7, 0, 7]) {
+    const o = ctx.createOscillator();
+    o.type = "sawtooth";
+    o.frequency.value = freqOf(n.midi);
+    o.detune.value = detune;
+    const og = ctx.createGain();
+    og.gain.value = detune === 0 ? 0.5 : 0.3;
+    o.connect(og).connect(flt);
+    o.start(t);
+    o.stop(t + hitDur + 0.05);
+  }
+  flt.connect(g).connect(out);
+  // The crack at the front: a short burst of the kit noise,
+  // decaying in about 70 ms. Its start offset is derived from
+  // the note itself, never Math.random, so the parallel bins
+  // and the single render agree exactly.
+  const src = ctx.createBufferSource();
+  src.buffer = kit.noise;
+  src.loop = true;
+  src.playbackRate.value = 1;
+  const ng = ctx.createGain();
+  const np = ng.gain;
+  np.setValueAtTime(peak * 0.7, t);
+  np.exponentialRampToValueAtTime(0.001, t + 0.07);
+  src.connect(ng).connect(out);
+  src.start(t, ((n.step * 37 + n.midi * 11) % 140) / 100);
+  src.stop(t + 0.09);
+}
+
 function scheduleSample(ctx, outs, n, t, dur, ringCap = null) {
   const inst = INSTRUMENTS[n.inst];
   const set = sampleSets.get(n.inst);
@@ -1167,9 +1256,11 @@ function buildOfflineGraph(song, chanIdxs, sr, beforeChannel) {
   let noiseAccounted = 0;
   for (const ci of chanIdxs) {
     if (beforeChannel) noiseAccounted += beforeChannel(ci, noiseAccounted);
+    const hitSteps = brassHitSteps(song, song.channels[ci]);
     for (const n of song.channels[ci].notes) {
       const t = n.step * stepDur, d = n.len * stepDur;
-      if (INSTRUMENTS[n.inst].kind === "sample") scheduleSample(ctx, outs, n, t, d, ringCap);
+      if (hitSteps && hitSteps.has(n.step)) scheduleBrassHit(ctx, master, kit, n, t, d);
+      else if (INSTRUMENTS[n.inst].kind === "sample") scheduleSample(ctx, outs, n, t, d, ringCap);
       else scheduleChip(ctx, master, kit, n, t, d);
       if (INSTRUMENTS[n.inst].kind === "noise") noiseAccounted++;
     }
