@@ -63,7 +63,7 @@
     <link rel="stylesheet" href="assets/css/tokens.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="assets/css/layout.css?v=20261122b" />
-    <link rel="stylesheet" href="assets/css/components.css?v=20261114f" />
+    <link rel="stylesheet" href="assets/css/components.css?v=20261122c" />
 
     <!-- Visit counting: GoatCounter. No cookies, no fingerprinting, no
          persistent identifier, nothing personal stored, so there is nothing
@@ -101,6 +101,29 @@
   </head>
 
   <body>
+    <!-- The indicator's slot: a slim space reserved at the top of the
+         layout on every page, whether or not the indicator runs on this
+         load. boot.js squeezes the bar into it on follow-up loads; the
+         rest of the time it sits empty. -->
+    <div class="boot-slot" data-boot-slot aria-hidden="true"></div>
+
+    <!-- The boot screen. Ships hidden and empty: without JS it never appears,
+         and a crawler is handed the real page rather than a splash. main.js
+         fills it and takes it away again. aria-hidden because it is theatre;
+         a screen reader should be reading the page below it, which is
+         already there. -->
+    <div class="boot" data-boot aria-hidden="true" hidden>
+      <div class="boot__inner">
+        <div data-boot-logo></div>
+        <div class="boot__row">
+          <div class="boot__icon" data-boot-icon></div>
+          <div class="boot__main">
+            <ul class="boot__log" data-boot-log></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <main class="page">
       <header>
         <h1>
@@ -455,23 +478,6 @@
         <li><kbd data-cap="t">t</kbd><span class="keys__label">theme</span></li>
         <li><kbd data-cap="?">?</kbd><span class="keys__label">this</span></li>
       </ul>
-    </div>
-
-    <!-- The boot screen. Ships hidden and empty: without JS it never appears,
-         and a crawler is handed the real page rather than a splash. main.js
-         fills it and takes it away again. aria-hidden because it is theatre;
-         a screen reader should be reading the page underneath it, which is
-         already there. -->
-    <div class="boot" data-boot aria-hidden="true" hidden>
-      <div class="boot__inner">
-        <div data-boot-logo></div>
-        <div class="boot__row">
-          <div class="boot__icon" data-boot-icon></div>
-          <div class="boot__main">
-            <ul class="boot__log" data-boot-log></ul>
-          </div>
-        </div>
-      </div>
     </div>
 
     <script type="module" src="assets/js/main.js?v=20261122-boot"></script>

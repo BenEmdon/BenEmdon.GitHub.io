@@ -288,17 +288,17 @@
   short startup log that resolves line by line, each line when the work it
   names actually finishes, and then gets out of the way.
 
-  It covers the page rather than replacing it, so the real content is in the
-  DOM and laid out the whole time. The padding below deliberately repeats
-  body's, and .boot__inner repeats .page's width and centring, so the wordmark
-  sits on exactly the pixel it will occupy once this is gone, lifting the
-  overlay is a cut, not a jump.
+  It renders in the layout rather than over it: its own block at the top of
+  the page, under the indicator slot, with the real content in the DOM and
+  laid out below it the whole time, never covered. .boot__inner repeats
+  .page's width and centring, so the wordmark lines up with the one on the
+  page below. When the boot clears, the block goes in one step and the page
+  steps up under the slot. The body's own padding insets the block, so it
+  needs no horizontal padding of its own, only room below before the page
+  begins.
 */
 .boot {
-  position: fixed;
-  z-index: 50;
-  inset: 0;
-  padding: var(--step-2) var(--page-gutter);
+  padding-block-end: var(--step-2);
   background: var(--page-background);
   overflow: hidden;
 }
@@ -453,10 +453,6 @@
 }
 
 @media (max-width: 34rem) {
-  .boot {
-    padding-block: var(--step) var(--step-2);
-  }
-
   /* Nothing like enough width for a 24-column value column beside a task and
      a leader; let the value take what it needs and the dots take the rest. */
   .boot__value {
@@ -478,27 +474,36 @@
   }
 }
 
+/* The slot: a slim space reserved at the top of every page's
+   layout, one indicator row tall, on every load whether or not
+   the indicator runs. The top of the page is the same strip on
+   every page; the bar below squeezes into it when there is a bar
+   to show, and the rest of the time it sits empty. Its height is
+   the bar's own box: one line at --step plus the bar's
+   quarter-step padding above and below. */
+.boot-slot {
+  height: calc(var(--step) + var(--step) / 2);
+}
+
 /* The indicator, the boot's small surface for every load after a
-   session's first: one slim row fixed to the top of the page. A
-   segmented pixel bar, one segment per task the page loads, each
-   segment a short run of cells that sit at the track colour until
-   their task finishes and swap to the accent in that one step.
-   The count beside the bar is the log's own small muted type. The
-   row overlays the page rather than pushing it down, so nothing
-   else moves while it is up, and it leaves the way its cells
-   filled: in one step, by removal, never a fade. */
+   session's first: one slim row inside the slot at the top of the
+   page. A segmented pixel bar, one segment per task the page
+   loads, each segment a short run of cells that sit at the track
+   colour until their task finishes and swap to the accent in
+   that one step. The count beside the bar is the log's own small
+   muted type. The bar renders in the layout rather than over it,
+   so nothing is covered while it is up and nothing moves when it
+   leaves: it goes the way its cells filled, in one step, by
+   removal, never a fade, and the slot stays behind it, empty. The
+   body's own gutter insets the slot, so the bar needs no
+   horizontal padding of its own and its cells line up with the
+   page below. */
 .boot-ind {
-  position: fixed;
-  z-index: 50;
-  top: 0;
-  left: 0;
-  right: 0;
   display: flex;
   align-items: center;
   gap: var(--step-half);
-  padding: calc(var(--step) / 4) var(--page-gutter);
+  padding-block: calc(var(--step) / 4);
   background: var(--page-background);
-  pointer-events: none;
 }
 
 .boot-ind__seg {
