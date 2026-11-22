@@ -1726,9 +1726,3 @@ if (wordmark && !window.matchMedia("(hover: hover)").matches) {
 setUpThemeToggle();
 setUpKeys();
 loadSong("storms");
-
-// A handle for checking the maker end to end.
-window.__musicMaker = {
-  SONGS, parseSong, renderSong, renderSongParallel, renderSongBest,
-  planBins, renderCacheKey, player, PARALLEL_SEED,
-};
