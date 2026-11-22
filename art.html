@@ -7,7 +7,7 @@
     <title>Art · Ben Emdon</title>
     <meta
       name="description"
-      content="Pixel art by Mochi: nine scenes drawn in code, and how they are made."
+      content="Pixel art by Mochi: four scenes drawn in code, and how they are made."
     />
     <!-- An experiment, kept unlisted on purpose: reachable from the meadow's
          credit line and nowhere else, and out of search indexes. -->
@@ -34,26 +34,7 @@
     <link rel="stylesheet" href="assets/css/tokens.css?v=20261114" />
     <link rel="stylesheet" href="assets/css/base.css?v=20261122h" />
     <link rel="stylesheet" href="assets/css/layout.css?v=20261122-pool" />
-    <link rel="stylesheet" href="assets/css/components.css?v=20261122o" />
-
-    <style>
-      /* Dither installation: two stacked canvases, cover over scene. */
-      .dither-wrap {
-        position: relative;
-        width: 100%;
-      }
-      .dither-wrap canvas {
-        width: 100%;
-        height: auto;
-        margin-inline: 0;
-        image-rendering: pixelated;
-        display: block;
-      }
-      .dither-wrap [data-dither-cover] {
-        position: absolute;
-        inset: 0;
-      }
-    </style>
+    <link rel="stylesheet" href="assets/css/components.css?v=20261122p" />
 
     <!-- Visit counting: GoatCounter; the config lives in chrome.js. -->
     <script
@@ -104,46 +85,6 @@
       </section>
 
       <section class="section">
-        <h2 class="section__title" id="mountains"><span class="prompt" aria-hidden="true">$</span> mountains<a class="anchor" href="#mountains" aria-label="Link to this section">#</a></h2>
-        <figure class="mochi-figure">
-          <canvas data-gallery="mountains" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of layered blue mountains with snow caps, a treeline, and a small cabin in the valley while snow falls"></canvas>
-          <figcaption>Three ridges, one cabin, and snow that minds its own business.</figcaption>
-        </figure>
-      </section>
-
-      <section class="section">
-        <h2 class="section__title" id="desktop"><span class="prompt" aria-hidden="true">$</span> desktop<a class="anchor" href="#desktop" aria-label="Link to this section">#</a></h2>
-        <figure class="mochi-figure">
-          <canvas data-gallery="os" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="A pixel art retro computer desktop: a menu bar with a tiny clock, four icons down the left side, a window holding a small landscape, a text window with a blinking block cursor, and a mouse pointer that steps between resting spots"></canvas>
-          <figcaption>The cursor blinks, the pointer wanders, and nothing is in a hurry.</figcaption>
-        </figure>
-      </section>
-
-      <section class="section">
-        <h2 class="section__title" id="underwater"><span class="prompt" aria-hidden="true">$</span> underwater<a class="anchor" href="#underwater" aria-label="Link to this section">#</a></h2>
-        <figure class="mochi-figure">
-          <canvas data-gallery="underwater" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of underwater ruins: a broken stone arch and column stubs in clear water, light rays falling from the surface in stepped columns, a sand floor with shells, seaweed, a small school of fish, and bubbles rising in two fixed columns"></canvas>
-          <figcaption>A ruin the sea kept: one school of fish, two columns of bubbles, and light that gives up halfway down.</figcaption>
-        </figure>
-      </section>
-
-      <section class="section">
-        <h2 class="section__title" id="neon-city"><span class="prompt" aria-hidden="true">$</span> neon city<a class="anchor" href="#neon-city" aria-label="Link to this section">#</a></h2>
-        <figure class="mochi-figure">
-          <canvas data-gallery="neon-city" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of a city at night in the rain: layered rooftops under haze, lit windows, glowing signs with nothing written on them, a small flying vehicle crossing far off, and the sign colours reflected in the wet street"></canvas>
-          <figcaption>Rooftops, rain, and signs for nothing in particular.</figcaption>
-        </figure>
-      </section>
-
-      <section class="section">
-        <h2 class="section__title" id="tennis"><span class="prompt" aria-hidden="true">$</span> the court<a class="anchor" href="#tennis" aria-label="Link to this section">#</a></h2>
-        <figure class="mochi-figure">
-          <canvas data-gallery="tennis" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of a clay tennis court on a coastal terrace at golden hour: the sea and a hazy headland beyond the fence, cypress trees framing the sides, long shadows across the court, and one tennis ball resting by the net post. At night the court sits under two floodlights."></canvas>
-          <figcaption>Clay above the sea, one ball by the net post, and nobody keeping score.</figcaption>
-        </figure>
-      </section>
-
-      <section class="section">
         <h2 class="section__title" id="highland"><span class="prompt" aria-hidden="true">$</span> highland<a class="anchor" href="#highland" aria-label="Link to this section">#</a></h2>
         <figure class="mochi-figure">
           <canvas data-gallery="highland" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of a windswept highland: layered green ridges under a big sky, a lone sword planted in a stone on a grassy rise, standing stones far off, and gusts of wind stepping across the grass"></canvas>
@@ -156,25 +97,6 @@
         <figure class="mochi-figure">
           <canvas data-gallery="grandprix" width="120" height="45" style="width: 100%; height: auto; image-rendering: pixelated" role="img" aria-label="Pixel art of a floodlit racing circuit at night: a sweeping corner with red and white kerbs, a grandstand full of dotted spectators, floodlight towers, a city skyline behind, and an open-wheel car stepping through the corner"></canvas>
           <figcaption>Floodlights, one corner, and the whole track lit the way a real night race is.</figcaption>
-        </figure>
-      </section>
-
-      <section class="section">
-        <h2 class="section__title" id="dither-installation"><span class="prompt" aria-hidden="true">$</span> dither installation<a class="anchor" href="#dither-installation" aria-label="Link to this section">#</a></h2>
-        <p>Two layered scenes under a coarser dithered cover. Hover, focus, or tap a panel and the cover clears in stepped blocks, sky first, foreground last.</p>
-        <figure class="mochi-figure">
-          <div class="dither-wrap" data-gallery-dither="hill" tabindex="0">
-            <canvas data-dither-scene width="144" height="72" role="img" aria-label="Pixel art of Parliament Hill in Ottawa: the Centre Block and Peace Tower, a treeline of conifers and broadleaf trees with visible trunks, and two large pines in the foreground"></canvas>
-            <canvas data-dither-cover width="144" height="72" aria-hidden="true"></canvas>
-          </div>
-          <figcaption>Parliament Hill. The trees are trunks and stepped tiers, so they read as trees, not domes.</figcaption>
-        </figure>
-        <figure class="mochi-figure">
-          <div class="dither-wrap" data-gallery-dither="canal" tabindex="0">
-            <canvas data-dither-scene width="144" height="72" role="img" aria-label="Pixel art of the Rideau Canal locks: a stepped bridge over dithered water, a small boat, timber lock gates with diagonal beams between stone lock walls, and a mixed treeline on the far bank"></canvas>
-            <canvas data-dither-cover width="144" height="72" aria-hidden="true"></canvas>
-          </div>
-          <figcaption>The Rideau Canal. Dither lives in the sky and the water, nowhere else.</figcaption>
         </figure>
       </section>
 
@@ -306,20 +228,14 @@ function paint() {
       <script>window.SiteChrome && SiteChrome.nav("bottom")</script>
       <script>window.SiteChrome && SiteChrome.footer()</script>
     </main>
-    <script>window.SiteChrome && SiteChrome.keys([["1","art"],["2","overworld"],["3","seaside"],["4","mountains"],["5","desktop"],["6","underwater"],["7","neon city"],["8","the court"],["9","highland"]])</script>
+    <script>window.SiteChrome && SiteChrome.keys([["1","art"],["2","overworld"],["3","seaside"],["4","highland"]])</script>
 
 
-    <script type="module" src="assets/js/art.js?v=20261122r"></script>
+    <script type="module" src="assets/js/art.js?v=20261122s"></script>
     <script type="module" src="assets/js/keycaps.js"></script>
     <script type="module" src="assets/js/gallery-map.js"></script>
     <script type="module" src="assets/js/gallery-seaside.js"></script>
-    <script type="module" src="assets/js/gallery-mountains.js"></script>
-    <script type="module" src="assets/js/gallery-os.js"></script>
-    <script type="module" src="assets/js/gallery-underwater.js"></script>
-    <script type="module" src="assets/js/gallery-neoncity.js"></script>
-    <script type="module" src="assets/js/gallery-tennis.js"></script>
     <script type="module" src="assets/js/gallery-highland.js"></script>
     <script type="module" src="assets/js/gallery-grandprix.js"></script>
-    <script type="module" src="assets/js/gallery-dither.js"></script>
   </body>
 </html>
