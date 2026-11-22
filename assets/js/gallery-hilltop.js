@@ -88,8 +88,8 @@
       "#ffd94a", // sun; also the flower cells in the near grass
       "#c9e7f5", // moon and stars (= sky by day)
       "#ffffff", // the cloud
-      "#a9cdb2", // far hill, washed toward the sky
-      "#c4e0bc", // far hill rim and its gust rung
+      "#8fbc96", // far hill, deepened one rung (polish-pass experiment: part it from the sky)
+      "#a9cdb2", // far hill rim and its gust rung (the old base)
       "#3e7a39", // near grass, the dark base shade
       "#57a047", // near grass
       "#7cc463", // near grass tips
@@ -106,8 +106,8 @@
       "#0c1826", // sun (= sky by night; the flowers close)
       "#e8f1fa", // moon and stars
       "#2c4a73", // the cloud
-      "#1d3442", // far hill, washed toward the night sky
-      "#2a4a54", // far hill rim and its gust rung
+      "#2a4a54", // far hill, lifted one rung (polish-pass experiment: part it from the near grass)
+      "#3d6273", // far hill rim and its gust rung
       "#14332a", // near grass, the dark base shade
       "#1d4d38", // near grass
       "#2f7350", // near grass tips
@@ -377,8 +377,10 @@
       if (grid[at(x, y)] === S.SKY) grid[at(x, y)] = S.MOON;
     }
 
-    // The far hill, washed almost to the sky, with its rim
-    // catching the light in seeded stretches of the tip shade.
+    // The far hill, with its rim catching the light in seeded
+    // stretches of the tip shade. (Polish-pass experiment: the
+    // wash toward the sky is one rung weaker than shipped, so the
+    // hill reads as a layer instead of a horizon band.)
     for (let x = 0; x < W; x += 1) {
       const top = ridgeTopAt(FAR_PEAKS, FAR_BASE_Y, x);
       for (let y = top; y < H; y += 1) grid[at(x, y)] = S.FAR_BASE;
@@ -659,10 +661,11 @@
 
   if (reduced.matches) return; // one static frame, no weather, no timers
 
-  // The cloud's holds, the meadow's lengths: a few seconds of
-  // stillness, then one column step.
+  // The cloud's holds: a beat or two of stillness, then one
+  // column step. (Polish-pass experiment: shorter than the
+  // meadow's lengths, so the crossing is easier to catch.)
   const cloudRng = mulberry32(20261145);
-  const CLOUD_HOLDS = [2000, 3200, 5000];
+  const CLOUD_HOLDS = [900, 1500, 2400]; // polish-pass experiment: quicker holds, a step every second or two
   let cloudTicks = Math.round(CLOUD_HOLDS[0] / 120);
   function stepCloud() {
     cloudTicks -= 1;
