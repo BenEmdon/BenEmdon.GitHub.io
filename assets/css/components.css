@@ -316,7 +316,9 @@
    painting, filling in beside it while the lines resolve. Its colours
    are the favicon's own day and night pairs, carried as light-dark()
    the way the tokens carry theirs, so the picture follows the theme
-   the boot is busy restoring. */
+   the boot is busy restoring. The loader's spinner wears the same
+   painting at 32px, so this palette and the cell shades below are
+   shared by both surfaces. */
 .boot__row {
   display: flex;
   align-items: flex-end;
@@ -324,7 +326,8 @@
   margin-block-start: var(--step);
 }
 
-.boot__icon {
+.boot__icon,
+.boot-spin__icon {
   --icon-frame: light-dark(#d9a441, #b98a34);
   --icon-frame-lit: light-dark(#eec25e, #d9a441);
   --icon-frame-deep: light-dark(#a8742c, #7d5a24);
@@ -337,6 +340,9 @@
   --icon-field: light-dark(#57a047, #2c5c33);
   --icon-field-deep: light-dark(#4e9b47, #26543a);
   --icon-flower: light-dark(#e2543e, #ff8a5c);
+}
+
+.boot__icon {
   position: relative;
   flex: none;
   width: 80px;
@@ -351,51 +357,63 @@
   height: 5px;
 }
 
-.boot__cell.is-frame {
+.boot__cell.is-frame,
+.boot-spin__cell.is-frame {
   background: var(--icon-frame);
 }
 
-.boot__cell.is-frame-lit {
+.boot__cell.is-frame-lit,
+.boot-spin__cell.is-frame-lit {
   background: var(--icon-frame-lit);
 }
 
-.boot__cell.is-frame-deep {
+.boot__cell.is-frame-deep,
+.boot-spin__cell.is-frame-deep {
   background: var(--icon-frame-deep);
 }
 
-.boot__cell.is-corner {
+.boot__cell.is-corner,
+.boot-spin__cell.is-corner {
   background: var(--icon-corner);
 }
 
-.boot__cell.is-sky {
+.boot__cell.is-sky,
+.boot-spin__cell.is-sky {
   background: var(--icon-sky);
 }
 
-.boot__cell.is-sky-lit {
+.boot__cell.is-sky-lit,
+.boot-spin__cell.is-sky-lit {
   background: var(--icon-sky-lit);
 }
 
-.boot__cell.is-sun {
+.boot__cell.is-sun,
+.boot-spin__cell.is-sun {
   background: var(--icon-sun);
 }
 
-.boot__cell.is-cloud {
+.boot__cell.is-cloud,
+.boot-spin__cell.is-cloud {
   background: var(--icon-cloud);
 }
 
-.boot__cell.is-hill {
+.boot__cell.is-hill,
+.boot-spin__cell.is-hill {
   background: var(--icon-hill);
 }
 
-.boot__cell.is-field {
+.boot__cell.is-field,
+.boot-spin__cell.is-field {
   background: var(--icon-field);
 }
 
-.boot__cell.is-field-deep {
+.boot__cell.is-field-deep,
+.boot-spin__cell.is-field-deep {
   background: var(--icon-field-deep);
 }
 
-.boot__cell.is-flower {
+.boot__cell.is-flower,
+.boot-spin__cell.is-flower {
   background: var(--icon-flower);
 }
 
@@ -474,57 +492,118 @@
   }
 }
 
-/* The slot: a slim space reserved at the top of every page's
-   layout, one indicator row tall, on every load whether or not
-   the indicator runs. The top of the page is the same strip on
-   every page; the bar below squeezes into it when there is a bar
-   to show, and the rest of the time it sits empty. Its height is
-   the bar's own box: one line at --step plus the bar's
-   quarter-step padding above and below. */
-.boot-slot {
-  height: calc(var(--step) + var(--step) / 2);
-}
-
-/* The indicator, the boot's small surface for every load after a
-   session's first: one slim row inside the slot at the top of the
-   page. A segmented pixel bar, one segment per task the page
-   loads, each segment a short run of cells that sit at the track
-   colour until their task finishes and swap to the accent in
-   that one step. The count beside the bar is the log's own small
-   muted type. The bar renders in the layout rather than over it,
-   so nothing is covered while it is up and nothing moves when it
-   leaves: it goes the way its cells filled, in one step, by
-   removal, never a fade, and the slot stays behind it, empty. The
-   body's own gutter insets the slot, so the bar needs no
-   horizontal padding of its own and its cells line up with the
-   page below. */
-.boot-ind {
+/* The loader's spinner, the surface for every load after a
+   session's first and for all async work after that: the framed
+   field at 32px, fixed in the top right corner over the page,
+   with the batch's count beside it in the log's own small muted
+   type. It overlays rather than reserving space, so no page
+   makes room for loading any more and nothing moves when it
+   comes or goes; it takes taps, one tap expanding it into the
+   panel below, and it leaves the way its cells filled, in one
+   step, by removal, never a fade. The chip's own background
+   keeps the count readable over whatever scrolls beneath it.
+   The icon wears the boot icon's palette (the shared --icon-*
+   properties above) and its cells the boot cells' shades, so
+   the little painting is the same one in both surfaces, only
+   smaller. */
+.boot-spin {
+  position: fixed;
+  inset-block-start: calc(var(--step) / 2);
+  inset-inline-end: calc(var(--step) / 2);
+  z-index: 10;
   display: flex;
   align-items: center;
-  gap: var(--step-half);
-  padding-block: calc(var(--step) / 4);
+  gap: calc(var(--step) / 2);
+  padding: calc(var(--step) / 4);
   background: var(--page-background);
+  cursor: pointer;
 }
 
-.boot-ind__seg {
-  display: inline-flex;
-  gap: 2px;
+.boot-spin__icon {
+  position: relative;
+  flex: none;
+  width: 32px;
+  height: 32px;
 }
 
-.boot-ind__cell {
-  width: 6px;
-  height: 6px;
-  background: var(--page-rule);
+/* Placed once, fully coloured, and never moving or fading, like
+   the boot's cells: the fill is the set of cells present. */
+.boot-spin__cell {
+  position: absolute;
+  width: 2px;
+  height: 2px;
 }
 
-.boot-ind__seg.is-on .boot-ind__cell {
-  background: var(--accent-color);
-}
-
-.boot-ind__text {
+.boot-spin__text {
   color: var(--muted-color);
   font-size: var(--text-small);
   line-height: var(--step);
+  white-space: nowrap;
+}
+
+/* The loader expanded: the full boot loader's UI as an overlay
+   panel under the chip, the framed field at full size beside
+   the log of the batch's tasks, with the segmented progress
+   bar above the log and the batch's rolled-up line below it.
+   The frame follows the key legend's card, the site's other
+   corner overlay: page background, an accent border, and the
+   same small type. The boot's own row, icon, log and line
+   rules carry the inside, so the panel reads as the boot
+   screen it is named for; the row's top margin is the flow
+   layout's, and the panel has the bar to space it instead. */
+.boot-panel {
+  position: fixed;
+  inset-block-start: calc(var(--step) * 2 + 8px);
+  inset-inline-end: calc(var(--step) / 2);
+  z-index: 10;
+  width: min(36rem, calc(100vw - var(--step)));
+  padding: var(--step-half) var(--step);
+  background: var(--page-background);
+  border: 1px solid var(--accent-color);
+}
+
+.boot-panel .boot__row {
+  margin-block-start: 0;
+}
+
+.boot-panel__summary {
+  margin-block-start: var(--step-half);
+  color: var(--muted-color);
+  font-size: var(--text-small);
+  line-height: var(--step);
+}
+
+/* The segmented progress bar: one segment per registered task,
+   four cells each, the cells lighting in place with the task's
+   reported fraction, the way the old top bar's segments lit as
+   their tasks settled. A failed task's segment lights whole in
+   the flower's red pair, the icon palette's one alarm colour:
+   the task is finished, and finished wrong. Unlit cells sit at
+   the page rule, like the boot log's leader dots. */
+.boot-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--step) / 4);
+  margin-block-end: var(--step-half);
+}
+
+.boot-seg__seg {
+  display: flex;
+  gap: 2px;
+}
+
+.boot-seg__cell {
+  width: 8px;
+  height: 8px;
+  background: var(--page-rule);
+}
+
+.boot-seg__cell.is-lit {
+  background: var(--accent-color);
+}
+
+.boot-seg__cell.is-failed {
+  background: light-dark(#e2543e, #ff8a5c);
 }
 
 /* The home page music demo: Saria's Song as one piano roll with a

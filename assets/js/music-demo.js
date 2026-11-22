@@ -33,6 +33,7 @@
 
 import { renderCacheKey, readRender, writeRender } from "./render-cache.js";
 import { announceBootTask } from "./boot-tasks.js";
+import { registerTask } from "./boot.js";
 
 /* ---------- instruments ---------- */
 
@@ -689,10 +690,33 @@ if (roll && playButton) {
     if (demo.rendered) return Promise.resolve(demo.rendered);
     if (demo.renderPromise) return demo.renderPromise;
     demo.renderPromise = (async () => {
-      await loadSamples();
-      const rendered = await obtainRender(song, onRendering);
-      demo.rendered = rendered;
-      return rendered;
+      // The demo's render reports itself to the corner loader
+      // the way the maker's do: samples first, then rendering
+      // only when a real render is about to happen (the
+      // obtainRender callback), "from cache" on a hit instead,
+      // then done; a failure reaches the handle through the
+      // catch. The loader only observes; the memoised promise
+      // runs the work exactly as it did.
+      const name = ((song.header || [])[0] || "")
+        .replace(/^;\s*/, "").split(":")[0].trim() || "the demo song";
+      const work = registerTask("rendering " + name);
+      work.status("loading samples");
+      try {
+        await loadSamples();
+        work.update(0.25);
+        const rendered = await obtainRender(song, () => {
+          work.status("rendering");
+          work.update(0.5);
+          if (onRendering) onRendering();
+        });
+        demo.rendered = rendered;
+        if (rendered.fromCache) work.status("from cache");
+        work.complete();
+        return rendered;
+      } catch (err) {
+        work.fail(err && err.message ? err.message : "render failed");
+        throw err;
+      }
     })();
     demo.renderPromise.catch(() => {
       demo.renderPromise = null;
