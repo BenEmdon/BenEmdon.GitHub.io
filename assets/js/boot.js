@@ -483,12 +483,14 @@ let loaderBatch = null;
 // A chip whose batch was replaced under it inside its
 // minimum: the element stays in the corner for the rest of
 // its second, retired. It is not a dead remnant: its
-// painting is completed at retirement, its count and latency
-// are its batch's final ones, and its tap still opens its
-// own batch's panel. The incoming batch adopts the element
-// on its mount frame (the usual case); the retirement timer
-// only ever fires for a batch nothing adopted.
-let retiredChip = null; // { view, batch, timer }
+// painting plays out to whole on the fill step while it
+// retires (a finished batch's picture completes as an
+// animation, never a snap), its count and latency are its
+// batch's final ones, and its tap still opens its own
+// batch's panel. The incoming batch adopts the element on
+// its mount frame (the usual case); the retirement timers
+// only ever fire for a batch nothing adopted.
+let retiredChip = null; // { view, batch, timer, fillTimer, minElapsed }
 
 // Promise-identity dedupe for the adapter: a promise with a
 // live task already is that task, whoever asks again.
@@ -762,15 +764,18 @@ function buildSpinner(batch) {
 // the corner keeps exactly one chip, and from the adoption
 // it reports the new batch. The count is the new batch's,
 // the latency line hides until the new batch closes and has
-// one of its own, the painting restarts from empty in one
-// step and fills with the new batch's share, and the tap
-// opens the new batch's panel. The minimum runs from the
-// adoption, so the element serves at least a second in the
-// new batch's name too: adoption only ever lengthens the
-// surface's stay in the corner, never shortens it.
+// one of its own, the painting keeps the cells it has and
+// steps from there toward the new batch's share, in
+// whichever direction that lies (the display moves on the
+// step, never in a snap), and the tap opens the new batch's
+// panel. The minimum runs from the adoption, so the element
+// serves at least a second in the new batch's name too:
+// adoption only ever lengthens the surface's stay in the
+// corner, never shortens it.
 function adoptSpinner(batch) {
   const { view } = retiredChip;
   clearTimeout(retiredChip.timer);
+  if (retiredChip.fillTimer) clearInterval(retiredChip.fillTimer);
   retiredChip = null;
   view.owner = batch;
   batch.chip = view;
@@ -778,11 +783,6 @@ function adoptSpinner(batch) {
   view.count.textContent = countText(batch);
   view.time.textContent = "";
   view.time.hidden = true;
-  while (view.filled > 0) {
-    const last = view.icon.children[view.icon.children.length - 1];
-    if (last) last.remove();
-    view.filled -= 1;
-  }
   batch.fillTimer = setInterval(() => stepLoaderFill(batch), 75);
   stepLoaderFill(batch);
 }
@@ -897,6 +897,22 @@ function renderLoader(batch) {
   if (batch.panel) renderLoaderPanel(batch);
 }
 
+// A retired chip leaves the corner when both halves of its
+// retirement are done: its second on screen has run out,
+// and its painting has played out to whole on the fill
+// step. Whichever half lands last calls this. While the
+// retired batch's panel is open the chip stays, as it
+// always has: collapsing the panel removes the chip with
+// its batch, through teardown.
+function finishRetiredChip(retired) {
+  if (retiredChip !== retired) return;
+  if (!retired.minElapsed || retired.view.filled < ICON_TOTAL) return;
+  if (retired.batch.panel) return;
+  if (retired.fillTimer) clearInterval(retired.fillTimer);
+  retired.view.el.remove();
+  retiredChip = null;
+}
+
 function teardownLoaderBatch(batch, { keepChip = false } = {}) {
   if (batch.fillTimer) clearInterval(batch.fillTimer);
   if (batch.watchTimer) clearInterval(batch.watchTimer);
@@ -913,6 +929,7 @@ function teardownLoaderBatch(batch, { keepChip = false } = {}) {
     // collapsed, the one teardown a retired batch can get):
     // the element goes with its batch.
     clearTimeout(retiredChip.timer);
+    if (retiredChip.fillTimer) clearInterval(retiredChip.fillTimer);
     retiredChip.view.el.remove();
     retiredChip = null;
   }
@@ -922,40 +939,45 @@ function teardownLoaderBatch(batch, { keepChip = false } = {}) {
     // A chip replaced inside its minimum (keepChip, the
     // currentLoaderBatch path) retires: it stays on screen
     // for the rest of its second, but finished, not frozen.
-    // Its painting is completed here in one step, because
-    // the fill timer that was walking it to whole is cleared
-    // above and a finished batch's picture is a whole
-    // picture; its count and latency are already its final
-    // ones; and its tap still opens its own batch's panel.
-    // Every other removal (the hold expiring, the visitor
-    // collapsing the panel) takes the chip in one step, as
-    // it always has.
+    // Its painting plays out to whole on the fill's own
+    // step: the batch's fill timer was cleared above, so a
+    // timer of the retirement's own walks the remaining
+    // cells in, a step a tick, the way every fill on the
+    // site moves. A finished batch's picture completes; it
+    // never snaps to whole. Its count and latency are
+    // already its final ones, and its tap still opens its
+    // own batch's panel. The chip leaves once its second
+    // is up AND the picture is whole, whichever lands last
+    // (finishRetiredChip). Every other removal (the hold
+    // expiring, the visitor collapsing the panel) takes
+    // the chip in one step, as it always has.
     const shownFor =
       batch.chipMountedAt == null
         ? SPINNER_MIN_MS
         : performance.now() - batch.chipMountedAt;
     if (keepChip && shownFor < SPINNER_MIN_MS) {
-      while (view.filled < ICON_TOTAL) {
-        view.icon.append(view.cells[view.filled]);
-        view.filled += 1;
-      }
-      retiredChip = {
+      const retired = {
         view,
         batch,
-        timer: setTimeout(() => {
-          if (!retiredChip || retiredChip.batch !== batch) return;
-          if (batch.panel) {
-            // The visitor opened the retired batch's panel:
-            // the chip stays while the panel is open, and
-            // collapsing the panel removes the chip with its
-            // batch, through the retired path above.
-            retiredChip.timer = null;
-            return;
-          }
-          view.el.remove();
-          retiredChip = null;
-        }, SPINNER_MIN_MS - shownFor),
+        timer: null,
+        fillTimer: null,
+        minElapsed: false,
       };
+      retiredChip = retired;
+      stepIconFill(view, ICON_TOTAL);
+      retired.fillTimer = setInterval(() => {
+        stepIconFill(view, ICON_TOTAL);
+        if (view.filled >= ICON_TOTAL) {
+          clearInterval(retired.fillTimer);
+          retired.fillTimer = null;
+          finishRetiredChip(retired);
+        }
+      }, 75);
+      retired.timer = setTimeout(() => {
+        retired.timer = null;
+        retired.minElapsed = true;
+        finishRetiredChip(retired);
+      }, SPINNER_MIN_MS - shownFor);
     } else {
       view.el.remove();
     }
@@ -973,8 +995,12 @@ function closeLoaderBatch(batch) {
     // covered start to finish was already reported by the boot's
     // own log. The one case worth a surface: work the boot
     // covered that outlived the screen and closed after it
-    // cleared. It gets a completion-only mount, the finished
-    // picture shown whole, because the work it reports is done.
+    // cleared. It gets a completion-only mount, because the
+    // work it reports is done; its picture still fills in on
+    // the fill step, the way a watched batch's does, so the
+    // painting is seen loading in even though the work is
+    // already finished. The chip's own fill timer (started
+    // by buildSpinner) walks it to whole and stops there.
     // A retired chip still serving its minimum also bars the
     // mount: the corner is occupied until its second is up.
     if (
@@ -987,14 +1013,6 @@ function closeLoaderBatch(batch) {
       return;
     }
     buildSpinner(batch);
-    while (batch.chip.filled < ICON_TOTAL) {
-      batch.chip.icon.append(batch.chip.cells[batch.chip.filled]);
-      batch.chip.filled += 1;
-    }
-    if (batch.fillTimer) {
-      clearInterval(batch.fillTimer);
-      batch.fillTimer = null;
-    }
   }
   batch.chip.count.textContent = countText(batch);
   batch.chip.time.textContent = `${batch.latency} ms`;
@@ -1105,13 +1123,19 @@ function buildLoaderPanel(batch) {
     head, count: headCount, time: headTime, lines,
     rows: new Map(),
   };
-  if (batch.closed) {
-    // Opened on a finished batch, the painting shows whole,
-    // the way the completion-only chip mount shows its own.
-    while (batch.panel.filled < ICON_TOTAL) {
-      batch.panel.icon.append(batch.panel.cells[batch.panel.filled]);
-      batch.panel.filled += 1;
-    }
+  // The painting fills on the loader's step toward the
+  // batch's share, like the chip's smaller copy of the same
+  // picture: opened on a finished batch it plays in to
+  // whole rather than arriving whole. The batch's fill
+  // timer does the stepping while it runs; a batch whose
+  // timer already stopped (its chip filled and stopped it,
+  // the panel only opening now; or a retired batch, whose
+  // chip lives outside the batch) gets one restarted for
+  // the panel's sake, and stepLoaderFill stops it again
+  // once both pictures are whole.
+  if (!batch.fillTimer) {
+    batch.fillTimer = setInterval(() => stepLoaderFill(batch), 75);
+    stepLoaderFill(batch);
   }
   for (const task of batch.tasks) addPanelTask(batch, task);
   document.addEventListener("pointerdown", onLoaderOutsideTap);
