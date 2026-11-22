@@ -37,7 +37,7 @@
 import { createThemeScene } from "./theme-scene.js";
 import { animateWordmark, setUpStaticWordmark } from "./wordmark.js";
 import { renderCacheKey, readRender, writeRender, verifyRenderData } from "./render-cache.js";
-import { runBoot, registerTask } from "./boot.js";
+import { runBoot, registerTask } from "./boot.js?v=20261122g";
 
 /* ---------- boot ---------- */
 
@@ -1853,6 +1853,40 @@ function whenQuiet(onWait) {
   });
 }
 
+// A background render reports itself to the corner loader
+// from the moment it is queued, not only from the moment the
+// quiet-guarded render starts: while the visitor keeps
+// tapping and scrolling, the wait below can stretch on, and
+// the loader should show the work sitting in the queue the
+// whole time, the way it shows a play-press render at once.
+// The queued task ends when the render actually starts (the
+// pipeline's own tasks take over from there: one per bin,
+// plus verification), as superseded when a newer song change
+// replaces it before its turn comes, or as failed when the
+// chain dies before the render could start.
+function registerQueuedRender(song) {
+  const work = registerTask("waiting to render " + songName(song));
+  let settled = false;
+  return {
+    start() {
+      if (settled) return;
+      settled = true;
+      work.complete();
+    },
+    supersede() {
+      if (settled) return;
+      settled = true;
+      work.status("superseded");
+      work.complete();
+    },
+    fail(err) {
+      if (settled) return;
+      settled = true;
+      work.fail(err && err.message ? err.message : "render failed");
+    },
+  };
+}
+
 // A song change: if it parses, it becomes the song. While playing,
 // the re-render is prepared in the background and swapped at the
 // loop boundary; while stopped, it simply waits for the next play.
@@ -1862,6 +1896,7 @@ function songChanged(parsed, { restart = false } = {}) {
   refreshPlayGate();
   const gen = ++bgGeneration;
   if (!player.playing) {
+    const queued = registerQueuedRender(parsed);
     // Experiment (live note feedback): while stopped, still
     // render in the background, so a note wearing the pending
     // colour clears at the moment its render actually lands,
@@ -1877,9 +1912,14 @@ function songChanged(parsed, { restart = false } = {}) {
           setStatus("waiting for a quiet moment to render\u2026");
         }
       }))
-      .then(() => (gen === bgGeneration
-        ? obtainRender(parsed, { announce: false })
-        : null))
+      .then(() => {
+        if (gen !== bgGeneration) {
+          queued.supersede();
+          return null;
+        }
+        queued.start();
+        return obtainRender(parsed, { announce: false });
+      })
       .then((rendered) => {
         if (!rendered) return; // superseded while waiting
         if (player.song === parsed && !player.playing) {
@@ -1898,6 +1938,7 @@ function songChanged(parsed, { restart = false } = {}) {
         // A failed background render leaves the notes pending
         // and the play gate closed, which is the truth; the
         // status line says so too, naming what failed.
+        queued.fail(err);
         if (player.song === parsed && !player.playing) {
           setStatus(
             renderFailureText(err, "so this song cannot play yet."), true);
@@ -1909,10 +1950,16 @@ function songChanged(parsed, { restart = false } = {}) {
     startPlayback();
     return;
   }
+  const queued = registerQueuedRender(parsed);
   whenQuiet()
-    .then(() => (gen === bgGeneration && player.song === parsed
-      ? obtainRender(parsed, { announce: false })
-      : null))
+    .then(() => {
+      if (gen !== bgGeneration || player.song !== parsed) {
+        queued.supersede();
+        return null;
+      }
+      queued.start();
+      return obtainRender(parsed, { announce: false });
+    })
     .then((rendered) => {
       if (!rendered) return; // superseded while waiting
       if (player.song === parsed && player.playing) {
@@ -1921,7 +1968,10 @@ function songChanged(parsed, { restart = false } = {}) {
         window.__lastRender = rendered;
       }
     })
-    .catch(() => { /* a render that fails the gate simply never swaps in */ });
+    .catch(() => {
+      queued.fail();
+      /* a render that fails the gate simply never swaps in */
+    });
 }
 
 /* ---------- page ---------- */
@@ -2812,7 +2862,12 @@ loadSong("storms");
 // the clock's first tick. Starting the samples here mirrors the
 // home page's demo preload. The render's buffer is stored on the
 // player when the song is still current and still needs it, so
-// pressing play afterwards is instant.
+// pressing play afterwards is instant. The samples and render
+// tasks are marked selfReports: both register themselves with
+// the corner loader where the work runs (loadSamples under its
+// own name, the render as its per-step tasks), so runBoot lists
+// them for the boot screen without registering them a second
+// time. The clock is the boot's own step and registers there.
 const bootSong = player.song;
 const samplesTask = loadSamples().then(() => performance.now() - bootT0);
 const renderTask = (async () => {
@@ -2834,9 +2889,9 @@ const renderTask = (async () => {
 })();
 runBoot(
   [
-    { label: "loading samples", promise: samplesTask,
+    { label: "loading samples", promise: samplesTask, selfReports: true,
       format: (ms) => `${Math.round(ms)} ms` },
-    { label: "rendering song", promise: renderTask,
+    { label: "rendering song", promise: renderTask, selfReports: true,
       format: (r) => (r.fromCache
         ? `from cache · ${Math.round(r.ms)} ms`
         : `rendered in ${Math.round(r.renderMs)} ms`) },

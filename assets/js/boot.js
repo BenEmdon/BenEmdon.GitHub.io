@@ -455,8 +455,16 @@ function runFullBoot(tasks) {
 // ----------------------------------------------------------------
 
 // The spinner's cells: the icon's 16 x 16 grid at 2px a cell,
-// 32px square in the corner.
+// 32px square in the corner. The cells sit SPINNER_PAD inside
+// the icon's box, so the picture's own background line carries
+// a margin around the painting, the way the text lines carry
+// padding around their words; components.css sizes the box to
+// the grid plus twice the pad.
 const SPINNER_CELL = 2;
+const SPINNER_PAD = 4;
+// The panel's painting is the boot screen's own: its 5px
+// cells in its 80px box, so the two surfaces are one picture.
+const PANEL_CELL = 5;
 const ICON_TOTAL = ICON.reduce((n, row) => n + row.length, 0);
 
 let loaderBatch = null;
@@ -522,21 +530,15 @@ function batchShare(batch) {
 }
 
 // The count both surfaces report: done/total, failures named
-// when there are any. The panel's header is this count plus,
-// once the batch has closed, the measured latency; the chip
-// stacks the same two pieces on separate lines, the count
-// while the batch runs and the latency under it at the close.
-// One source for both, so the two surfaces can never disagree.
+// when there are any. The chip and the panel's header alike
+// stack it over the batch's measured latency, the latency
+// line joining once the batch has closed; the two pieces
+// never share a line. One source for the count, so the two
+// surfaces can never disagree.
 function countText(batch) {
   const { done, failed, total } = batchCounts(batch);
   let text = `${done}/${total}`;
   if (failed) text += ` · ${failed} failed`;
-  return text;
-}
-
-function headText(batch) {
-  let text = countText(batch);
-  if (batch.closed) text += ` · ${batch.latency} ms`;
   return text;
 }
 
@@ -674,14 +676,14 @@ export function trackWork(promise, { label = "task", startedAt, timeout } = {}) 
 // The icon's cells, pre-built detached in grid order and then
 // shuffled with the boot fill's seed, so both loader icons fill
 // in the same scrambled order the full boot's picture does.
-function buildIconCells(cellClass, size) {
+function buildIconCells(cellClass, size, pad = 0) {
   const cells = [];
   ICON.forEach((row, y) => {
     [...row].forEach((ch, x) => {
       const cell = document.createElement("span");
       cell.className = `${cellClass} ${ICON_SHADE[ch]}`;
-      cell.style.left = `${x * size}px`;
-      cell.style.top = `${y * size}px`;
+      cell.style.left = `${pad + x * size}px`;
+      cell.style.top = `${pad + y * size}px`;
       cells.push(cell);
     });
   });
@@ -709,7 +711,7 @@ function buildSpinner(batch) {
 
   const icon = document.createElement("span");
   icon.className = "boot-spin__icon";
-  const cells = buildIconCells("boot-spin__cell", SPINNER_CELL);
+  const cells = buildIconCells("boot-spin__cell", SPINNER_CELL, SPINNER_PAD);
 
   // The stack under the picture: the count on its own line,
   // and the latency line below it, hidden until the batch
@@ -752,8 +754,12 @@ function stepLoaderFill(batch) {
     ? ICON_TOTAL
     : Math.round(batchShare(batch) * ICON_TOTAL);
   stepIconFill(batch.chip, target);
+  // The panel's painting fills on the same step toward the
+  // same target: one batch, one picture, two sizes.
+  if (batch.panel) stepIconFill(batch.panel, target);
   const chipDone = !batch.chip || batch.chip.filled >= ICON_TOTAL;
-  if (batch.closed && chipDone && batch.fillTimer) {
+  const panelDone = !batch.panel || batch.panel.filled >= ICON_TOTAL;
+  if (batch.closed && chipDone && panelDone && batch.fillTimer) {
     clearInterval(batch.fillTimer);
     batch.fillTimer = null;
   }
@@ -866,13 +872,19 @@ function closeLoaderBatch(batch) {
 }
 
 // ----------------------------------------------------------------
-// The expanded panel: the registry's current batch as a table.
-// A header with the batch's count (and its latency, once
-// closed), then one row per task: mark, label, status. No
-// progress bar and no picture: the chip already carries the
-// favicon, and the table is the whole story. The panel holds
-// no state of its own; every render rebuilds its rows from
-// the batch, so what it shows is the registry as it stands.
+// The expanded panel: the boot screen's view of the registry's
+// current batch. The chip is the summary; tapping it opens
+// the full picture, the same arrangement the boot screen
+// itself uses: the framed painting at the top left, filling
+// in the boot's stepped style over the batch, then the count
+// with its latency on the line under it once the batch has
+// closed (the chip's two lines, stacked the same way, never
+// combined), then one line per task in the boot log's own
+// shape: the name, a dotted leader, and the value at the
+// right edge. No progress bar: the painting's fill is the
+// progress, as it is on the boot screen. The panel holds no
+// state of its own; every render rebuilds its lines from the
+// batch, so what it shows is the registry as it stands.
 // ----------------------------------------------------------------
 
 function toggleLoaderPanel(batch) {
@@ -914,39 +926,60 @@ function buildLoaderPanel(batch) {
   const root = document.createElement("div");
   root.className = "boot-panel";
 
+  // The painting, the boot screen's own at its own size,
+  // top-left above everything else in the panel. Its cells
+  // fill on the loader's step toward the batch's share, like
+  // the chip's smaller copy of the same picture.
+  const icon = document.createElement("span");
+  icon.className = "boot-panel__icon";
+  const cells = buildIconCells("boot__cell", PANEL_CELL);
+
   const head = document.createElement("div");
   head.className = "boot-panel__head";
+  // The header is the chip's two lines in the same shape: the
+  // count, and the latency under it once the batch has closed.
+  const headCount = loaderSpan("boot-panel__count", countText(batch));
+  const headTime = loaderSpan("boot-panel__time", "");
+  headTime.hidden = true;
+  head.append(headCount, headTime);
 
-  const table = document.createElement("table");
-  table.className = "boot-panel__table";
-  const body = document.createElement("tbody");
-  table.append(body);
+  const lines = document.createElement("div");
+  lines.className = "boot-panel__lines";
 
-  root.append(head, table);
+  root.append(icon, head, lines);
   document.body.append(root);
-  batch.panel = { el: root, head, body, rows: new Map() };
+  batch.panel = {
+    el: root, icon, cells, filled: 0,
+    head, count: headCount, time: headTime, lines,
+    rows: new Map(),
+  };
+  if (batch.closed) {
+    // Opened on a finished batch, the painting shows whole,
+    // the way the completion-only chip mount shows its own.
+    while (batch.panel.filled < ICON_TOTAL) {
+      batch.panel.icon.append(batch.panel.cells[batch.panel.filled]);
+      batch.panel.filled += 1;
+    }
+  }
   for (const task of batch.tasks) addPanelTask(batch, task);
   document.addEventListener("pointerdown", onLoaderOutsideTap);
   renderLoaderPanel(batch);
 }
 
-// One task's table row, added when the panel opens and
-// whenever a task registers while it is open: the panel is
-// a view of the registry, not a snapshot of it.
+// One task's line, added when the panel opens and whenever
+// a task registers while it is open: the panel is a view of
+// the registry, not a snapshot of it. The line is the boot
+// log's own: mark, name, a dotted leader, and the value.
 function addPanelTask(batch, task) {
   const panel = batch.panel;
-  const row = document.createElement("tr");
-  row.className = "boot-panel__row";
-  const mark = document.createElement("td");
-  mark.className = "boot-panel__mark";
-  mark.textContent = SPINNER[batch.spinFrame];
-  const label = document.createElement("td");
-  label.className = "boot-panel__task";
-  label.textContent = task.label;
-  const status = document.createElement("td");
-  status.className = "boot-panel__status";
-  row.append(mark, label, status);
-  panel.body.append(row);
+  const row = document.createElement("div");
+  row.className = "boot-panel__line";
+  const mark = loaderSpan("boot-panel__mark", SPINNER[batch.spinFrame]);
+  const label = loaderSpan("boot-panel__task", task.label);
+  const dots = loaderSpan("boot-panel__dots", ".".repeat(80));
+  const status = loaderSpan("boot-panel__status", "");
+  row.append(mark, label, dots, status);
+  panel.lines.append(row);
   panel.rows.set(task, { row, mark, status });
 }
 
@@ -978,7 +1011,9 @@ function renderLoaderPanel(batch) {
     else mark.textContent = SPINNER[batch.spinFrame % SPINNER.length];
     status.textContent = taskStatusText(task);
   }
-  panel.head.textContent = headText(batch);
+  panel.count.textContent = countText(batch);
+  panel.time.textContent = batch.closed ? `${batch.latency} ms` : "";
+  panel.time.hidden = !batch.closed;
   updatePanelSpin(batch);
 }
 
@@ -1016,14 +1051,20 @@ function isHomePage() {
 }
 
 // An arrival through one of the site's own links: the referrer
-// is a page on this same origin. A typed address, a bookmark,
-// a search result, or a link from anywhere else leaves an
-// empty or foreign referrer, and counts as outside.
+// is a page of this site. A typed address, a bookmark, a search
+// result, or a link from anywhere else leaves an empty or
+// foreign referrer, and counts as outside. The staging site
+// shares this origin but is not this site: an arrival from a
+// staging page counts as outside, or hopping from an experiment
+// back to the real home page would silently eat its boot.
 function isInternalArrival() {
   const ref = document.referrer;
   if (!ref) return false;
   try {
-    return new URL(ref).origin === window.location.origin;
+    const url = new URL(ref);
+    if (url.origin !== window.location.origin) return false;
+    return url.pathname !== "/staging" &&
+      !url.pathname.startsWith("/staging/");
   } catch {
     return false;
   }
@@ -1094,7 +1135,16 @@ export function runBoot(tasks, { t0 = performance.now() } = {}) {
   // safety valve. A settled task's formatted value becomes its
   // final status text, so the loader's expanded log carries
   // the same durations the full boot's lines would have.
+  //
+  // A task marked selfReports is the one exception: its work
+  // registers itself with the loader where it runs (the music
+  // modules' own wiring), under its own specific label, so
+  // registering it here as well would put the same work in
+  // the batch twice, once under each name. The full boot
+  // above still lists it; only this second registration is
+  // skipped, and the batch shows the work exactly once.
   for (const task of tasks) {
+    if (task.selfReports) continue;
     const work = registerTask(task.label, {
       startedAt: t0,
       timeout: TASK_TIMEOUT,
