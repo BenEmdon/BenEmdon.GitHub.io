@@ -557,6 +557,10 @@ export async function animateWordmarkLamp(wordmark, reduced) {
     pointer.speed = 0;
     notePointer(event);
     pointer.active = true;
+    // Paint on the way down, not only on the tick: a quick tap can lift
+    // before the first tick fires, and a tap that lights nothing is a
+    // broken park. The tick keeps repainting while the finger drags.
+    paintPool(pointer.x, pointer.y, 1, 0, 0);
     startTick();
   }, { passive: true });
 
@@ -570,6 +574,7 @@ export async function animateWordmarkLamp(wordmark, reduced) {
     pointer.speed = 0;
     lastPX = null;
     stopTick();
+    paintPool(park.x, park.y, 1, 0, 0);
   }
 
   wordmark.addEventListener("pointerup", (event) => {
