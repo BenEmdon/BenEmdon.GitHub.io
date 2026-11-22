@@ -121,17 +121,6 @@
   margin-block: 0 calc(var(--step) / 2);
 }
 
-.music-ptabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--step) / 2);
-  margin-block-end: calc(var(--step) / 2);
-}
-
-.music-ptabs[hidden] {
-  display: none;
-}
-
 /* The grid panel: the same page-rule frame the portrait and the
    meadow use. The grid itself can outgrow the text column on narrow
    screens, so the panel scrolls sideways rather than squeezing. */

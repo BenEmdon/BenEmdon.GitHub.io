@@ -56,11 +56,18 @@ function storedMode() {
 const nextMode = (mode) => MODES[(MODES.indexOf(mode) + 1) % MODES.length];
 
 function setUpThemeToggle() {
-  const toggle = document.querySelector("[data-theme-toggle]");
-  if (!toggle) return;
-  const label = toggle.querySelector("[data-theme-label]");
+  const sceneButton = document.querySelector("[data-theme-scene-button]");
+  if (!sceneButton) return;
+  const sceneCurrent = document.querySelector("[data-theme-scene-current]");
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
   let mode = storedMode();
+  let sceneCycleStarted = false;
+  // The mode word beside the scene is a tap's receipt, not a permanent
+  // readout: a tap shows it, it stays for about 2.5 seconds, then the
+  // control is the picture alone again. The theme does not revert when
+  // the word hides, and a fresh tap restarts the window.
+  let sceneRevealed = false;
+  let sceneRevealTimer;
 
   const resolvedDark = () =>
     mode === "dark" || (mode === "system" && systemDark.matches);
@@ -70,18 +77,39 @@ function setUpThemeToggle() {
     ? createThemeScene(sceneCanvas, { dark: resolvedDark() })
     : null;
 
+  function persistMode() {
+    try {
+      localStorage.setItem(THEME_KEY, mode);
+    } catch {
+      // Private-mode Safari refuses writes; the choice holds this visit.
+    }
+  }
+
+  // Where a scene click goes. The plain cycle is light, dark, system,
+  // and back to light. One exception: the first click out of system
+  // mode jumps to the opposite of whatever system is resolving to, so
+  // the click always lands on a visible change; after that the plain
+  // cycle runs from wherever it landed.
+  function nextSceneMode() {
+    if (!sceneCycleStarted && mode === "system") {
+      return resolvedDark() ? "light" : "dark";
+    }
+    return nextMode(mode);
+  }
+
   function applyMode() {
     if (mode === "system") {
       delete document.documentElement.dataset.theme;
     } else {
       document.documentElement.dataset.theme = mode;
     }
-    const resolved = systemDark.matches ? "dark" : "light";
-    if (label) label.textContent = mode;
-    toggle.setAttribute(
+    if (sceneCurrent) {
+      sceneCurrent.textContent = mode;
+      sceneCurrent.hidden = !sceneRevealed;
+    }
+    sceneButton.setAttribute(
       "aria-label",
-      `Theme: ${mode === "system" ? `system (${resolved})` : mode}. ` +
-        `Switch to ${nextMode(mode)}.`
+      `Theme: ${mode}. Activate to switch to ${nextSceneMode()}`
     );
     themeScene?.setDark(resolvedDark(), reduced.matches);
   }
@@ -90,14 +118,19 @@ function setUpThemeToggle() {
     if (mode === "system") applyMode();
   });
 
-  toggle.addEventListener("click", () => {
-    mode = nextMode(mode);
-    try {
-      localStorage.setItem(THEME_KEY, mode);
-    } catch {
-      // Private-mode Safari refuses writes; the choice holds this visit.
-    }
+  // The picture is the control: clicking it advances the cycle, shows
+  // the word, and restarts the word's window on every tap.
+  sceneButton.addEventListener("click", () => {
+    mode = nextSceneMode();
+    sceneCycleStarted = true;
+    sceneRevealed = true;
+    persistMode();
     applyMode();
+    clearTimeout(sceneRevealTimer);
+    sceneRevealTimer = setTimeout(() => {
+      sceneRevealed = false;
+      applyMode();
+    }, 2500);
   });
 
   applyMode();
@@ -112,7 +145,7 @@ function setUpKeys() {
   const sections = document.querySelectorAll(".section");
   const keys = document.querySelector("[data-keys]");
   const keysToggle = document.querySelector("[data-keys-toggle]");
-  const themeToggle = document.querySelector("[data-theme-toggle]");
+  const themeToggle = document.querySelector("[data-theme-scene-button]");
   if (!sections.length || !keys || !keysToggle) return;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -1384,7 +1417,6 @@ function songChanged(parsed, { restart = false } = {}) {
 const textEl = document.querySelector("[data-song-text]");
 const gridEl = document.querySelector("[data-grid]");
 const panelEl = document.querySelector(".music-panel");
-const tabsEl = document.querySelector("[data-ptabs]");
 const statusEl = document.querySelector("[data-status]");
 const textStatusEl = document.querySelector("[data-text-status]");
 const playBtn = document.querySelector("[data-play]");
@@ -1444,38 +1476,23 @@ function currentChannel() {
   );
 }
 
-function buildTabs() {
-  tabsEl.innerHTML = "";
-  if (!player.song || player.song.channels.length < 2) {
-    tabsEl.hidden = true;
-    return;
-  }
-  tabsEl.hidden = false;
-  for (const ch of player.song.channels) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "music-btn";
-    const instName = INSTRUMENTS[ch.notes[0].inst].name;
-    btn.textContent = `${ch.letter} · ${instName}`;
-    btn.setAttribute("aria-pressed", String(ch === currentChannel()));
-    btn.addEventListener("click", () => {
-      gridState.letter = ch.letter;
-      buildTabs();
-      buildGrid();
-    });
-    tabsEl.appendChild(btn);
-  }
-}
-
+// Every channel gets its own grid, stacked in the one panel:
+// the whole song is visible at once, and because all the grids
+// live in the same scrolling panel, they share the one
+// scrollLeft and the playhead column lines up down the stack.
 function buildGrid() {
   gridEl.innerHTML = "";
   gridState.cellsByStep = new Map();
   gridState.lastCol = -1;
-  const ch = currentChannel();
-  if (!ch) return;
-  gridState.letter = ch.letter;
   const song = player.song;
+  if (!song) return;
+  if (!song.channels.some((c) => c.letter === gridState.letter)) {
+    gridState.letter = song.channels[0]?.letter ?? null;
+  }
+  for (const ch of song.channels) buildChannelGrid(ch, song);
+}
 
+function buildChannelGrid(ch, song) {
   const head = document.createElement("div");
   head.className = "gchan";
   const used = [...new Set(ch.notes.map((n) => n.inst))]
@@ -1489,6 +1506,13 @@ function buildGrid() {
   if (!pitches.length) return;
   const rows = [pitches[0] + 1, ...pitches, pitches[pitches.length - 1] - 1]
     .filter((m, i, a) => m >= 24 && m <= 96 && a.indexOf(m) === i);
+
+  // A step -> note index for this channel, so building a cell
+  // is a lookup, not a scan of every note in the channel.
+  const span = new Map();
+  for (const n of ch.notes) {
+    for (let s = n.step; s < n.step + n.len; s++) span.set(n.midi + ":" + s, n);
+  }
 
   const frag = document.createDocumentFragment();
   for (const midi of rows) {
@@ -1504,9 +1528,10 @@ function buildGrid() {
       cell.className = "cell" + (step % 4 === 0 && step > 0 ? " beat" : "");
       cell.dataset.step = step;
       cell.dataset.midi = midi;
-      cell.setAttribute("aria-label", `${pitchName(midi)}, step ${step + 1}`);
-      const note = ch.notes.find(
-        (n) => n.midi === midi && step >= n.step && step < n.step + n.len);
+      cell.dataset.letter = ch.letter;
+      cell.setAttribute("aria-label",
+        `${pitchName(midi)}, step ${step + 1}, channel ${ch.letter}`);
+      const note = span.get(midi + ":" + step);
       if (note) cell.classList.add(step === note.step ? "c-on" : "c-sus");
       if (!gridState.cellsByStep.has(step)) gridState.cellsByStep.set(step, []);
       gridState.cellsByStep.get(step).push(cell);
@@ -1531,12 +1556,17 @@ function clearPlayhead() {
 }
 
 function followPlayhead(step) {
-  // While a song plays, the grid panel follows the playhead.
-  // When the current step would leave the visible part of the
-  // panel, the panel jumps so the step sits 12 steps in from
-  // the panel's left edge, the same offset the home page demo
-  // uses. The jump is a plain scroll assignment: no animated
-  // scrolling, and the panel only ever moves sideways. When
+  // While a song plays, the grid panel follows the playhead the
+  // way the home page demo's window does: on every step the panel
+  // scrolls so the step sits 12 steps in from the panel's left
+  // edge, so the playhead holds still and the grid moves under
+  // it, one step at a time. (The old policy only scrolled when
+  // the step was about to leave the panel, which read as a long
+  // stillness and then a page-sized lurch.) The scroll is a
+  // plain assignment on the step change: no animated scrolling,
+  // and the panel only ever moves sideways. At the song's start
+  // and end the scroll clamps, and the playhead crosses the
+  // first or last stretch itself, again like the demo. When
   // playback stops the panel stays where it is.
   if (!panelEl || step < 0) return;
   const cells = gridState.cellsByStep.get(step);
@@ -1547,11 +1577,9 @@ function followPlayhead(step) {
   if (!w) return;
   const x = cellRect.left - panelRect.left + panelEl.scrollLeft;
   const lead = 12 * w;
-  const viewL = panelEl.scrollLeft;
-  const viewR = viewL + panelEl.clientWidth;
-  if (x < viewL + lead || x + w > viewR) {
-    panelEl.scrollLeft = Math.max(0, x - lead);
-  }
+  const maxScroll = Math.max(0, panelEl.scrollWidth - panelEl.clientWidth);
+  const target = Math.min(Math.max(0, x - lead), maxScroll);
+  if (panelEl.scrollLeft !== target) panelEl.scrollLeft = target;
 }
 
 function gridEdit(ch, step, midi) {
@@ -1610,8 +1638,13 @@ function gridEdit(ch, step, midi) {
 gridEl.addEventListener("click", (event) => {
   const cell = event.target.closest(".cell");
   if (!cell) return;
-  const ch = currentChannel();
+  // With every channel's grid on the page, the cell names its
+  // own channel; the edit lands there, whichever grid was tapped.
+  const ch =
+    player.song?.channels.find((c) => c.letter === cell.dataset.letter) ||
+    currentChannel();
   if (!ch) return;
+  gridState.letter = ch.letter;
   gridEdit(ch, Number(cell.dataset.step), Number(cell.dataset.midi));
 });
 
@@ -1623,7 +1656,6 @@ function adoptSong(parsed, { restart = false } = {}) {
       !parsed.channels.some((c) => c.letter === gridState.letter)) {
     gridState.letter = parsed.channels[0]?.letter ?? null;
   }
-  buildTabs();
   buildGrid();
   updateTempoUI();
   showIssues(parsed);
