@@ -7,15 +7,15 @@
     <title>Music maker · Ben Emdon</title>
     <meta
       name="description"
-      content="A small music maker with seven famous game themes. Each song is text in a tiny music language, drawn as a grid, rendered whole, then looped."
+      content="A small music maker with thirteen famous game themes. Each song is text in a tiny music language, drawn as a grid, rendered whole, then looped."
     />
     <!-- An experiment, kept unlisted while it is reviewed. -->
     <meta name="robots" content="noindex" />
 
-    <!-- Sample credits: the Zelda voices are short excerpts from
+    <!-- Sample credits: the sampled voices are short excerpts from
          VSCO-2 CE (Versilian Studios Community Edition), released
-         CC0, taken from github.com/sgossner/VSCO-2-CE. Eight mono
-         MP3s, about 145 KB in total, pitch-shifted in the browser.
+         CC0, taken from github.com/sgossner/VSCO-2-CE. Twelve mono
+         MP3s, about 234 KB in total, pitch-shifted in the browser.
          The chip voices are synthesized from waveforms. No game
          audio is used anywhere on this page. -->
 
@@ -111,6 +111,12 @@
             <button class="music-btn" type="button" data-song="route201" aria-pressed="false">Route 201 (Pokémon)</button>
             <button class="music-btn" type="button" data-song="jubilife" aria-pressed="false">Jubilife City (Pokémon)</button>
             <button class="music-btn" type="button" data-song="cynthia" aria-pressed="false">Battle! (Champion Cynthia)</button>
+            <button class="music-btn" type="button" data-song="route209" aria-pressed="false">Route 209 (Pokémon)</button>
+            <button class="music-btn" type="button" data-song="eterna" aria-pressed="false">Eterna City (Pokémon)</button>
+            <button class="music-btn" type="button" data-song="canalave" aria-pressed="false">Canalave City (Pokémon)</button>
+            <button class="music-btn" type="button" data-song="snowpoint" aria-pressed="false">Snowpoint City (Pokémon)</button>
+            <button class="music-btn" type="button" data-song="hearthome" aria-pressed="false">Hearthome City (Pokémon)</button>
+            <button class="music-btn" type="button" data-song="pokecenter" aria-pressed="false">Pokémon Center (Pokémon)</button>
           </div>
         </div>
         <div class="music-ptabs" data-ptabs hidden></div>
@@ -175,7 +181,7 @@
         <pre class="code">@0 pulse 12.5%   @4 triangle    @8  strings
 @1 pulse 25%     @5 noise       @9  cello
 @2 pulse 50%     @6 ocarina     @10 harp
-@3 pulse 75%     @7 flute</pre>
+@3 pulse 75%     @7 flute       @11 piano</pre>
         <p>
           Everything lands on a sixteenth-note grid. That grid is
           what lets the text and the grid view stay two views of
@@ -199,18 +205,70 @@
           swaps in at the next loop boundary.
         </p>
         <p>
+          The rendering path, in three small pictures:
+        </p>
+        <pre class="code">song text, one line per channel
+            |
+            v
+notes on a sixteenth-note grid
+            |
+            v
+each note given a voice
+            |
+            v
+the whole loop rendered ahead
+of time into one recording
+            |
+            v
+playback loops the recording</pre>
+        <p>
+          The text is parsed once into notes on the step grid.
+          Each note is given a voice, and an offline audio
+          context renders the whole loop into a single recording
+          before anything plays. Playback loops that recording
+          between its loop points, so an intro before the L
+          plays once and the rest repeats.
+        </p>
+        <pre class="code">A  piano    ----\
+B  strings  -----\
+C  bass     ------>  one recording
+D  drums    -----/
+E  harp     ----/
+F to H      ----/</pre>
+        <p>
+          Every channel renders into the same recording. There
+          is one recording per song, not one per channel, and
+          nothing is mixed live while the music plays.
+        </p>
+        <pre class="code">an edit, or a tempo change
+            |
+            v
+the new loop renders
+in the background
+            |
+            v
+at the next loop boundary
+the new recording takes over</pre>
+        <p>
+          Editing while a song plays does not stop it. The old
+          recording plays on to the boundary, then stops as the
+          new one starts, already inside its loop. While the
+          song is stopped, an edit just waits for the next press
+          of play.
+        </p>
+        <p>
           Two families of voices do the playing. The chip voices
           are the old hardware channels: pulse waves at their real
           duty cycles, the triangle channel with its stepped 4-bit
           wave, noise from a shift register, and envelopes that
           move in steps instead of fading. The sampled voices cover
           the parts the consoles played from recordings, the N64
-          and the DS both being sample machines: one or two real
+          and the DS both being sample machines: a few recorded
           notes per instrument, pitch-shifted to reach the rest,
           with a small generated room echo for the space the
           consoles added. The samples are short excerpts from
           VSCO-2 CE, a community orchestra library released CC0.
-          All eight files together come to about 145 KB.
+          All twelve files together come to about 234 KB.
         </p>
         <p>
           The grid itself is Ben's idea, from a Swift Playground he
