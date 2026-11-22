@@ -601,9 +601,15 @@
   text-decoration: none;
   /* A 48px hit area around a one-step line: the padding reaches into
      the step of space on either side, so the row itself stays one
-     step tall and nothing on the grid moves. */
+     step tall and nothing on the grid moves. The quarter-step inline
+     padding, cancelled by its margins the same way, gives the filled
+     state room around the label on every side; the label itself does
+     not move. (Ben's phone check, 2026-11-22: the fill hugged the
+     words edge to edge.) */
   padding-block: calc(var(--step) / 2);
   margin-block: calc(var(--step) / -2);
+  padding-inline: calc(var(--step) / 4);
+  margin-inline: calc(var(--step) / -4);
 }
 
 .pagenav a:hover,
