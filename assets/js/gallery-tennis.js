@@ -37,7 +37,7 @@
   on the clay. The ball stays warm in both.
 */
 
-import { registerTask } from "./boot.js?v=20261122o";
+import { registerTask } from "./boot.js?v=20261122p";
 (() => {
   // The scene's first paint is loader work: the task
   // registers here and completes on that paint, below.

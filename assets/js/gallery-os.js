@@ -22,7 +22,7 @@
   with the cursor solid and the pointer parked.
 */
 
-import { registerTask } from "./boot.js?v=20261122o";
+import { registerTask } from "./boot.js?v=20261122p";
 const W = 120;
 const H = 45;
 

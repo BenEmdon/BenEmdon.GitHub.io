@@ -29,7 +29,7 @@
   [data-gallery="underwater"] and does nothing if there is none.
 */
 
-import { registerTask } from "./boot.js?v=20261122o";
+import { registerTask } from "./boot.js?v=20261122p";
 const W = 120;
 const H = 45;
 
