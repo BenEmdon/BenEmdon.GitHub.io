@@ -329,8 +329,8 @@
 
 .footer__button {
   color: var(--muted-color);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  /* Controls are never underlined either (Ben's rule, 2026-11-22). */
+  text-decoration: none;
 }
 
 .footer__button:hover,
