@@ -1823,7 +1823,25 @@ const QUIET_MS = 1200;
 let lastInteractAt = -QUIET_MS;
 let bgGeneration = 0;
 
-function markInteract() {
+// While a song plays, the playhead's follow scrolls the
+// grid panel on every step. That scroll is the site's own,
+// not the visitor's, and it must not count as interaction:
+// it lands about every 80 ms, so the quiet window above
+// could never open during playback, and a note added while
+// listening would stay pending forever, its render never
+// staged. followPlayhead stamps each of its scrolls here,
+// and a panel scroll landing within FOLLOW_SCROLL_GRACE_MS
+// of the stamp is the follow's own. Every other scroll,
+// and every pointer press, still counts.
+const FOLLOW_SCROLL_GRACE_MS = 250;
+let lastFollowScrollAt = -Infinity;
+
+function markInteract(event) {
+  if (event && event.type === "scroll" &&
+      event.target === panelEl &&
+      performance.now() - lastFollowScrollAt < FOLLOW_SCROLL_GRACE_MS) {
+    return;
+  }
   lastInteractAt = performance.now();
 }
 window.addEventListener("scroll", markInteract,
@@ -2451,7 +2469,12 @@ function followPlayhead(step) {
   const lead = PLAYHEAD_LEAD_FRACTION * panelEl.clientWidth;
   const maxScroll = Math.max(0, panelEl.scrollWidth - panelEl.clientWidth);
   const target = Math.min(Math.max(0, x - lead), maxScroll);
-  if (panelEl.scrollLeft !== target) panelEl.scrollLeft = target;
+  if (panelEl.scrollLeft !== target) {
+    // Stamp before assigning: the scroll event this causes
+    // is the follow's own, and markInteract lets it pass.
+    lastFollowScrollAt = performance.now();
+    panelEl.scrollLeft = target;
+  }
 }
 
 
