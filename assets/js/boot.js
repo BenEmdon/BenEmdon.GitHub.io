@@ -480,11 +480,15 @@ const ICON_TOTAL = ICON.reduce((n, row) => n + row.length, 0);
 
 let loaderBatch = null;
 
-// A chip element still serving its minimum after its batch
-// was replaced under it: the element stays in the corner
-// until its second is up, and the next batch's chip waits
-// for the corner to clear before it mounts.
-let lingeringChip = null; // { el, timer }
+// A chip whose batch was replaced under it inside its
+// minimum: the element stays in the corner for the rest of
+// its second, retired. It is not a dead remnant: its
+// painting is completed at retirement, its count and latency
+// are its batch's final ones, and its tap still opens its
+// own batch's panel. The incoming batch adopts the element
+// on its mount frame (the usual case); the retirement timer
+// only ever fires for a batch nothing adopted.
+let retiredChip = null; // { view, batch, timer }
 
 // Promise-identity dedupe for the adapter: a promise with a
 // live task already is that task, whoever asks again.
@@ -726,7 +730,6 @@ function buildSpinner(batch) {
   root.className = "boot-spin";
   root.setAttribute("role", "button");
   root.setAttribute("aria-label", "Show loading details");
-  root.addEventListener("click", () => toggleLoaderPanel(batch));
 
   const icon = document.createElement("span");
   icon.className = "boot-spin__icon";
@@ -741,8 +744,45 @@ function buildSpinner(batch) {
 
   root.append(icon, count, time);
   document.body.append(root);
-  batch.chip = { el: root, icon, count, time, cells, filled: 0 };
+  // The tap follows the view's owner, not the batch that
+  // happened to build the element: a retired chip speaks for
+  // the batch it shows, and an adopted chip speaks for the
+  // batch that adopted it. The element in the corner is
+  // never a dead one.
+  const view = { el: root, icon, count, time, cells, filled: 0, owner: batch };
+  root.addEventListener("click", () => toggleLoaderPanel(view.owner));
+  batch.chip = view;
   batch.chipMountedAt = performance.now();
+  batch.fillTimer = setInterval(() => stepLoaderFill(batch), 75);
+  stepLoaderFill(batch);
+}
+
+// The incoming batch takes over a retired chip's element
+// instead of mounting a second one or waiting behind it:
+// the corner keeps exactly one chip, and from the adoption
+// it reports the new batch. The count is the new batch's,
+// the latency line hides until the new batch closes and has
+// one of its own, the painting restarts from empty in one
+// step and fills with the new batch's share, and the tap
+// opens the new batch's panel. The minimum runs from the
+// adoption, so the element serves at least a second in the
+// new batch's name too: adoption only ever lengthens the
+// surface's stay in the corner, never shortens it.
+function adoptSpinner(batch) {
+  const { view } = retiredChip;
+  clearTimeout(retiredChip.timer);
+  retiredChip = null;
+  view.owner = batch;
+  batch.chip = view;
+  batch.chipMountedAt = performance.now();
+  view.count.textContent = countText(batch);
+  view.time.textContent = "";
+  view.time.hidden = true;
+  while (view.filled > 0) {
+    const last = view.icon.children[view.icon.children.length - 1];
+    if (last) last.remove();
+    view.filled -= 1;
+  }
   batch.fillTimer = setInterval(() => stepLoaderFill(batch), 75);
   stepLoaderFill(batch);
 }
@@ -819,17 +859,23 @@ function ensureSpinner(batch) {
     }
     return;
   }
-  if (lingeringChip) {
-    // A replaced chip is still serving its minimum in the
-    // corner: this batch's chip waits for the corner to
-    // clear, on a short poll, rather than stacking a second
-    // chip on top of it.
+  if (retiredChip) {
+    // A retired chip is serving the rest of its second in
+    // the corner. This batch adopts its element rather than
+    // stacking a second chip on top of it or waiting behind
+    // it, unless the retired batch's panel is open and the
+    // visitor is reading it: then this chip waits for the
+    // corner to clear, on a short poll, and mounts fresh.
+    if (!retiredChip.batch.panel) {
+      adoptSpinner(batch);
+      return;
+    }
     if (!batch.watchTimer) {
       batch.watchTimer = setInterval(() => {
         if (loaderBatch !== batch || batch.closed) {
           clearInterval(batch.watchTimer);
           batch.watchTimer = null;
-        } else if (!lingeringChip) {
+        } else if (!retiredChip) {
           clearInterval(batch.watchTimer);
           batch.watchTimer = null;
           ensureSpinner(batch);
@@ -861,29 +907,57 @@ function teardownLoaderBatch(batch, { keepChip = false } = {}) {
     batch.panel = null;
     document.removeEventListener("pointerdown", onLoaderOutsideTap);
   }
+  if (retiredChip && retiredChip.batch === batch) {
+    // This batch's chip was retired under it earlier and is
+    // still in the corner (the path here is its panel being
+    // collapsed, the one teardown a retired batch can get):
+    // the element goes with its batch.
+    clearTimeout(retiredChip.timer);
+    retiredChip.view.el.remove();
+    retiredChip = null;
+  }
   if (batch.chip) {
-    const el = batch.chip.el;
+    const view = batch.chip;
     batch.chip = null;
     // A chip replaced inside its minimum (keepChip, the
-    // currentLoaderBatch path) stays on screen for the rest
-    // of its second: the batch is gone, but its finished
-    // surface is not cut short. Every other removal (the
-    // hold expiring, the visitor collapsing the panel) takes
-    // the chip in one step, as it always has.
+    // currentLoaderBatch path) retires: it stays on screen
+    // for the rest of its second, but finished, not frozen.
+    // Its painting is completed here in one step, because
+    // the fill timer that was walking it to whole is cleared
+    // above and a finished batch's picture is a whole
+    // picture; its count and latency are already its final
+    // ones; and its tap still opens its own batch's panel.
+    // Every other removal (the hold expiring, the visitor
+    // collapsing the panel) takes the chip in one step, as
+    // it always has.
     const shownFor =
       batch.chipMountedAt == null
         ? SPINNER_MIN_MS
         : performance.now() - batch.chipMountedAt;
     if (keepChip && shownFor < SPINNER_MIN_MS) {
-      lingeringChip = {
-        el,
+      while (view.filled < ICON_TOTAL) {
+        view.icon.append(view.cells[view.filled]);
+        view.filled += 1;
+      }
+      retiredChip = {
+        view,
+        batch,
         timer: setTimeout(() => {
-          el.remove();
-          lingeringChip = null;
+          if (!retiredChip || retiredChip.batch !== batch) return;
+          if (batch.panel) {
+            // The visitor opened the retired batch's panel:
+            // the chip stays while the panel is open, and
+            // collapsing the panel removes the chip with its
+            // batch, through the retired path above.
+            retiredChip.timer = null;
+            return;
+          }
+          view.el.remove();
+          retiredChip = null;
         }, SPINNER_MIN_MS - shownFor),
       };
     } else {
-      el.remove();
+      view.el.remove();
     }
   }
   if (loaderBatch === batch) loaderBatch = null;
@@ -901,13 +975,13 @@ function closeLoaderBatch(batch) {
     // covered that outlived the screen and closed after it
     // cleared. It gets a completion-only mount, the finished
     // picture shown whole, because the work it reports is done.
-    // A replaced chip still serving its minimum also bars the
+    // A retired chip still serving its minimum also bars the
     // mount: the corner is occupied until its second is up.
     if (
       !batch.coveredByBoot ||
       loaderReducedMotion() ||
       loaderFullBootOnScreen() ||
-      lingeringChip
+      retiredChip
     ) {
       teardownLoaderBatch(batch);
       return;
@@ -954,7 +1028,11 @@ function closeLoaderBatch(batch) {
 // ----------------------------------------------------------------
 
 function toggleLoaderPanel(batch) {
-  if (loaderBatch !== batch) return;
+  // The live batch, or the retired batch whose chip is still
+  // in the corner showing it: either one's tap is real.
+  if (loaderBatch !== batch && (!retiredChip || retiredChip.batch !== batch)) {
+    return;
+  }
   if (batch.panel) {
     destroyLoaderPanel(batch);
     return;
@@ -974,10 +1052,18 @@ function elContains(root, node) {
 }
 
 function onLoaderOutsideTap(event) {
-  const batch = loaderBatch;
+  // The panel in the page belongs to the live batch, or to
+  // the retired batch whose chip is still in the corner.
+  const batch =
+    retiredChip && retiredChip.batch.panel ? retiredChip.batch : loaderBatch;
   if (!batch || !batch.panel) return;
   if (batch.panel.el && elContains(batch.panel.el, event.target)) return;
-  if (batch.chip && elContains(batch.chip.el, event.target)) return;
+  const chipEl = batch.chip
+    ? batch.chip.el
+    : retiredChip && retiredChip.batch === batch
+      ? retiredChip.view.el
+      : null;
+  if (chipEl && elContains(chipEl, event.target)) return;
   destroyLoaderPanel(batch);
 }
 
