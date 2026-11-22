@@ -975,14 +975,34 @@ function scheduleSample(ctx, outs, n, t, dur) {
   }
   const src = ctx.createBufferSource();
   src.buffer = buf;
-  src.playbackRate.value = Math.pow(2, (n.midi - root) / 12);
+  const rate = Math.pow(2, (n.midi - root) / 12);
+  src.playbackRate.value = rate;
   const g = ctx.createGain();
   src.connect(g);
   const p = g.gain, peak = (n.vol / 15) * 0.85;
   p.setValueAtTime(0, t);
   p.linearRampToValueAtTime(peak, t + 0.008);
-  p.setValueAtTime(peak, Math.max(t + 0.008, t + dur - 0.07));
-  p.linearRampToValueAtTime(0, t + dur + 0.02);
+  let stopAt = t + dur + 0.1;
+  if (inst.name === "piano") {
+    // A long press, simulated. The other sampled voices are faded
+    // to zero at the written end of the note; the piano is not.
+    // Its gain stays at peak past the written end and the
+    // recording's own decay becomes the release, so the note
+    // rings until the sample itself runs out and later notes
+    // sound over the ring, the way they do with the damper pedal
+    // down. The ring can never outlast the recording: 3.6 s of
+    // sample, stretched or squeezed by the shift from the
+    // nearest root. One short fade across the recording's last
+    // 0.12 s keeps a sample that was trimmed before it fully
+    // decayed from clicking off.
+    const ringEnd = t + buf.duration / rate;
+    p.setValueAtTime(peak, Math.max(t + 0.008, ringEnd - 0.12));
+    p.linearRampToValueAtTime(0, ringEnd);
+    stopAt = ringEnd + 0.1;
+  } else {
+    p.setValueAtTime(peak, Math.max(t + 0.008, t + dur - 0.07));
+    p.linearRampToValueAtTime(0, t + dur + 0.02);
+  }
   g.connect(outs.dry);
   if (inst.verb) {
     const send = ctx.createGain();
@@ -1001,7 +1021,7 @@ function scheduleSample(ctx, outs, n, t, dur) {
     lfo.stop(t + dur + 0.05);
   }
   src.start(t);
-  src.stop(t + dur + 0.1);
+  src.stop(stopAt);
 }
 
 /* ---------- renderer ---------- */
