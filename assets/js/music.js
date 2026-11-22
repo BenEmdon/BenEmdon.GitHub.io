@@ -1306,9 +1306,12 @@ async function renderSong(song) {
 // songs measure flat or slower split. Channels are packed
 // into balanced bins by note count, at most one context
 // per hardware thread (capped at 8), so no context carries
-// much more than its share. Each finished bin is mixed in
-// and released on arrival, which keeps peak memory near
-// the mixed buffer plus one bin instead of every bin.
+// much more than its share. Each finished bin is mixed
+// with the running mixdown on arrival, pairwise, by the
+// audio engine rather than sample by sample in JS, which
+// keeps peak memory near the mixdown plus a bin or two
+// instead of every bin, and keeps the per-sample adds off
+// the main thread entirely.
 const PARALLEL_MIN_NOTES = 1000;
 const PARALLEL_SEED = 0x9e3779b9;
 
@@ -1380,12 +1383,21 @@ function buildBinGraph(song, bin, sr) {
   }
 }
 
-function makeStereoBuffer(frames, sr) {
-  try {
-    return new AudioBuffer({ length: frames, numberOfChannels: 2, sampleRate: sr });
-  } catch {
-    return new OfflineAudioContext(1, 1, sr).createBuffer(2, frames, sr);
+// Two rendered buffers summed by the audio engine in its
+// own offline context, rather than sample by sample in JS:
+// the same addition, but the main thread never runs the
+// per-sample loop (measured at roughly 300 ms of adds for
+// the heaviest song). The summation order changes, which
+// moves the result by float rounding only.
+function mixBuffers(a, b, frames, sr) {
+  const ctx = new OfflineAudioContext(2, frames, sr);
+  for (const buf of [a, b]) {
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start();
   }
+  return ctx.startRendering();
 }
 
 async function renderSongParallel(song) {
@@ -1394,19 +1406,37 @@ async function renderSongParallel(song) {
   const frames = Math.ceil(song.steps * stepDur * sr);
   const bins = planBins(song);
   const ctxs = bins.map((bin) => buildBinGraph(song, bin, sr));
-  const mixed = makeStereoBuffer(frames, sr);
   const t0 = performance.now();
+  // The pairwise mixdown chain: mixes run one at a time, in
+  // arrival order, so the buffers alive at once stay at the
+  // mixdown, the arriving bin and the mix being rendered. A
+  // mix failure is held and rethrown once the bins have
+  // settled, so renderSongBest's single-render fallback
+  // sees it exactly as it saw a failed context.
+  let mixdown = null;
+  let mixError = null;
+  let chain = Promise.resolve();
+  const mixIn = (buf) => {
+    chain = chain.then(async () => {
+      if (mixError) return;
+      try {
+        mixdown = mixdown === null
+          ? buf
+          : await mixBuffers(mixdown, buf, frames, sr);
+      } catch (err) {
+        mixError = err;
+      }
+    });
+  };
   await Promise.all(ctxs.map((ctx, i) =>
     ctx.startRendering().then((buf) => {
-      for (let ch = 0; ch < 2; ch++) {
-        const acc = mixed.getChannelData(ch);
-        const d = buf.getChannelData(ch);
-        for (let f = 0; f < frames; f++) acc[f] += d[f];
-      }
-      ctxs[i] = null; // release the bin as soon as it is mixed in
+      ctxs[i] = null; // release the bin as soon as it has rendered
+      mixIn(buf);
     })
   ));
-  return renderResult(song, mixed, performance.now() - t0);
+  await chain;
+  if (mixError) throw mixError;
+  return renderResult(song, mixdown, performance.now() - t0);
 }
 
 // The render entry point everywhere below: parallel for
@@ -1467,7 +1497,7 @@ async function obtainVerifiedRender(song, key, announce) {
   if (announce && !samplesReady) setStatus("loading samples\u2026");
   await loadSamples();
   const hit = await readRender(key);
-  if (hit && verifyBuffer(hit.buffer)) {
+  if (hit && checkBuffer(hit.buffer).ok) {
     const stepDur = 60 / song.tempo / 4;
     return {
       buffer: hit.buffer, dur: hit.dur, stepDur,
@@ -1478,28 +1508,60 @@ async function obtainVerifiedRender(song, key, announce) {
   if (announce) setStatus("rendering\u2026");
   let rendered = await renderSongBest(song);
   if (announce) setStatus("verifying\u2026");
-  if (!verifyBuffer(rendered.buffer)) {
+  let check = checkBuffer(rendered.buffer);
+  if (!check.ok) {
     // A wrong-but-complete render, the failure the parallel
     // path can produce without throwing, earns exactly one
     // retry through the plain single render. If that fails
     // verification too, nothing is stored and nothing plays,
-    // and the throw tells every caller so.
+    // and the throw tells every caller so, carrying the
+    // reason the final check gave.
     if (announce) setStatus("rendering\u2026");
     rendered = await renderSong(song);
-    if (!verifyBuffer(rendered.buffer)) {
+    check = checkBuffer(rendered.buffer);
+    if (!check.ok) {
+      const err = verifyError(check.reason);
       if (announce) {
-        setStatus("The render did not check out, so nothing was played.", true);
+        setStatus(renderFailureText(err, "so nothing was played."), true);
       }
-      throw new Error("render failed verification");
+      throw err;
     }
   }
   writeRender(key, rendered);
   return rendered;
 }
 
-function verifyBuffer(buffer) {
+function checkBuffer(buffer) {
   return verifyRenderData(
-    [buffer.getChannelData(0), buffer.getChannelData(1)]).ok;
+    [buffer.getChannelData(0), buffer.getChannelData(1)]);
+}
+
+// Verification failures carry the check's own reason, so
+// the status line can say what actually failed instead of
+// giving every rejection the same words. A render that
+// threw carries no reason, and the status says the render
+// itself failed: the two stop looking identical.
+const VERIFY_REASON_TEXT = {
+  length: "came out the wrong length",
+  garbage: "came out with bad data in it",
+  stuck: "came out stuck on one value",
+  peak: "came out too loud",
+  silent: "came out silent",
+  imbalance: "came out with one side missing",
+};
+
+function verifyError(reason) {
+  const err = new Error(`render failed verification: ${reason}`);
+  err.verifyReason = reason;
+  return err;
+}
+
+function renderFailureText(err, tail) {
+  if (err && err.verifyReason) {
+    const what = VERIFY_REASON_TEXT[err.verifyReason] || "did not check out";
+    return `The render ${what}, ${tail}`;
+  }
+  return `The render itself failed, ${tail}`;
 }
 
 
@@ -1619,6 +1681,65 @@ function runPlayhead() {
   tick();
 }
 
+/* ----- background render scheduling ----- */
+
+// A background re-render (the two songChanged paths below)
+// waits for a quiet moment before it starts: no scroll or
+// pointer interaction for QUIET_MS, and, while a loop is
+// playing, a browser idle callback on top of that, so a
+// heavy render never lands in the middle of scrolling or
+// listening. Browsers without idle callbacks fall back to
+// the quiet check alone. The foreground render behind a
+// press of play is exempt: the press is the intent. Each
+// song change takes a generation number, and a queued
+// request whose generation has been superseded never
+// starts at all.
+const QUIET_MS = 1200;
+// Starts in the past: a page that has seen no interaction
+// yet is quiet by definition.
+let lastInteractAt = -QUIET_MS;
+let bgGeneration = 0;
+
+function markInteract() {
+  lastInteractAt = performance.now();
+}
+window.addEventListener("scroll", markInteract,
+  { passive: true, capture: true });
+window.addEventListener("pointerdown", markInteract, { passive: true });
+
+// Resolves once the moment is quiet. onWait, if given, is
+// called once, at the moment the wait actually engages.
+function whenQuiet(onWait) {
+  return new Promise((resolve) => {
+    let waited = false;
+    const defer = () => {
+      if (waited) return;
+      waited = true;
+      if (onWait) onWait();
+    };
+    const check = () => {
+      const since = performance.now() - lastInteractAt;
+      if (since < QUIET_MS) {
+        defer();
+        setTimeout(check, QUIET_MS - since);
+        return;
+      }
+      if (player.playing && "requestIdleCallback" in window) {
+        defer();
+        requestIdleCallback(() => {
+          // An interaction may have landed during the idle
+          // wait; if so, the quiet clock starts over.
+          if (performance.now() - lastInteractAt < QUIET_MS) check();
+          else resolve();
+        });
+        return;
+      }
+      resolve();
+    };
+    check();
+  });
+}
+
 // A song change: if it parses, it becomes the song. While playing,
 // the re-render is prepared in the background and swapped at the
 // loop boundary; while stopped, it simply waits for the next play.
@@ -1626,14 +1747,28 @@ function songChanged(parsed, { restart = false } = {}) {
   player.song = parsed;
   player.dirty = true;
   refreshPlayGate();
+  const gen = ++bgGeneration;
   if (!player.playing) {
     // Experiment (live note feedback): while stopped, still
     // render in the background, so a note wearing the pending
     // colour clears at the moment its render actually lands,
     // not when a timer guesses it might have. Samples first:
     // a render without them would miss every sampled voice.
-    loadSamples().then(() => obtainRender(parsed, { announce: false }))
+    // The render itself waits for a quiet moment; while it
+    // waits, the status line says so, once.
+    let saidWaiting = false;
+    loadSamples()
+      .then(() => whenQuiet(() => {
+        if (!saidWaiting && player.song === parsed && !player.playing) {
+          saidWaiting = true;
+          setStatus("waiting for a quiet moment to render\u2026");
+        }
+      }))
+      .then(() => (gen === bgGeneration
+        ? obtainRender(parsed, { announce: false })
+        : null))
       .then((rendered) => {
+        if (!rendered) return; // superseded while waiting
         if (player.song === parsed && !player.playing) {
           player.rendered = rendered;
           player.dirty = false;
@@ -1646,12 +1781,13 @@ function songChanged(parsed, { restart = false } = {}) {
           setStatus(readyText());
         }
       })
-      .catch(() => {
+      .catch((err) => {
         // A failed background render leaves the notes pending
         // and the play gate closed, which is the truth; the
-        // status line says so too.
+        // status line says so too, naming what failed.
         if (player.song === parsed && !player.playing) {
-          setStatus("The render did not check out, so this song cannot play yet.", true);
+          setStatus(
+            renderFailureText(err, "so this song cannot play yet."), true);
         }
       });
     return;
@@ -1660,13 +1796,19 @@ function songChanged(parsed, { restart = false } = {}) {
     startPlayback();
     return;
   }
-  obtainRender(parsed, { announce: false }).then((rendered) => {
-    if (player.song === parsed && player.playing) {
-      player.pending = rendered;
-      pendingRenderKeys = keySetOf(parsed);
-      window.__lastRender = rendered;
-    }
-  }).catch(() => { /* a render that fails the gate simply never swaps in */ });
+  whenQuiet()
+    .then(() => (gen === bgGeneration && player.song === parsed
+      ? obtainRender(parsed, { announce: false })
+      : null))
+    .then((rendered) => {
+      if (!rendered) return; // superseded while waiting
+      if (player.song === parsed && player.playing) {
+        player.pending = rendered;
+        pendingRenderKeys = keySetOf(parsed);
+        window.__lastRender = rendered;
+      }
+    })
+    .catch(() => { /* a render that fails the gate simply never swaps in */ });
 }
 
 /* ---------- page ---------- */
@@ -2446,8 +2588,8 @@ playBtn.addEventListener("click", async () => {
   starting = true;
   try {
     await startPlayback();
-  } catch {
-    setStatus("The loop could not be rendered.", true);
+  } catch (err) {
+    setStatus(renderFailureText(err, "so nothing was played."), true);
   }
   starting = false;
 });
