@@ -49,6 +49,15 @@
     <link rel="stylesheet" href="assets/css/components.css?v=20261114f" />
 
     <style>
+      /* The drawn title: a 120x20 canvas at full column width, cells
+         kept square and sharp the way every canvas on the page is. */
+      .pixel-title {
+        display: block;
+        width: 100%;
+        height: auto;
+        image-rendering: pixelated;
+      }
+
       /* The portrait panel: the same page-rule frame the portrait and the
          meadow use, with the subtle page wash behind the canvas so the
          pixel backdrop sits on something quieter than the page itself. */
@@ -175,11 +184,13 @@
       <header>
         <h1>
           <span class="sr-only">Mochi</span>
-          <pre class="wordmark" aria-hidden="true">███    ███   ██████    ██████   ██   ██  █████
-████  ████  ██    ██  ██        ██   ██    ██
-██ ████ ██  ██    ██  ██        ███████    ██
-██  ██  ██  ██    ██  ██        ██   ██    ██
-██      ██   ██████    ██████   ██   ██  █████</pre>
+          <canvas
+            class="pixel-title"
+            data-pixel-title
+            width="120"
+            height="20"
+            aria-hidden="true"
+          ></canvas>
         </h1>
       </header>
 
@@ -456,6 +467,7 @@ function paint() {
 
 
     <script type="module" src="assets/js/mochi.js"></script>
+    <script type="module" src="assets/js/pixel-title.js"></script>
     <script type="module" src="assets/js/keycaps.js"></script>
     <script type="module" src="assets/js/gallery-map.js"></script>
     <script type="module" src="assets/js/gallery-seaside.js"></script>
