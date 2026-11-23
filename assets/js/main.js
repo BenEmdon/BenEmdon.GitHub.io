@@ -421,8 +421,8 @@ function setUp() {
     }
 
     // Scroll-carried light for touch devices: the light's point
-    // travels across the block as the block travels through the
-    // viewport, and scroll velocity feeds the same energy
+    // circuits the block's perimeter as the block travels through
+    // the viewport, and scroll velocity feeds the same energy
     // term, so the glints shimmer while the page moves and settle
     // still when it stops. Off-screen clears.
     let lastScrollY = window.scrollY;
@@ -447,15 +447,21 @@ function setUp() {
           1,
           Math.max(0, (vh - rect.top) / (vh + rect.height)),
         );
-        // The light's point runs a shallow V across the block as it
-        // travels: in along the top edge, down to the bottom edge at
-        // mid-passage, and back out along the top, so it stays near
-        // an edge, where the frame can catch it, the whole way.
-        const tri = progress < 0.5 ? progress * 2 : 2 - progress * 2;
-        light = {
-          x: progress * rect.width,
-          y: tri * rect.height,
-        };
+        // The light's point makes a full circuit of the block's
+        // perimeter across the pass (Ben's refinement, 2026-11-22):
+        // it starts at the top-left corner as the block enters,
+        // runs across the top, down the right side, back across
+        // the bottom, and up the left side to close the loop as
+        // the block leaves, corner to corner the whole way, so
+        // the lit facets sweep around the outside of the border
+        // as if a pointer were dragging the light around it.
+        const w = rect.width;
+        const h = rect.height;
+        const run = progress * 2 * (w + h);
+        if (run < w) light = { x: run, y: 0 };
+        else if (run < w + h) light = { x: w, y: run - w };
+        else if (run < 2 * w + h) light = { x: 2 * w + h - run, y: h };
+        else light = { x: 0, y: 2 * (w + h) - run };
         lightBoost = 0;
         const now = performance.now();
         if (lastScrollAt) {
