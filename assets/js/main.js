@@ -113,7 +113,7 @@ function setUp() {
       .catch(() => resolvePortrait(false));
   }
 
-  /* ---------- hiring bloom v3: the pointer is the light ---------- */
+  /* ---------- hiring bloom: the pointer is the light ---------- */
 
   // Ben's direction after the perimeter version (PR #155) shipped, in
   // his words: the glistening should answer where the mouse is inside
@@ -123,47 +123,77 @@ function setUp() {
   // response to the mouse moving, as if the mouse carries the source
   // of the light. On mobile, the scroll carries the light instead.
   //
-  // The model: the hiring block is wrapped in a frame layer, and the
-  // cells live on the fixed 8px grid in a wide field OUTSIDE the
-  // block's border, reaching twelve cells beyond its box on all
-  // sides. No cell ever sits inside the border, so the copy stays
-  // completely clear (the PR #155 readability rule carries over
-  // whole), and no cell paints over a neighbouring block either: the
-  // field stops at the divider, the sections, the header and the
-  // footer, and at the screen's horizontal edges, so the light reads
-  // as pixels shining through from behind the block and spilling
-  // into the margins around it. The light's position is the
-  // pointer's position inside the box, or the block's centre on
-  // keyboard focus, or a point that travels with scroll progress on
-  // touch devices. Each frame cell's level is computed from that
-  // position: cells near the light catch the top rungs, distance
-  // steps the shade down, a Bayer threshold teeth the falloff, and a
-  // per-cell facet hash decides which near cells burn as sharp
-  // single glints. The falloff from the light is radial and steep,
-  // so the glow reads as a round lens flare around the source
-  // rather than following the frame's rectangle, and in light mode
-  // the whole computation runs a step quieter, sparser and lower.
-  // The colours are CSS-side, per theme: crystal green in dark
-  // mode, the site's own blues in light. A second distance grades
-  // the whole field: a
-  // cell's distance from the border caps its rung and thins its
-  // Bayer gate band by band, so the glisten is strong only at the
-  // border and falls to exactly zero at the field's edge. While the
-  // pointer moves, its velocity feeds an energy term: the reach
+  // The model (simplified 2026-11-22, Ben: "something simpler that
+  // can render faster more frequently. More efficiently."): the
+  // hiring block is wrapped in a frame layer, and the cells live on
+  // the fixed 8px grid in a field OUTSIDE the block's border, twelve
+  // cells beyond its box along each edge. The field is a cross, not
+  // a rectangle: a cell must share the block's column span or its
+  // row span, so the flare never reaches diagonally past a corner
+  // into the space beside a neighbouring section. No cell ever sits
+  // inside the border, so the copy stays completely clear (the
+  // PR #155 readability rule carries over whole), and no cell paints
+  // over a neighbouring block either: the field stops at the
+  // divider, the sections, the header and the footer, and at the
+  // screen's horizontal edges, so the light reads as pixels shining
+  // through from behind the block and spilling into the margins
+  // around it. The light's position is the pointer's position inside
+  // the box, or the block's centre on keyboard focus, or a point
+  // that travels with scroll progress on touch devices.
+  //
+  // Everything about a cell that does not depend on the light is
+  // computed ONCE, when the field is built: its position, its
+  // distance band from the border, its Bayer threshold, its rung
+  // cap, its facet value, its glint hash, and the two coefficients
+  // of its facet driver. The falloff curve lives in a lookup table.
+  // An update then walks the precomputed cells with a squared-
+  // distance compare, takes the strength from the table for the
+  // few cells inside the radius, and repaints only the cells whose
+  // rung actually changed. Updates ride requestAnimationFrame, so
+  // pointer and scroll events repaint as often as the display
+  // allows without ever recomputing the field. The grid is counted
+  // in border-box pixels (offsetWidth/offsetHeight): counted from
+  // the content box, the first row below the block could land on
+  // the border line itself when the height fell on a whole cell,
+  // and lit cells painted across the border (Ben's overflow
+  // screenshot, 2026-11-22). One more term keeps a thin slot from
+  // reading as a band: where the ground below or above the block
+  // pinches to a few rows before a neighbouring section, a strip
+  // cell's strength is scaled by that slot's depth while the light
+  // rides the border itself, so the flare thins where it cannot
+  // spread instead of piling its whole disc into the slot (the
+  // same screenshot). A light resting inside the block, clear of
+  // the edges, leaves the strips at full strength: from inside,
+  // distance already thins them. The side corridors keep full
+  // strength either way; their ground is deep.
+  //
+  // The light computation a cell gets: cells near the light catch
+  // the top rungs, the radial falloff steps the shade down (a steep
+  // core term and a faint halo term, so the patch reads as a round
+  // lens flare around the source, Ben 2026-11-22), a Bayer threshold
+  // teeth the falloff, and a per-cell facet decides which near cells
+  // burn as sharp single glints. A second distance grades the whole
+  // field: a cell's band from the border caps its rung and thins
+  // its Bayer gate band by band, so the glisten is strong only at
+  // the border and falls to exactly zero at the field's edge. While
+  // the light moves, its velocity feeds an energy term: the reach
   // grows a little and the facet phase advances with accumulated
   // travel, so facets catch and release as the light passes. When
-  // the pointer rests, the energy decays on the 75ms tick, the
-  // phase freezes, the cells step to their resting targets, and the
-  // tick stops: the pattern is still, a picture of where the light
-  // rests. Nothing runs on a timeline of its own.
+  // the light rests, the energy decays, the phase freezes, the
+  // cells step to their resting targets, and the frame loop stops:
+  // the pattern is still, a picture of where the light rests.
+  // Nothing runs on a timeline of its own. In light mode the whole
+  // computation runs a step quieter, sparser and lower (Ben,
+  // 2026-11-22). The colours are CSS-side, per theme: crystal green
+  // in dark mode, the site's own blues in light.
   //
   // Pointer leave and blur clear every cell in one cut. On desktop a
   // scroll with no pointer over the block lights nothing; while the
   // pointer is over the block a scroll simply moves the block under
-  // the resting light, so the pattern is recomputed from the pointer's
-  // viewport position. Reduced motion never ticks: the still pattern
-  // for the light's current position swaps in one cut as the position
-  // changes.
+  // the resting light, so the pattern is recomputed from the
+  // pointer's viewport position. Reduced motion never animates: the
+  // still pattern for the light's current position swaps in one cut
+  // as the position changes.
   const hiring = document.querySelector("[data-hiring]");
 
   if (hiring) {
@@ -174,6 +204,17 @@ function setUp() {
       3, 11, 1, 9,
       15, 7, 13, 5,
     ];
+
+    // The radial falloff, tabulated once: strength(u) for u the
+    // distance from the light as a fraction of the radius, a steep
+    // core term and a faint shallow halo, the way a flare has a hot
+    // centre and a wide faint skirt. An update reads the table
+    // instead of raising powers per cell.
+    const STR_TABLE = new Float32Array(257);
+    for (let i = 0; i <= 256; i++) {
+      const u = i / 256;
+      STR_TABLE[i] = Math.pow(1 - u, 2.45) + 0.3 * (1 - u);
+    }
 
     const isDark = () => {
       const t = document.documentElement.dataset.theme;
@@ -224,26 +265,37 @@ function setUp() {
       }
     }
 
-    // The frame cells: every grid cell in the band around the
-    // block, out to FIELD cells beyond the border on all sides. A
-    // cell's band is its ring distance from the border: 0 is
-    // adjacent, FIELD - 1 is the field's outermost band. Columns and
-    // rows run negative and past the block's own counts; the block's
-    // interior is never in the set. Two kinds of ground are also
-    // never in the set: any cell that would paint over a
-    // neighbouring block (the divider above, the sections around,
-    // the header, the footer), and any cell past the screen's
-    // horizontal edges, which would hand the page a sideways scroll.
-    const FIELD = 12;
-    let geoCache = null;
-    let geoKey = "";
+    function hash2(a, b) {
+      let h = Math.imul(a, 374761393) + Math.imul(b, 668265263);
+      h = Math.imul(h ^ (h >>> 13), 1274126177);
+      return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+    }
 
-    function fieldGeometry() {
-      const cols = Math.ceil(hiring.clientWidth / CELL);
-      const rows = Math.ceil(hiring.clientHeight / CELL);
+    // The field, precomputed once per geometry and then only read:
+    // every candidate cell with everything about it that the light
+    // cannot change. A cell's band is its ring distance from the
+    // border: 0 is adjacent, FIELD - 1 is the field's outermost
+    // band. Columns and rows run negative and past the block's own
+    // counts; the block's interior is never in the set, and neither
+    // is any corner quadrant (a cell outside both spans), any cell
+    // that would paint over a neighbouring block (the divider
+    // above, the sections around, the header, the footer), or any
+    // cell past the screen's horizontal edges, which would hand
+    // the page a sideways scroll. The grid is counted from the
+    // border box, so the interior is the whole border box and the
+    // first outside row starts at the border's outer edge.
+    const FIELD = 12;
+    let fieldCache = null;
+    let fieldKey = "";
+
+    function buildField() {
+      const W = hiring.offsetWidth;
+      const H = hiring.offsetHeight;
+      const cols = Math.ceil(W / CELL);
+      const rows = Math.ceil(H / CELL);
       const docW = document.documentElement.clientWidth;
       const key = `${cols}x${rows}x${docW}`;
-      if (geoCache && geoKey === key) return geoCache;
+      if (fieldCache && fieldKey === key) return fieldCache;
       const hr = hiring.getBoundingClientRect();
       const els = new Set();
       const main = hiring.closest("main");
@@ -271,64 +323,147 @@ function setUp() {
       // The field's horizontal window, in block coordinates: from
       // the screen's left edge to its right edge.
       const winX0 = -(hr.left + window.scrollX);
-      geoCache = { cols, rows, protect, winX0, winX1: winX0 + docW };
-      geoKey = key;
-      return geoCache;
-    }
-
-    window.addEventListener("resize", () => {
-      geoCache = null;
-    });
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(() => {
-        geoCache = null;
-      });
-    }
-
-    function frameCells() {
-      const { cols, rows, protect, winX0, winX1 } = fieldGeometry();
+      const winX1 = winX0 + docW;
+      const covered = (c, r) => {
+        const x0 = c * CELL;
+        const y0 = r * CELL;
+        for (const p of protect) {
+          if (
+            x0 < p.x1 &&
+            x0 + CELL > p.x0 &&
+            y0 < p.y1 &&
+            y0 + CELL > p.y0
+          ) {
+            return true;
+          }
+        }
+        return false;
+      };
+      // Slot depth per column, for the strip cells above and below
+      // the block: how many rows the ground runs outward at that
+      // column before a protected block stops it. A strip cell's
+      // strength scales with its slot's depth (see the header
+      // comment): thin slot, thinner light.
+      const depthBelow = new Array(cols).fill(0);
+      const depthAbove = new Array(cols).fill(0);
+      for (let c = 0; c < cols; c++) {
+        for (let r = rows; r < rows + FIELD && !covered(c, r); r++) {
+          depthBelow[c]++;
+        }
+        for (let r = -1; r >= -FIELD && !covered(c, r); r--) {
+          depthAbove[c]++;
+        }
+      }
       const cells = [];
       for (let c = -FIELD; c < cols + FIELD; c++) {
         const cb = c < 0 ? -c - 1 : c >= cols ? c - cols : 0;
         const x0 = c * CELL;
         if (x0 < winX0 || x0 + CELL > winX1) continue;
+        const cIn = c >= 0 && c < cols;
         for (let r = -FIELD; r < rows + FIELD; r++) {
           const rb = r < 0 ? -r - 1 : r >= rows ? r - rows : 0;
-          if (c >= 0 && c < cols && r >= 0 && r < rows) continue;
-          const y0 = r * CELL;
-          let covered = false;
-          for (const p of protect) {
-            if (
-              x0 < p.x1 &&
-              x0 + CELL > p.x0 &&
-              y0 < p.y1 &&
-              y0 + CELL > p.y0
-            ) {
-              covered = true;
-              break;
-            }
-          }
-          if (!covered) cells.push({ c, r, band: Math.max(cb, rb) });
+          const rIn = r >= 0 && r < rows;
+          if (cIn && rIn) continue;
+          if (!cIn && !rIn) continue;
+          if (covered(c, r)) continue;
+          const band = Math.max(cb, rb);
+          // Distance grading (Ben, 2026-11-22): the glisten is
+          // strong only close to the posting and goes to zero as
+          // the field runs out. The band caps the rung (top rung in
+          // the adjacent band only, second rung one band out, the
+          // first rung whispering on from there, the outermost band
+          // capped at zero), steps the fall down on a steepening
+          // curve, and tightens the Bayer gate band by band.
+          const cap =
+            band === 0 ? 3 : band === 1 ? 2 : band >= FIELD - 1 ? 0 : 1;
+          const fall = 1 - band / FIELD;
+          // Facets: a fixed hash per cell, plus a fixed turn of a
+          // second hash standing in for the light's angle (the
+          // simplified model keeps the facet still and lets the
+          // travel phase, added at update time, do the turning).
+          // The Bayer column phase rotates with the band, so every
+          // band samples the same thresholds and the grading is
+          // monotone by construction.
+          const facet =
+            hash2(c * 3 + 57, r * 5 + 11) * 0.65 +
+            (0.5 +
+              0.5 * Math.sin(hash2(c + 91, r + 37) * 6.283)) *
+              0.35;
+          // The strip factor: 1 in the side corridors, the slot
+          // depth's share (a sixth per row, full at six) in the
+          // strips above and below. It is stored as the cell's
+          // resting multiplier; at update time it blends back to
+          // full strength as the light's clearance from the border
+          // grows (see frameTargets), because the thinning is only
+          // for a light riding the border itself.
+          const stripF = rIn
+            ? 1
+            : Math.min(1, (r < 0 ? depthAbove[c] : depthBelow[c]) / 6);
+          cells.push({
+            key: `${c},${r}`,
+            c,
+            r,
+            cx: x0 + CELL / 2,
+            cy: r * CELL + CELL / 2,
+            band,
+            cap,
+            // The facet driver as coefficients: at update time the
+            // driver is da + db * turned, turned the facet advanced
+            // by the travel phase. The blend toward the driver's
+            // own mean as the band grows is folded into both.
+            da: 0.925 - 0.325 * fall,
+            db: 0.65 * fall,
+            facet,
+            // The per-cell multipliers the light's strength picks
+            // up: the band fall at full strength, and thinned by
+            // the strip factor. Side cells have the two equal.
+            kFull: fall,
+            kRest: fall * stripF,
+            gateBase: band * 0.03,
+            bayer: BAYER4[((r & 3) * 4 + ((c + band) & 3))] / 16,
+            glintHash: hash2(c * 7 + 13, r * 3 + 29),
+          });
         }
       }
-      return { cells, cols, rows };
+      fieldCache = { cells, cols, rows, W, H };
+      fieldKey = key;
+      return fieldCache;
     }
 
-    function hash2(a, b) {
-      let h = Math.imul(a, 374761393) + Math.imul(b, 668265263);
-      h = Math.imul(h ^ (h >>> 13), 1274126177);
-      return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+    window.addEventListener("resize", () => {
+      fieldCache = null;
+    });
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => {
+        fieldCache = null;
+      });
     }
 
     // The wanted state of the whole frame for one light position.
     // light is in block pixels; energy is the movement term, 0 at
     // rest and up to 1 in a fast pass; phase advances with travel and
-    // turns the facet selection while the light moves.
+    // turns the facet selection while the light moves. The walk is
+    // the cheap part of the model: a squared-distance compare turns
+    // most cells away, and only cells inside the radius pay for a
+    // square root and a table read.
     function frameTargets(light, energy, phase, reachBoost = 0) {
-      const { cells } = frameCells();
+      const { cells, W, H } = buildField();
+      // The strip thinning (see buildField) applies while the
+      // light rides the border itself, the scroll circuit's case:
+      // clearance is the light's distance from the nearest edge,
+      // zero on the border, and the strips blend back to full
+      // strength over 40px of clearance, since a light resting
+      // inside the block is already thinned by distance.
+      const clearance = Math.max(
+        0,
+        Math.min(light.x, W - light.x, light.y, H - light.y),
+      );
+      const stripBlend = Math.min(1, clearance / 40);
       const want = new Map();
       const reach = 120 + energy * 48 + reachBoost;
       const radius = reach + 48;
+      const radius2 = radius * radius;
+      const glintReach = reach * 0.8;
       // Light mode runs a step quieter (Ben, 2026-11-22): the same
       // flare, sparser and lower. Pixel work has no opacity, so
       // faded means a weaker driver and a tighter Bayer gate.
@@ -337,79 +472,34 @@ function setUp() {
       const dark = isDark();
       const fade = dark ? 1 : 0.92;
       const gateLift = dark ? 0 : 0.02;
-      for (const { c, r, band } of cells) {
-        const cx = (c + 0.5) * CELL;
-        const cy = (r + 0.5) * CELL;
-        const dx = cx - light.x;
-        const dy = cy - light.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist > radius) continue;
-        // Lens flare (Ben, 2026-11-22): distance from the light
-        // decides the shape. The falloff is radial: a steep core
-        // term burns bright around the source and falls fast, and
-        // a faint shallow halo term carries a whisper of light
-        // further out, the way a flare has a hot centre and a wide
-        // faint skirt. Together they keep the lit patch a round
-        // glow around the light instead of a slab following the
-        // frame's rectangle: an edge or corner far from the light
-        // stays dark even when its band would allow light. The
-        // band grading below still multiplies in on top of this.
-        const u = dist / radius;
-        const strength = Math.pow(1 - u, 2.45) + 0.3 * (1 - u);
-        // Facets: a fixed hash per cell, turned by the light's angle
-        // around the cell and by the travel phase. At rest the angle
-        // term still separates neighbours, so the lit run reads as
-        // facets, not a smooth blob; while moving, the phase term is
-        // what makes individual cells catch and release.
-        const angle = Math.atan2(dy, dx);
-        const facet =
-          hash2(c * 3 + 57, r * 5 + 11) * 0.65 +
-          (0.5 + 0.5 * Math.sin(angle * 3 + hash2(c + 91, r + 37) * 6.283)) *
-            0.35;
-        const turned = (facet + phase * 0.618) % 1;
-        // The Bayer column phase rotates with the band. A fixed
-        // phase would hand each distance its own fixed set of four
-        // thresholds, and some columns' sets run lower than their
-        // nearer neighbours', so a far band could out-light a near
-        // one. Rotated, every band samples the same thresholds and
-        // the grading is monotone by construction.
-        const bayer = BAYER4[((r & 3) * 4 + ((c + band) & 3))] / 16;
-        // Distance grading (Ben, 2026-11-22): the glisten is strong
-        // only close to the posting and goes to zero as the field
-        // runs out. The cell's band multiplies the light computation
-        // above, it does not replace it: the fall steps down band
-        // by band on a steepening curve, the Bayer gate tightens
-        // with the band,
-        // and the rung cap drops one step per band, top rung in the
-        // adjacent band only, second rung one band out, the first
-        // rung whispering on from there. The outermost band is
-        // capped at zero, so beyond the field's edge nothing ever
-        // lights, at any pointer position or speed.
-        const cap =
-          band === 0 ? 3 : band === 1 ? 2 : band >= FIELD - 1 ? 0 : 1;
-        if (cap === 0) continue;
-        const fall = 1 - band / FIELD;
-        const gate = band * 0.03 + gateLift;
-        // The facet driver blends toward its own mean as the band
-        // grows: near the border the facets are full-strength and
-        // ragged, far out the field thins evenly, a whisper with no
-        // loud individual cells.
-        const driver = 0.925 + (0.6 + turned * 0.65 - 0.925) * fall;
-        const s = strength * driver * fall * fade;
+      const phaseTerm = (phase * 0.618) % 1;
+      for (const cell of cells) {
+        const dx = cell.cx - light.x;
+        const dy = cell.cy - light.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 > radius2) continue;
+        const dist = Math.sqrt(d2);
+        const strength = STR_TABLE[Math.min(256, (dist / radius) * 256) | 0];
+        let turned = cell.facet + phaseTerm;
+        if (turned >= 1) turned -= 1;
+        const driver = cell.da + cell.db * turned;
+        const k = cell.kRest + (cell.kFull - cell.kRest) * stripBlend;
+        const s = strength * driver * k * fade;
+        const gate = cell.gateBase + gateLift;
         let level = 0;
-        if (s > 0.58 && bayer < s + 0.1 - gate) level = 3;
-        else if (s > 0.36 && bayer < s + 0.2 - gate) level = 2;
-        else if (s > 0.16 && bayer < s + 0.25 - gate) level = 1;
-        level = Math.min(level, cap);
+        if (s > 0.58 && cell.bayer < s + 0.1 - gate) level = 3;
+        else if (s > 0.36 && cell.bayer < s + 0.2 - gate) level = 2;
+        else if (s > 0.16 && cell.bayer < s + 0.25 - gate) level = 1;
+        if (level > cell.cap) level = cell.cap;
         if (level === 0) continue;
         // Sharp glints: a few cells in the adjacent band at the top
         // rung burn at the brightest shade, the glint rung.
         const glint =
           level === 3 &&
-          band === 0 &&
-          hash2(c * 7 + 13, r * 3 + 29) > 0.5 &&
-          dist < reach * 0.8;
-        want.set(`${c},${r}`, { c, r, level, glint });
+          cell.band === 0 &&
+          cell.glintHash > 0.5 &&
+          dist < glintReach;
+        want.set(cell.key, { c: cell.c, r: cell.r, level, glint });
       }
       return want;
     }
@@ -471,23 +561,35 @@ function setUp() {
     let lastY = 0;
     let energy = 0;
     let travel = 0;
-    let tickTimer = 0;
+    let rafId = 0;
+    let lastFrameAt = 0;
 
     function currentTargets() {
       return frameTargets(light, energy, Math.floor(travel / 26), lightBoost);
     }
 
-    function tick() {
-      // Energy bleeds off on the tick: a resting pointer's shimmer
-      // dies within a few ticks, the phase stops advancing with it,
-      // and once the cells have stepped to the resting targets the
-      // loop stops outright. A still pattern, held by no timer.
-      energy *= 0.55;
+    function stopFrames() {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+    }
+
+    function stepFrame(now) {
+      rafId = 0;
+      // Energy bleeds off in wall-clock time, at the rate the old
+      // 75ms tick used, however often frames actually arrive: a
+      // resting light's shimmer dies within a few hundred
+      // milliseconds, the phase stops advancing with it, and once
+      // the cells have stepped to the resting targets the loop
+      // stops outright. A still pattern, held by no timer.
+      const dt = lastFrameAt ? Math.min(250, now - lastFrameAt) : 75;
+      lastFrameAt = now;
+      energy *= Math.pow(0.55, dt / 75);
       if (energy < 0.02) energy = 0;
       const settled = stepToward(currentTargets());
-      if (settled && energy === 0) {
-        clearInterval(tickTimer);
-        tickTimer = 0;
+      if (!settled || energy !== 0) {
+        rafId = requestAnimationFrame(stepFrame);
       }
     }
 
@@ -496,7 +598,10 @@ function setUp() {
         applyCut(currentTargets());
         return;
       }
-      if (!tickTimer) tickTimer = setInterval(tick, 75);
+      if (!rafId) {
+        lastFrameAt = 0;
+        rafId = requestAnimationFrame(stepFrame);
+      }
     }
 
     function lightFromClient(clientX, clientY) {
@@ -532,10 +637,7 @@ function setUp() {
       lastClient = null;
       lastMoveAt = 0;
       energy = 0;
-      if (tickTimer) {
-        clearInterval(tickTimer);
-        tickTimer = 0;
-      }
+      stopFrames();
       clearAll();
     }
 
@@ -553,10 +655,7 @@ function setUp() {
         if (rect.bottom < 0 || rect.top > vh) {
           if (source === "scroll") {
             source = null;
-            if (tickTimer) {
-              clearInterval(tickTimer);
-              tickTimer = 0;
-            }
+            stopFrames();
             clearAll();
           }
           lastScrollY = window.scrollY;
@@ -606,7 +705,7 @@ function setUp() {
     }
 
     if (reduced.matches) {
-      // One cut per position change, no shimmer, no tick. The scroll
+      // One cut per position change, no shimmer, no frames. The scroll
       // path applies the same way on touch devices.
       hiring.addEventListener("pointermove", (event) => {
         if (event.pointerType === "touch") return;
@@ -623,8 +722,8 @@ function setUp() {
       });
       hiring.addEventListener("focus", () => {
         source = "focus";
-        light = { x: hiring.clientWidth / 2, y: hiring.clientHeight / 2 };
-        applyCut(frameTargets(light, 0, 0, 30));
+        light = { x: hiring.offsetWidth / 2, y: hiring.offsetHeight / 2 };
+        applyCut(frameTargets(light, 0, 0, 60));
       });
       hiring.addEventListener("blur", () => {
         if (source === "focus") {
@@ -640,17 +739,19 @@ function setUp() {
       hiring.addEventListener("focus", () => {
         source = "focus";
         energy = 0;
-        lightBoost = 30;
-        light = { x: hiring.clientWidth / 2, y: hiring.clientHeight / 2 };
+        // The resting centre light gets a longer reach than a
+        // pointer: at phone width the block is tall, its centre
+        // sits some 130px from the nearest border, and the shorter
+        // boost left the nearest cells under the first rung, so
+        // keyboard focus lit nothing there.
+        lightBoost = 60;
+        light = { x: hiring.offsetWidth / 2, y: hiring.offsetHeight / 2 };
         wake();
       });
       hiring.addEventListener("blur", () => {
         if (source !== "focus") return;
         source = null;
-        if (tickTimer) {
-          clearInterval(tickTimer);
-          tickTimer = 0;
-        }
+        stopFrames();
         clearAll();
       });
       window.addEventListener("scroll", onScroll, { passive: true });
