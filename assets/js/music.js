@@ -45,6 +45,15 @@ import { runBoot, registerTask } from "./boot.js?v=20261122s";
 // indicator's total both measure from the top of the module.
 const bootT0 = performance.now();
 
+/* ----- editing switch (Ben's call, 2026-11-23) ----- */
+// The maker is play-and-listen only for now. Editing is
+// disabled, not deleted: every editing path below (grid
+// clicks, the notes text input, live-note preview, and the
+// pending and ghost note states) checks this one switch.
+// Set MAKER_EDITING_ENABLED to true to re-enable editing
+// in a later experiment.
+const MAKER_EDITING_ENABLED = false;
+
 // The clock's first tick, handed to the boot where the page
 // starts up below.
 let resolveClockTask;
@@ -2549,7 +2558,7 @@ function materialiseWindow(force = false) {
   view.start = start;
   view.end = end;
   const cur = keySetOf(song);
-  const ghosts = ghostSpans(renderedKeys, cur);
+  const ghosts = MAKER_EDITING_ENABLED ? ghostSpans(renderedKeys, cur) : [];
   for (const entry of view.strips) {
     for (const b of entry.blocks) b.remove();
     entry.blocks = [];
@@ -2560,8 +2569,8 @@ function materialiseWindow(force = false) {
       if (lane === undefined) return;
       if (step + len <= start || step >= end) return;
       const span = noteSpan({ step, len }, cell);
-      const el = document.createElement("button");
-      el.type = "button";
+      const el = document.createElement(MAKER_EDITING_ENABLED ? "button" : "div");
+      if (MAKER_EDITING_ENABLED) el.type = "button";
       el.className = "gblock " + cls;
       el.style.left = `${span.left}px`;
       el.style.width = `${span.width}px`;
@@ -2573,7 +2582,7 @@ function materialiseWindow(force = false) {
       entry.blocks.push(el);
     };
     for (const n of entry.ch.notes) {
-      const pending = renderedKeys && !renderedKeys.has(noteKey(entry.ch.letter, n));
+      const pending = MAKER_EDITING_ENABLED && renderedKeys && !renderedKeys.has(noteKey(entry.ch.letter, n));
       addBlock(n.midi, n.step, n.len, pending ? "c-on c-pending" : "c-on", n);
     }
     for (const g of ghosts) {
@@ -2723,6 +2732,7 @@ function gridEdit(ch, step, midi) {
 }
 
 gridEl.addEventListener("click", (event) => {
+  if (!MAKER_EDITING_ENABLED) return;
   const song = player.song;
   if (!song) return;
   let ch, step, midi;
@@ -3037,7 +3047,14 @@ function parseBoxText() {
 }
 
 let textTimer = 0;
+// Read-only mode: the notes box is a display, not an editor.
+if (!MAKER_EDITING_ENABLED && textEl) {
+  textEl.readOnly = true;
+  textEl.setAttribute("aria-readonly", "true");
+  document.querySelector(".maker")?.classList.add("maker--readonly");
+}
 textEl.addEventListener("input", () => {
+  if (!MAKER_EDITING_ENABLED) return;
   fitText();
   clearTimeout(textTimer);
   textTimer = setTimeout(() => {

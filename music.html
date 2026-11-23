@@ -41,7 +41,7 @@
     <link rel="stylesheet" href="assets/css/base.css?v=20261122h" />
     <link rel="stylesheet" href="assets/css/layout.css?v=20261122-lamp" />
     <link rel="stylesheet" href="assets/css/components.css?v=20261123-bloomstack" />
-    <link rel="stylesheet" href="assets/css/music.css?v=20261122-fullwidth" />
+    <link rel="stylesheet" href="assets/css/music.css?v=20261123-readonly" />
     <!-- Visit counting: GoatCounter; the config lives in chrome.js. -->
     <script
       data-goatcounter="https://benemdon.goatcounter.com/count"
@@ -212,15 +212,9 @@
           <div data-grid></div>
         </div>
         <p class="music-hint">
-          Every channel has its own grid, one under another. Click
-          an empty cell to place a note, click the end of a note to
-          trim it, click its first cell to remove it, and click the
-          cell just after a note to stretch it. Rows are pitches,
-          high at the top. Notes in the same column on one channel
-          sound together, as a chord. A note you place sounds at
-          once, and wears amber until the re-rendered loop catches
-          up with it; a note you remove lingers as a dashed ghost
-          while it is still sounding in the loop.
+          Every channel has its own grid, one under another. Rows
+          are pitches, high at the top. Notes in the same column
+          on one channel sound together, as a chord.
         </p>
         <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
         <div class="music-group" data-song-facts hidden>
@@ -252,10 +246,7 @@
         <p>
           Every song is written as text, one line per channel, in a
           tiny music language. The grid and the text are two views
-          of one song: edit either one and the other follows, even
-          mid-song. A typo never breaks the page: the problem shows
-          in plain words above the text, and the last good version
-          is the one that plays.
+          of one song.
         </p>
         <p>
           The language is a small subset of MML, the format Japanese
@@ -290,10 +281,8 @@
         <p>
           Everything lands on a sixteenth-note grid. That grid is
           what lets the text and the grid view stay two views of
-          one song. After a grid edit the text is rewritten in a
-          plain standard form, one line per channel with every
-          length spelled out. Text you type by hand is left as you
-          typed it until then.
+          one song, one line per channel with every length spelled
+          out.
         </p>
         <pre class="code">A @6 t190 o4 d f >d</pre>
         <p>
@@ -306,7 +295,7 @@
           whole loop into one stretch of audio, start to finish,
           and then loops that recording. No timer places notes
           while the music plays, so a busy page cannot make it
-          stutter. An edit or a tempo change renders again and
+          stutter. A tempo change renders again and
           swaps in at the next loop boundary.
         </p>
         <p>
@@ -345,7 +334,7 @@ F to H      ----/</pre>
           is one recording per song, not one per channel, and
           nothing is mixed live while the music plays.
         </p>
-        <pre class="code">an edit, or a tempo change
+        <pre class="code">a tempo change
             |
             v
 the new loop renders
@@ -355,11 +344,11 @@ in the background
 at the next loop boundary
 the new recording takes over</pre>
         <p>
-          Editing while a song plays does not stop it. The old
-          recording plays on to the boundary, then stops as the
-          new one starts, already inside its loop. While the
-          song is stopped, an edit just waits for the next press
-          of play.
+          Changing the tempo while a song plays does not stop it.
+          The old recording plays on to the boundary, then stops
+          as the new one starts, already inside its loop. While
+          the song is stopped, a tempo change waits for the next
+          press of play.
         </p>
         <p>
           Two families of voices do the playing. The chip voices
@@ -392,7 +381,7 @@ the new recording takes over</pre>
 
     <script>window.SiteChrome && SiteChrome.keys([["1","music maker"],["2","how it works"]])</script>
 
-    <script type="module" src="assets/js/music.js?v=20261122s"></script>
+    <script type="module" src="assets/js/music.js?v=20261123-readonly"></script>
     <script type="module" src="assets/js/keycaps.js"></script>
   </body>
 </html>

@@ -412,6 +412,16 @@
   border-color: var(--pending-color);
 }
 
+/* Read-only mode (MAKER_EDITING_ENABLED = false in music.js):
+   note blocks are display only, so no pointer or hover cue. */
+.maker--readonly .gblock {
+  cursor: default;
+}
+
+.maker--readonly .gblock:hover {
+  outline: none;
+}
+
 .gblock.c-ghost {
   background: color-mix(in srgb, var(--muted-color) 38%, transparent);
   border-color: var(--muted-color);
