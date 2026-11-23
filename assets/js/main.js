@@ -124,23 +124,32 @@ function setUp() {
   // of the light. On mobile, the scroll carries the light instead.
   //
   // The model: the hiring block is wrapped in a frame layer, and the
-  // cells live on the fixed 8px grid in two rings OUTSIDE the block's
-  // border, one and two cells beyond its box. No cell ever sits inside
-  // the border, so the copy stays completely clear (the PR #155
-  // readability rule carries over whole). The light's position is the
+  // cells live on the fixed 8px grid in a wide field OUTSIDE the
+  // block's border, reaching twelve cells beyond its box on all
+  // sides. No cell ever sits inside the border, so the copy stays
+  // completely clear (the PR #155 readability rule carries over
+  // whole), and no cell paints over a neighbouring block either: the
+  // field stops at the divider, the sections, the header and the
+  // footer, and at the screen's horizontal edges, so the light reads
+  // as pixels shining through from behind the block and spilling
+  // into the margins around it. The light's position is the
   // pointer's position inside the box, or the block's centre on
   // keyboard focus, or a point that travels with scroll progress on
   // touch devices. Each frame cell's level is computed from that
-  // position: cells near the light catch the top rungs, distance steps
-  // the shade down, a Bayer threshold teeth the falloff, and a
-  // per-cell facet hash decides which near cells burn as sharp single
-  // glints. While the pointer moves, its velocity feeds an energy
-  // term: the reach grows a little and the facet phase advances with
-  // accumulated travel, so facets catch and release as the light
-  // passes. When the pointer rests, the energy decays on the 75ms
-  // tick, the phase freezes, the cells step to their resting targets,
-  // and the tick stops: the pattern is still, a picture of where the
-  // light rests. Nothing runs on a timeline of its own.
+  // position: cells near the light catch the top rungs, distance
+  // steps the shade down, a Bayer threshold teeth the falloff, and a
+  // per-cell facet hash decides which near cells burn as sharp
+  // single glints. A second distance grades the whole field: a
+  // cell's distance from the border caps its rung and thins its
+  // Bayer gate band by band, so the glisten is strong only at the
+  // border and falls to exactly zero at the field's edge. While the
+  // pointer moves, its velocity feeds an energy term: the reach
+  // grows a little and the facet phase advances with accumulated
+  // travel, so facets catch and release as the light passes. When
+  // the pointer rests, the energy decays on the 75ms tick, the
+  // phase freezes, the cells step to their resting targets, and the
+  // tick stops: the pattern is still, a picture of where the light
+  // rests. Nothing runs on a timeline of its own.
   //
   // Pointer leave and blur clear every cell in one cut. On desktop a
   // scroll with no pointer over the block lights nothing; while the
@@ -209,26 +218,91 @@ function setUp() {
       }
     }
 
-    // The frame cells: every grid cell one or two steps outside the
-    // block's box. Ring 0 is adjacent to the border, ring 1 is the
-    // halo step beyond it. Columns and rows run negative and past the
-    // block's own counts; the block's interior is never in the set.
-    function frameCells() {
+    // The frame cells: every grid cell in the band around the
+    // block, out to FIELD cells beyond the border on all sides. A
+    // cell's band is its ring distance from the border: 0 is
+    // adjacent, FIELD - 1 is the field's outermost band. Columns and
+    // rows run negative and past the block's own counts; the block's
+    // interior is never in the set. Two kinds of ground are also
+    // never in the set: any cell that would paint over a
+    // neighbouring block (the divider above, the sections around,
+    // the header, the footer), and any cell past the screen's
+    // horizontal edges, which would hand the page a sideways scroll.
+    const FIELD = 12;
+    let geoCache = null;
+    let geoKey = "";
+
+    function fieldGeometry() {
       const cols = Math.ceil(hiring.clientWidth / CELL);
       const rows = Math.ceil(hiring.clientHeight / CELL);
-      const cells = [];
-      for (let ring = 0; ring <= 1; ring++) {
-        const c0 = -1 - ring;
-        const c1 = cols + ring;
-        const r0 = -1 - ring;
-        const r1 = rows + ring;
-        for (let c = c0; c <= c1; c++) {
-          cells.push({ c, r: r0, ring });
-          cells.push({ c, r: r1, ring });
+      const docW = document.documentElement.clientWidth;
+      const key = `${cols}x${rows}x${docW}`;
+      if (geoCache && geoKey === key) return geoCache;
+      const hr = hiring.getBoundingClientRect();
+      const els = new Set();
+      const main = hiring.closest("main");
+      if (main) {
+        for (const el of main.children) {
+          if (el !== wrap && el.nodeType === 1) els.add(el);
         }
-        for (let r = r0 + 1; r <= r1 - 1; r++) {
-          cells.push({ c: c0, r, ring });
-          cells.push({ c: c1, r, ring });
+      }
+      document
+        .querySelectorAll("header, footer, nav, .divider, .section")
+        .forEach((el) => {
+          if (el !== hiring && !wrap.contains(el)) els.add(el);
+        });
+      const protect = [];
+      for (const el of els) {
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height) continue;
+        protect.push({
+          x0: r.left - hr.left - 2,
+          y0: r.top - hr.top - 2,
+          x1: r.right - hr.left + 2,
+          y1: r.bottom - hr.top + 2,
+        });
+      }
+      // The field's horizontal window, in block coordinates: from
+      // the screen's left edge to its right edge.
+      const winX0 = -(hr.left + window.scrollX);
+      geoCache = { cols, rows, protect, winX0, winX1: winX0 + docW };
+      geoKey = key;
+      return geoCache;
+    }
+
+    window.addEventListener("resize", () => {
+      geoCache = null;
+    });
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => {
+        geoCache = null;
+      });
+    }
+
+    function frameCells() {
+      const { cols, rows, protect, winX0, winX1 } = fieldGeometry();
+      const cells = [];
+      for (let c = -FIELD; c < cols + FIELD; c++) {
+        const cb = c < 0 ? -c - 1 : c >= cols ? c - cols : 0;
+        const x0 = c * CELL;
+        if (x0 < winX0 || x0 + CELL > winX1) continue;
+        for (let r = -FIELD; r < rows + FIELD; r++) {
+          const rb = r < 0 ? -r - 1 : r >= rows ? r - rows : 0;
+          if (c >= 0 && c < cols && r >= 0 && r < rows) continue;
+          const y0 = r * CELL;
+          let covered = false;
+          for (const p of protect) {
+            if (
+              x0 < p.x1 &&
+              x0 + CELL > p.x0 &&
+              y0 < p.y1 &&
+              y0 + CELL > p.y0
+            ) {
+              covered = true;
+              break;
+            }
+          }
+          if (!covered) cells.push({ c, r, band: Math.max(cb, rb) });
         }
       }
       return { cells, cols, rows };
@@ -248,7 +322,7 @@ function setUp() {
       const { cells } = frameCells();
       const want = new Map();
       const reach = 120 + energy * 48 + reachBoost;
-      for (const { c, r, ring } of cells) {
+      for (const { c, r, band } of cells) {
         const cx = (c + 0.5) * CELL;
         const cy = (r + 0.5) * CELL;
         const dx = cx - light.x;
@@ -267,27 +341,46 @@ function setUp() {
           (0.5 + 0.5 * Math.sin(angle * 3 + hash2(c + 91, r + 37) * 6.283)) *
             0.35;
         const turned = (facet + phase * 0.618) % 1;
-        const bayer = BAYER4[((r & 3) * 4 + (c & 3))] / 16;
+        // The Bayer column phase rotates with the band. A fixed
+        // phase would hand each distance its own fixed set of four
+        // thresholds, and some columns' sets run lower than their
+        // nearer neighbours', so a far band could out-light a near
+        // one. Rotated, every band samples the same thresholds and
+        // the grading is monotone by construction.
+        const bayer = BAYER4[((r & 3) * 4 + ((c + band) & 3))] / 16;
+        // Distance grading (Ben, 2026-11-22): the glisten is strong
+        // only close to the posting and goes to zero as the field
+        // runs out. The cell's band multiplies the light computation
+        // above, it does not replace it: the fall steps down band
+        // by band on a steepening curve, the Bayer gate tightens
+        // with the band,
+        // and the rung cap drops one step per band, top rung in the
+        // adjacent band only, second rung one band out, the first
+        // rung whispering on from there. The outermost band is
+        // capped at zero, so beyond the field's edge nothing ever
+        // lights, at any pointer position or speed.
+        const cap =
+          band === 0 ? 3 : band === 1 ? 2 : band >= FIELD - 1 ? 0 : 1;
+        if (cap === 0) continue;
+        const fall = 1 - band / FIELD;
+        const gate = band * 0.03;
+        // The facet driver blends toward its own mean as the band
+        // grows: near the border the facets are full-strength and
+        // ragged, far out the field thins evenly, a whisper with no
+        // loud individual cells.
+        const driver = 0.925 + (0.6 + turned * 0.65 - 0.925) * fall;
+        const s = strength * driver * fall;
         let level = 0;
-        if (ring === 0) {
-          const s = strength * (0.6 + turned * 0.65);
-          if (s > 0.58 && bayer < s + 0.1) level = 3;
-          else if (s > 0.36 && bayer < s + 0.2) level = 2;
-          else if (s > 0.16 && bayer < s + 0.25) level = 1;
-        } else {
-          // The halo ring only ever carries the fringe: Bayer-gated,
-          // never above the first rung, so a glint reads as a sharp
-          // core with a toothed step of light beyond it.
-          const s = strength * (0.45 + turned * 0.4);
-          if (s > 0.22 && bayer < s + 0.1) level = 1;
-        }
+        if (s > 0.58 && bayer < s + 0.1 - gate) level = 3;
+        else if (s > 0.36 && bayer < s + 0.2 - gate) level = 2;
+        else if (s > 0.16 && bayer < s + 0.25 - gate) level = 1;
+        level = Math.min(level, cap);
         if (level === 0) continue;
-        // Sharp glints: a few near cells at the top rung burn at the
-        // brightest shade. In dark mode that is the crystal glint; in
-        // light mode the flare-bright step of the blue family.
+        // Sharp glints: a few cells in the adjacent band at the top
+        // rung burn at the brightest shade, the crystal glint green.
         const glint =
           level === 3 &&
-          ring === 0 &&
+          band === 0 &&
           hash2(c * 7 + 13, r * 3 + 29) > 0.5 &&
           dist < reach * 0.8;
         want.set(`${c},${r}`, { c, r, level, glint });

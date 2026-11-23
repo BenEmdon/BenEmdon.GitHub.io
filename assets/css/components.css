@@ -7,14 +7,18 @@
 
   The hover bloom follows the site's pixel rule, with a pointer driving
   it: pixels never move and have no drift of their own. They sit on the
-  fixed grid in two rings OUTSIDE the block's border, never over the
+  fixed grid in a wide field OUTSIDE the block's border, never over the
   copy, and swap shade in place, in whole steps on the tick, never
   fades. The pointer is the light source (the scroll, on touch
   devices): the frame cells nearest the light catch the brightest
   shades through three solid steps, facets glinting as the light
-  moves, and the pattern settles still when the light rests. In dark
-  mode the families turn to green crystal light. The model itself
-  lives in main.js.
+  moves, and the pattern settles still when the light rests. The
+  glisten is graded by distance from the border, strong at the edge
+  and falling to zero at the field's edge, so the light reads as
+  pixels shining through from behind the block. The bloom is green
+  crystal in both themes, a second accent next to the site's blue.
+  The block's own border never animates. The model itself lives in
+  main.js.
 */
 .hiring {
   position: relative;
@@ -28,13 +32,15 @@
 }
 
 /* The base link hover would fill the whole block accent and invert the
-   text. The block keeps its own colours; the sparkle is the hover effect. */
+   text. The block keeps its own colours; the bloom is the hover effect.
+   The border itself is static in every state (Ben, 2026-11-22: no
+   pulsing borders; the light comes from behind the block, not from an
+   animated outline). */
 .hiring:hover,
 .hiring:focus-visible {
   background: var(--page-subtle);
   color: var(--page-color);
   text-decoration: none;
-  animation: hiring-border-pulse 1.2s linear infinite;
 }
 
 .hiring > * + * {
@@ -53,44 +59,24 @@
   font-weight: 700;
 }
 
-/* Border pulse on hover or focus: the block's actual 1px border changes
-   shade in two hard steps. There are no separate pixel rails and nothing
-   grows or moves; the perimeter itself brightens, holds, and returns. */
-@keyframes hiring-border-pulse {
-  0%,
-  49% {
-    border-color: var(--accent-color);
-  }
-
-  50%,
-  100% {
-    border-color: var(--accent-pulse-color);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hiring:hover,
-  .hiring:focus-visible {
-    animation: none;
-  }
-}
-
 /* The frame layer (bloom v3): main.js wraps the hiring block in this
    element, which hugs the block exactly, and hangs the light's cells
    off it. The cells sit on the block's fixed 8px grid extended
-   outward, in two rings beyond the border, so light escaping the
-   block catches its outer edge and the copy inside is never touched.
-   The wrapper itself paints nothing. */
+   outward, in a wide field beyond the border, graded by distance so
+   the glisten is strong at the edge and gone at the field's rim:
+   light escaping the block, shining through from behind it, and the
+   copy inside never touched. The wrapper itself paints nothing. */
 .hiring-frame {
   position: relative;
 
-  /* The crystal family, dark mode only: a greener blue, teal-green at
-     the core running to a deep green-blue at the edges, as if the
-     posting were etched in crystal and lit through it. The frame
-     shades below pick these up through light-dark(); light mode
-     keeps the site's blue family. The family lives here, on the
-     frame layer, because the cells are the wrapper's children now,
-     not the block's. */
+  /* The crystal family, both themes (Ben, 2026-11-22): a greener
+     blue, teal-green at the core running to a deep green-blue at the
+     edges, as if the posting were etched in crystal and lit through
+     it. The green is a standing second accent next to the site's
+     blue, so the frame shades below use it in light mode too, with
+     no light-mode variant. The family lives here, on the frame
+     layer, because the cells are the wrapper's children now, not
+     the block's. */
   --crystal-deep: #0a5c50;
   --crystal-mid: #0fa38a;
   --crystal-core: #2fe6b0;
@@ -98,14 +84,11 @@
 }
 
 /* One frame cell: a full square on the fixed 8px grid, outside the
-   block's border. The shade is data: three solid steps mixed from the
-   page ground toward the accent family, the fringe borrowing the
-   lighter pulse colour and the core the accent itself, so the ramp
-   drifts in hue as it deepens. Each shade is a light-dark() pair:
-   light mode keeps the blue family, dark mode turns the same three
-   steps into crystal, deep green-blue at the fringe to bright mint at
-   the core. main.js positions these from the light's position and
-   sets data-level; nothing here transitions or transforms, so a cell
+   block's border. The shade is data: three solid steps of the
+   crystal family mixed from the page ground, deep green-blue at the
+   fringe to bright mint at the core, the same greens in both themes.
+   main.js positions these from the light's position and sets
+   data-level; nothing here transitions or transforms, so a cell
    only ever swaps shade whole, in place. */
 .hiring__frame-cell {
   position: absolute;
@@ -116,24 +99,15 @@
 }
 
 .hiring__frame-cell[data-level="1"] {
-  background: light-dark(
-    color-mix(in srgb, var(--accent-pulse-color) 32%, var(--page-background)),
-    color-mix(in srgb, var(--crystal-deep) 68%, var(--page-background))
-  );
+  background: color-mix(in srgb, var(--crystal-deep) 68%, var(--page-background));
 }
 
 .hiring__frame-cell[data-level="2"] {
-  background: light-dark(
-    color-mix(in srgb, var(--accent-color) 50%, var(--page-background)),
-    color-mix(in srgb, var(--crystal-mid) 62%, var(--page-background))
-  );
+  background: color-mix(in srgb, var(--crystal-mid) 62%, var(--page-background));
 }
 
 .hiring__frame-cell[data-level="3"] {
-  background: light-dark(
-    color-mix(in srgb, var(--accent-color) 74%, var(--page-background)),
-    color-mix(in srgb, var(--crystal-core) 80%, var(--page-background))
-  );
+  background: color-mix(in srgb, var(--crystal-core) 80%, var(--page-background));
 }
 
 /* A glint cell: one frame cell burning at the brightest shade, the
@@ -143,7 +117,7 @@
    outranks the level shades; the swap is whole, in place, like every
    other cell here. */
 .hiring__frame-cell[data-glint="1"] {
-  background: light-dark(#bcd9f7, var(--crystal-glint));
+  background: var(--crystal-glint);
 }
 
 /*
