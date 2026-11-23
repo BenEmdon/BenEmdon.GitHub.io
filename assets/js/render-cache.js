@@ -132,7 +132,7 @@ function renderStats(ch) {
 
 // The sanity band a render must sit in before it may be
 // stored or played. Recalibrated 2026-11-22 against healthy
-// renders of all twenty-four songs modelled offline from the
+// renders of all twenty-nine songs modelled offline from the
 // engine's own gain staging, envelopes and sample data: the
 // mix is never normalised, so healthy peaks run 0.24 to
 // 1.16 (Cynthia's tutti sits past full scale on the dry mix
