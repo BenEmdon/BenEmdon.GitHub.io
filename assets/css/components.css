@@ -16,9 +16,9 @@
   glisten is graded by distance from the border, strong at the edge
   and falling to zero at the field's edge, so the light reads as
   pixels shining through from behind the block. The bloom is green
-  crystal in both themes, a second accent next to the site's blue.
-  The block's own border never animates. The model itself lives in
-  main.js.
+  crystal in dark mode; in light mode it runs the site's own blues
+  (Ben, 2026-11-22). The block's own border never animates. The
+  model itself lives in main.js.
 */
 .hiring {
   position: relative;
@@ -69,27 +69,33 @@
 .hiring-frame {
   position: relative;
 
-  /* The crystal family, both themes (Ben, 2026-11-22): a greener
-     blue, teal-green at the core running to a deep green-blue at the
-     edges, as if the posting were etched in crystal and lit through
-     it. The green is a standing second accent next to the site's
-     blue, so the frame shades below use it in light mode too, with
-     no light-mode variant. The family lives here, on the frame
-     layer, because the cells are the wrapper's children now, not
-     the block's. */
-  --crystal-deep: #0a5c50;
-  --crystal-mid: #0fa38a;
-  --crystal-core: #2fe6b0;
-  --crystal-glint: #a4f7dc;
+  /* The flare family, one ramp per theme. Dark mode keeps the
+     crystal greens (Ben, 2026-11-22): teal-green at the core
+     running to a deep green-blue at the edges, as if the posting
+     were etched in crystal and lit through it. Light mode runs
+     the site's own blues instead (Ben, 2026-11-22, later: the
+     green flare read ugly against the light theme, so this
+     supersedes the both-themes green rule from earlier that day
+     for light mode only): the deep rung is the light accent
+     #1e5aa8, the mid rung the lighter blue #6ea3dd, the core
+     #a9cdf2 and the glint the palest blue #dce9f8, the theme
+     ramp's own steps in the crystal slots' places. The family
+     lives here, on the frame layer, because the cells are the
+     wrapper's children now, not the block's. */
+  --crystal-deep: light-dark(#1e5aa8, #0a5c50);
+  --crystal-mid: light-dark(#6ea3dd, #0fa38a);
+  --crystal-core: light-dark(#a9cdf2, #2fe6b0);
+  --crystal-glint: light-dark(#dce9f8, #a4f7dc);
 }
 
 /* One frame cell: a full square on the fixed 8px grid, outside the
    block's border. The shade is data: three solid steps of the
-   crystal family mixed from the page ground, deep green-blue at the
-   fringe to bright mint at the core, the same greens in both themes.
-   main.js positions these from the light's position and sets
-   data-level; nothing here transitions or transforms, so a cell
-   only ever swaps shade whole, in place. */
+   flare family mixed from the page ground, the deep rung at the
+   fringe to the core rung at the centre, crystal greens in dark
+   mode and the theme's blues in light mode. main.js positions
+   these from the light's position and sets data-level; nothing
+   here transitions or transforms, so a cell only ever swaps shade
+   whole, in place. */
 .hiring__frame-cell {
   position: absolute;
   z-index: 0;
