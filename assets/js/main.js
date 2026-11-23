@@ -139,7 +139,13 @@ function setUp() {
   // position: cells near the light catch the top rungs, distance
   // steps the shade down, a Bayer threshold teeth the falloff, and a
   // per-cell facet hash decides which near cells burn as sharp
-  // single glints. A second distance grades the whole field: a
+  // single glints. The falloff from the light is radial and steep,
+  // so the glow reads as a round lens flare around the source
+  // rather than following the frame's rectangle, and in light mode
+  // the whole computation runs a step quieter, sparser and lower.
+  // The colours are CSS-side, per theme: crystal green in dark
+  // mode, the site's own blues in light. A second distance grades
+  // the whole field: a
   // cell's distance from the border caps its rung and thins its
   // Bayer gate band by band, so the glisten is strong only at the
   // border and falls to exactly zero at the field's edge. While the
@@ -322,14 +328,34 @@ function setUp() {
       const { cells } = frameCells();
       const want = new Map();
       const reach = 120 + energy * 48 + reachBoost;
+      const radius = reach + 48;
+      // Light mode runs a step quieter (Ben, 2026-11-22): the same
+      // flare, sparser and lower. Pixel work has no opacity, so
+      // faded means a weaker driver and a tighter Bayer gate.
+      // Dark mode is untouched by this term. The palette itself
+      // lives in components.css, per theme.
+      const dark = isDark();
+      const fade = dark ? 1 : 0.92;
+      const gateLift = dark ? 0 : 0.02;
       for (const { c, r, band } of cells) {
         const cx = (c + 0.5) * CELL;
         const cy = (r + 0.5) * CELL;
         const dx = cx - light.x;
         const dy = cy - light.y;
         const dist = Math.hypot(dx, dy);
-        if (dist > reach + 48) continue;
-        const strength = Math.max(0, 1 - dist / (reach + 48));
+        if (dist > radius) continue;
+        // Lens flare (Ben, 2026-11-22): distance from the light
+        // decides the shape. The falloff is radial: a steep core
+        // term burns bright around the source and falls fast, and
+        // a faint shallow halo term carries a whisper of light
+        // further out, the way a flare has a hot centre and a wide
+        // faint skirt. Together they keep the lit patch a round
+        // glow around the light instead of a slab following the
+        // frame's rectangle: an edge or corner far from the light
+        // stays dark even when its band would allow light. The
+        // band grading below still multiplies in on top of this.
+        const u = dist / radius;
+        const strength = Math.pow(1 - u, 2.45) + 0.3 * (1 - u);
         // Facets: a fixed hash per cell, turned by the light's angle
         // around the cell and by the travel phase. At rest the angle
         // term still separates neighbours, so the lit run reads as
@@ -363,13 +389,13 @@ function setUp() {
           band === 0 ? 3 : band === 1 ? 2 : band >= FIELD - 1 ? 0 : 1;
         if (cap === 0) continue;
         const fall = 1 - band / FIELD;
-        const gate = band * 0.03;
+        const gate = band * 0.03 + gateLift;
         // The facet driver blends toward its own mean as the band
         // grows: near the border the facets are full-strength and
         // ragged, far out the field thins evenly, a whisper with no
         // loud individual cells.
         const driver = 0.925 + (0.6 + turned * 0.65 - 0.925) * fall;
-        const s = strength * driver * fall;
+        const s = strength * driver * fall * fade;
         let level = 0;
         if (s > 0.58 && bayer < s + 0.1 - gate) level = 3;
         else if (s > 0.36 && bayer < s + 0.2 - gate) level = 2;
@@ -377,7 +403,7 @@ function setUp() {
         level = Math.min(level, cap);
         if (level === 0) continue;
         // Sharp glints: a few cells in the adjacent band at the top
-        // rung burn at the brightest shade, the crystal glint green.
+        // rung burn at the brightest shade, the glint rung.
         const glint =
           level === 3 &&
           band === 0 &&
