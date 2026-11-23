@@ -89,7 +89,6 @@ window.goatcounter = {
 const NAV_LINKS = [
   { href: "index.html", label: "home" },
   { href: "music.html", label: "music" },
-  { href: "art.html", label: "art" },
 ];
 
 function currentPage() {
