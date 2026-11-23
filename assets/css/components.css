@@ -8,8 +8,8 @@
   The hover bloom follows the site's pixel rule, with a pointer driving
   it: pixels never move and have no drift of their own. They sit on the
   fixed grid in a wide field OUTSIDE the block's border, never over the
-  copy, and swap shade in place, in whole steps on the tick, never
-  fades. The pointer is the light source (the scroll, on touch
+  copy, and swap shade in place, in whole steps as frames arrive,
+  never fades. The pointer is the light source (the scroll, on touch
   devices): the frame cells nearest the light catch the brightest
   shades through three solid steps, facets glinting as the light
   moves, and the pattern settles still when the light rests. The
