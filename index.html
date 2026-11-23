@@ -74,6 +74,16 @@
   <body>
     <!-- The boot screen, rendered by the shared chrome. -->
     <script>window.SiteChrome && SiteChrome.boot()</script>
+    <!-- The boot opens early, ahead of the page's module graph:
+         boot.js has no imports, so this small module arrives
+         while the graph is still fetching, and runBoot adopts
+         the screen it raises. The stamp matches the page
+         modules' own import of boot.js, so both load the one
+         module instance. -->
+    <script type="module">
+      import { openBootEarly } from "./assets/js/boot.js?v=20261122s";
+      openBootEarly();
+    </script>
 
     <main class="page">
       <header>

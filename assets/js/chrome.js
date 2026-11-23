@@ -97,6 +97,64 @@ function currentPage() {
   return file === "" ? "index.html" : file;
 }
 
+// The boot cover, laid the moment the boot shell is rendered,
+// before the parser reaches the page below it. The full boot's
+// covering mark (the document attribute the stylesheet hides
+// main behind) used to be set by boot.js when the page's module
+// finally ran, so for the whole module-graph fetch the page sat
+// uncovered: a refresh showed the reader a blank page, no
+// bootloader and no content, until the graph landed. The cover
+// cannot wait for any module, so it is laid here, in the one
+// script guaranteed to run during parsing. The decision mirrors
+// boot.js's decideBootSurface with the inputs a parse-time
+// script has: the home page covers on every load, any other
+// page covers until the session has seen a full boot, and a
+// reduced-motion load never covers. The experiment badge is
+// not in the document yet at this point; badge pages boot in
+// full on every load regardless, so a cover laid here can only
+// agree with the decision boot.js makes when it arrives, and
+// boot.js lifts the cover again on any load it decides against.
+// The session flag is only read here, never written: boot.js
+// spends it when the screen actually opens.
+//
+// The watchdog is the cover's failsafe: if boot.js never takes
+// ownership of the screen (its module, or the page's graph
+// behind it, failed to load at all), the cover and the shell
+// come down and the page is revealed rather than held hidden
+// behind a boot that is not coming. boot.js marks the shell
+// when it takes ownership and clears this timer; a shell it
+// owns is never touched here.
+function coverBoot() {
+  try {
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    if (reduced) return;
+    const path = window.location.pathname || "";
+    const home = path === "/" || path.endsWith("/index.html");
+    let seen = false;
+    try {
+      seen = sessionStorage.getItem("boot-seen") === "1";
+    } catch {
+      // Storage refused: treat the load as a first one and cover.
+    }
+    if (!home && seen) return;
+    document.documentElement.dataset.bootHide = "";
+    window.__bootCoverTimer = setTimeout(() => {
+      window.__bootCoverTimer = null;
+      if (!document.documentElement.hasAttribute("data-boot-hide")) return;
+      const boot = document.querySelector("[data-boot]");
+      if (boot && boot.dataset.bootAdopted !== undefined) return;
+      delete document.documentElement.dataset.bootHide;
+      if (boot) boot.remove();
+    }, 30000);
+  } catch {
+    // A cover that fails to lay must never break the page: the
+    // boot falls back to opening when boot.js arrives, as it
+    // did before the cover moved here.
+  }
+}
+
 // Replace the calling inline script with the parsed markup. Runs
 // during parsing, so the nodes take the script's place in the
 // document before the parser moves on.
@@ -133,6 +191,7 @@ window.SiteChrome = {
         `<div class="boot__main"><ul class="boot__log" data-boot-log></ul></div>` +
         `</div></div></div>`
     );
+    coverBoot();
   },
 
   // One nav component, two placements. The bottom row is the same
