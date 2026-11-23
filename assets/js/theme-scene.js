@@ -1,78 +1,85 @@
-// The theme toggle carries a tiny landscape: a grassy field at two hours.
-// Light theme is dawn, dark theme is dusk, and switching steps the grid
-// from one grade to the other cell by cell, in place, on the site's tick.
-// Nothing moves and nothing fades: each cell swaps its whole shade or
-// stays put.
+// Experiment: the theme toggle carries a tiny landscape, the same place at
+// two hours. Day in light theme, night in dark, and switching steps the grid
+// from one to the other cell by cell, in place, on the site's tick. Nothing
+// moves and nothing fades: each cell swaps its whole shade or stays put.
 //
 // Anchor:
-//   Subject: one grassy field, dawn and dusk grades of the same grid
+//   Subject: one miniature landscape, day and night states of the same grid
 //   Grid: 24x12 cells, shown at 48x24 CSS px (2px cells, integer scale)
-//   Palette: "Field at Dawn" and "Field at Dusk" below, as data. Both
-//     grades share one map and one set of keys, 10 colours per grade
+//   Palette: "Toggle Landscape" below, as data. Day 7 colours, night 6,
+//     13 unique hexes across both states
+//   Colour budget: 14, hard cap
 //   Outline rule: none. Shapes read by silhouette and value alone
-//   Light: one source, the sun, low on the horizon at the right. Its disc
-//     sits on the far hill line, bright core with one halo rung around it
-//   Layers, back to front: sky top band / sky mid band / glow band at the
-//     horizon / far hill / middle field / grass foreground with clustered
-//     tufts and long shadow streaks. Six value bands, each its own rung,
-//     so the depth reads at the scene's small size
+//   Light: one source, upper right. The sun in day; at night the same body
+//     is a crescent moon lit on its left edge
+//   Layers, back to front: sky / horizon band / sun, moon and stars /
+//     far hill / near ground with grass tufts
 //   Dither: none. The grid is too small and the scene changes state, and
 //     both are cases the craft rules say to keep flat
 //   Motion, within the pixel rule: on a theme change the cells that differ
 //     swap in a fixed scrambled order, 8 steps at 75ms (600ms total).
 //     Reduced motion swaps in one cut
+//   Deliberate single pixels: two distant stars, (7, 4) and (21, 6). Every
+//     other mark is a cluster of two cells or more
 
 const W = 24;
 const H = 12;
 const STEPS = 8;
 const TICK_MS = 75;
 
-// Dawn: pale gold sky over a cool green field, the sun just up, its light
-// warm against long cool shadows in the grass.
-// Dusk: deep blue sky, the field gone dark green to near black at the
-// front, the same sun low and ember coloured before it sets.
-const DAWN = {
-  ".": "#9fb9de", // sky top
-  ",": "#cddcf0", // sky mid
-  a: "#f2d492", // glow at the horizon
-  S: "#fff0a6", // sun core
-  s: "#f0a832", // sun halo, one rung out
-  F: "#5d8463", // far hill
-  M: "#7fae72", // middle field
-  G: "#4e7d46", // grass foreground
-  T: "#2e4f2c", // grass tufts
-  D: "#3d6539", // long shadows in the grass
+// Ramps shift hue, not just brightness: the day sky is a pale tint of the
+// site's blue accent and the night sky cools further toward purple-blue,
+// while the sun is the one warm note, the way highlights warm in a ramp.
+const DAY = {
+  ".": "#bcd6f2", // sky
+  ",": "#e6effa", // horizon, and the one cloud
+  S: "#ffdf8e", // sun core
+  s: "#f4b942", // sun rim
+  F: "#7fae72", // far hill
+  G: "#4e7d46", // near ground
+  T: "#3d6539", // grass tufts
 };
 
-const DUSK = {
-  ".": "#0d1730", // sky top
-  ",": "#1d2c4d", // sky mid
-  a: "#8a4632", // glow at the horizon
-  S: "#ffb347", // sun core, ember
-  s: "#c1442e", // sun halo, one rung out
-  F: "#22354f", // far hill, cooled to blue
-  M: "#1e4028", // middle field, dark green
-  G: "#12291a", // grass foreground, near black green
-  T: "#2c5a36", // grass tufts catching the last light
-  D: "#08170e", // long shadows in the grass
+const NIGHT = {
+  ".": "#101b30", // sky
+  ",": "#1e2c47", // horizon
+  M: "#e8ecf4", // moon, and the bright heart of one star
+  "*": "#a9cdf2", // stars, the dark theme's accent pulse
+  f: "#2c4470", // far hill, the day green cooled to blue and lifted a step
+  // so the layer still separates from the horizon behind it
+  g: "#0d1626", // near ground, a tinted dark, never pure black
 };
 
-// One string per row, one character per cell. One map for both grades:
-// same field, same hills, the same sun in the same footprint on the
-// horizon. Only the palette changes with the theme.
-const FIELD_MAP = [
+// One string per row, one character per cell. The two maps share their
+// geometry: same hills, same ground, the same body in the same footprint.
+const DAY_MAP = [
+  "........................",
+  "..................ss....",
+  "......,,.........sSSs...",
+  ".....,,,,........sSSs...",
+  "..................ss....",
   "........................",
   "........................",
   ",,,,,,,,,,,,,,,,,,,,,,,,",
+  ",,FFF,,,FFF,,FFF,,FFF,,,",
+  "FFFFTTFFFFFTTFFFFFTTFFFF",
+  "GGGGGGGGGGGGGGGGGGGGGGGG",
+  "GGGGGGGGGGGGGGGGGGGGGGGG",
+];
+
+const NIGHT_MAP = [
+  "........................",
+  "...*.......*......MM....",
+  "..*M*.....*.*....MM.....",
+  "...*.......*.*...MM.....",
+  ".......*....***...MM....",
+  ".............*..........",
+  ".....................*..",
   ",,,,,,,,,,,,,,,,,,,,,,,,",
-  "aaaaaaaaaaaaaaaaaaaaaaaa",
-  "aaaaaaaaaaaaaaaaasssaaaa",
-  "aaaaaaaaaaaaaaaasSSsaaaa",
-  "FFFFFFFFFFFFFFFFsSSsFFFF",
-  "FFFFFFFFFFFFFFFFFFFFFFFF",
-  "MMTTMMTTMMMTTMMTTMMMMMMM",
-  "GGDDGGTTGGGGDDGGTTGGGGGG",
-  "GTTGGGGDDGTTGGGGGDDGGTTG",
+  ",,fff,,,fff,,fff,,fff,,,",
+  "ffffffffffffffffffffffff",
+  "gggggggggggggggggggggggg",
+  "gggggggggggggggggggggggg",
 ];
 
 function cellsFor(map, palette) {
@@ -102,8 +109,8 @@ const ORDER = (() => {
 
 export function createThemeScene(canvas, { dark = false } = {}) {
   const ctx = canvas.getContext("2d");
-  const dayCells = cellsFor(FIELD_MAP, DAWN);
-  const nightCells = cellsFor(FIELD_MAP, DUSK);
+  const dayCells = cellsFor(DAY_MAP, DAY);
+  const nightCells = cellsFor(NIGHT_MAP, NIGHT);
 
   let current = (dark ? nightCells : dayCells).slice();
   let timer;
