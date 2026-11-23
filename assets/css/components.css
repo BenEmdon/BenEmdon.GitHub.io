@@ -7,12 +7,14 @@
 
   The hover bloom follows the site's pixel rule, with a pointer driving
   it: pixels never move and have no drift of their own. They sit on the
-  fixed grid along the block's outermost ring only, never over the copy,
-  and swap shade in place, in whole steps on the tick, never fades.
-  While the block is hovered, a pulse travels the ring through three
-  solid shades, and a pixel lens flare rides the ring in brighter
-  shades of the same families. In dark mode the families turn to green
-  crystal light. The walking itself lives in main.js.
+  fixed grid in two rings OUTSIDE the block's border, never over the
+  copy, and swap shade in place, in whole steps on the tick, never
+  fades. The pointer is the light source (the scroll, on touch
+  devices): the frame cells nearest the light catch the brightest
+  shades through three solid steps, facets glinting as the light
+  moves, and the pattern settles still when the light rests. In dark
+  mode the families turn to green crystal light. The model itself
+  lives in main.js.
 */
 .hiring {
   position: relative;
@@ -23,16 +25,6 @@
   padding: var(--step);
   color: var(--page-color);
   text-decoration: none;
-
-  /* The crystal family, dark mode only: a greener blue, teal-green at
-     the core running to a deep green-blue at the edges, as if the
-     posting were etched in crystal and lit through it. The bloom and
-     flare shades below pick these up through light-dark(); light mode
-     keeps the site's blue family. */
-  --crystal-deep: #0a5c50;
-  --crystal-mid: #0fa38a;
-  --crystal-core: #2fe6b0;
-  --crystal-glint: #a4f7dc;
 }
 
 /* The base link hover would fill the whole block accent and invert the
@@ -83,19 +75,39 @@
   }
 }
 
-/* One bloom cell: a full square on the block's fixed 8px grid, placed
-   on the ring so neighbouring lit cells touch and read as one run of
-   light around the block. The shade is data: three solid steps mixed
-   from the block's own ground toward the accent family, the fringe
-   borrowing the lighter pulse colour and the core the accent itself,
-   so the ramp drifts in hue as it deepens. Each shade is a light-dark()
-   pair: light mode keeps the blue family, dark mode turns the same
-   three steps into crystal, deep green-blue at the fringe to bright
-   mint at the core. main.js positions these and sets data-level;
-   nothing here transitions or transforms, so a cell only ever swaps
-   shade whole, in place. Reduced motion is not hidden here: main.js
-   draws the still ring for it and never ticks. */
-.hiring__bloom {
+/* The frame layer (bloom v3): main.js wraps the hiring block in this
+   element, which hugs the block exactly, and hangs the light's cells
+   off it. The cells sit on the block's fixed 8px grid extended
+   outward, in two rings beyond the border, so light escaping the
+   block catches its outer edge and the copy inside is never touched.
+   The wrapper itself paints nothing. */
+.hiring-frame {
+  position: relative;
+
+  /* The crystal family, dark mode only: a greener blue, teal-green at
+     the core running to a deep green-blue at the edges, as if the
+     posting were etched in crystal and lit through it. The frame
+     shades below pick these up through light-dark(); light mode
+     keeps the site's blue family. The family lives here, on the
+     frame layer, because the cells are the wrapper's children now,
+     not the block's. */
+  --crystal-deep: #0a5c50;
+  --crystal-mid: #0fa38a;
+  --crystal-core: #2fe6b0;
+  --crystal-glint: #a4f7dc;
+}
+
+/* One frame cell: a full square on the fixed 8px grid, outside the
+   block's border. The shade is data: three solid steps mixed from the
+   page ground toward the accent family, the fringe borrowing the
+   lighter pulse colour and the core the accent itself, so the ramp
+   drifts in hue as it deepens. Each shade is a light-dark() pair:
+   light mode keeps the blue family, dark mode turns the same three
+   steps into crystal, deep green-blue at the fringe to bright mint at
+   the core. main.js positions these from the light's position and
+   sets data-level; nothing here transitions or transforms, so a cell
+   only ever swaps shade whole, in place. */
+.hiring__frame-cell {
   position: absolute;
   z-index: 0;
   inline-size: 8px;
@@ -103,70 +115,35 @@
   pointer-events: none;
 }
 
-.hiring__bloom[data-level="1"] {
+.hiring__frame-cell[data-level="1"] {
   background: light-dark(
-    color-mix(in srgb, var(--accent-pulse-color) 22%, var(--page-subtle)),
-    color-mix(in srgb, var(--crystal-deep) 55%, var(--page-subtle))
+    color-mix(in srgb, var(--accent-pulse-color) 32%, var(--page-background)),
+    color-mix(in srgb, var(--crystal-deep) 68%, var(--page-background))
   );
 }
 
-.hiring__bloom[data-level="2"] {
+.hiring__frame-cell[data-level="2"] {
   background: light-dark(
-    color-mix(in srgb, var(--accent-color) 34%, var(--page-subtle)),
-    color-mix(in srgb, var(--crystal-mid) 45%, var(--page-subtle))
+    color-mix(in srgb, var(--accent-color) 50%, var(--page-background)),
+    color-mix(in srgb, var(--crystal-mid) 62%, var(--page-background))
   );
 }
 
-.hiring__bloom[data-level="3"] {
+.hiring__frame-cell[data-level="3"] {
   background: light-dark(
-    color-mix(in srgb, var(--accent-color) 52%, var(--page-subtle)),
-    color-mix(in srgb, var(--crystal-core) 58%, var(--page-subtle))
+    color-mix(in srgb, var(--accent-color) 74%, var(--page-background)),
+    color-mix(in srgb, var(--crystal-core) 80%, var(--page-background))
   );
 }
 
-/* A glint cell: one bloom cell burning at the brightest crystal shade.
-   main.js sets data-glint on a few ring cells at a time in dark mode
-   and moves the set as the pulse travels, so the crystal catches the
-   light in steps. The attribute outranks the level shades; the swap is
-   whole, in place, like every other cell here. */
-.hiring__bloom[data-glint="1"] {
+/* A glint cell: one frame cell burning at the brightest shade, the
+   sharp facet of the crystal. main.js sets data-glint on a few near
+   cells at the top rung; which cells glint follows the light's
+   position and, while the light moves, its travel. The attribute
+   outranks the level shades; the swap is whole, in place, like every
+   other cell here. */
+.hiring__frame-cell[data-glint="1"] {
   background: light-dark(#bcd9f7, var(--crystal-glint));
-}
-
-/* One flare cell: the same full square on the same grid, carrying the
-   lens flare main.js draws on the ring: a streak ahead of the pulse
-   head and a ghost at the ring's opposite point. Its ramp sits
-   brighter than the bloom's at every step, the core near-solid light,
-   and in dark mode it runs through the crystal family to the pale
-   glint shade. Hard edges only; nothing here glows, blurs,
-   transitions, or transforms. */
-.hiring__flare {
-  position: absolute;
-  z-index: 0;
-  inline-size: 8px;
-  block-size: 8px;
-  pointer-events: none;
-}
-
-.hiring__flare[data-level="1"] {
-  background: light-dark(
-    color-mix(in srgb, var(--accent-color) 42%, var(--page-subtle)),
-    color-mix(in srgb, var(--crystal-mid) 55%, var(--page-subtle))
-  );
-}
-
-.hiring__flare[data-level="2"] {
-  background: light-dark(
-    color-mix(in srgb, var(--accent-color) 66%, var(--page-subtle)),
-    color-mix(in srgb, var(--crystal-core) 68%, var(--page-subtle))
-  );
-}
-
-.hiring__flare[data-level="3"] {
-  background: light-dark(
-    color-mix(in srgb, var(--accent-pulse-color) 88%, var(--page-subtle)),
-    color-mix(in srgb, var(--crystal-glint) 90%, var(--page-subtle))
-  );
 }
 
 /*
@@ -902,3 +879,4 @@ html[data-boot-hide] main {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
