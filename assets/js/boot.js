@@ -40,6 +40,21 @@
   visitors the screen is a blank wait between them and the page.
   The work itself runs on every load regardless of the surface;
   only the reporting is gated.
+
+  The full screen opens in two steps, because the page's own
+  module is the last thing a load waits for: its module graph
+  is dozens of files, and a screen that waits for runBoot
+  leaves the reader uncovered for as long as the graph takes,
+  which on a refresh read as a blank page, no bootloader and
+  no content. So a page that boots in full first calls
+  openBootEarly from a small module script of its own: this
+  module has no imports, so it arrives ahead of the graph and
+  raises the screen at once, and chrome.js has already hidden
+  the page behind it at parse time. runBoot then adopts the
+  open screen and wires the page's tasks into it. A watchdog
+  bounds the early screen's wait: a page module that never
+  arrives (a failed graph, above all) does not hold the page
+  hostage; the screen comes down and the page is revealed.
 */
 
 const BOOT_SEEN_KEY = "boot-seen";
@@ -201,10 +216,85 @@ function mulberry32(seed) {
   };
 }
 
-function runFullBoot(tasks) {
-  const boot = document.querySelector("[data-boot]");
-  if (!boot) return false;
+// The early open's record: the surface it decided and the
+// screen it raised, if any. runBoot reads it to adopt the
+// screen instead of deciding the load a second time.
+let earlyScreen = null;
 
+// Open the full boot screen ahead of the page's module graph.
+// Called by the page's own small module script, which imports
+// only this module; see the header. The decision is the same
+// one runBoot makes, made with the same inputs (by the time a
+// module runs, the document is parsed, so the badge check sees
+// what runBoot would see). A load that does not boot in full
+// gets no screen, and any cover the parse-time script laid is
+// lifted again, so nothing stays hidden behind a boot that is
+// not coming.
+export function openBootEarly() {
+  if (earlyScreen) return earlyScreen.surface;
+  const experimental = isExperimentalPage();
+  const reducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
+  const surface = decideBootSurface({
+    experimental,
+    reducedMotion,
+    sessionSeen: experimental ? false : sessionBootSeen(),
+    home: isHomePage(),
+  });
+  earlyScreen = { surface, screen: null };
+  if (surface !== "full") {
+    delete document.documentElement.dataset.bootHide;
+    clearBootCoverTimer();
+    return surface;
+  }
+  const boot = document.querySelector("[data-boot]");
+  if (!boot) return surface;
+  // The flag is written as the screen opens, the rule runBoot
+  // has always followed; badge pages never write it.
+  if (!experimental) markSessionBootSeen();
+  document.documentElement.dataset.bootHide = "";
+  // The mark tells the parse-time cover's watchdog the screen
+  // has an owner now; that watchdog is stood down.
+  boot.dataset.bootAdopted = "";
+  clearBootCoverTimer();
+  const screen = buildBootScreen(boot);
+  earlyScreen.screen = screen;
+  // The failsafe: if the page's module never adopts this
+  // screen, the wait is bounded by the same timeout the
+  // boot's tasks race. The screen comes down and the page
+  // is revealed; a runBoot that arrives afterwards finds
+  // the screen gone and reports through the indicator
+  // instead of reopening a ceremony over a revealed page.
+  screen.watchdog = setTimeout(() => {
+    screen.watchdog = null;
+    if (screen.adopted || screen.isDone()) return;
+    screen.done();
+    delete document.documentElement.dataset.bootHide;
+  }, TASK_TIMEOUT);
+  return surface;
+}
+
+// The parse-time cover (chrome.js) leaves a watchdog timer on
+// the window for the case where this module never loads at
+// all; once any part of this module is running, that watchdog
+// has done its job and is stood down.
+function clearBootCoverTimer() {
+  if (window.__bootCoverTimer) {
+    clearTimeout(window.__bootCoverTimer);
+    window.__bootCoverTimer = null;
+  }
+}
+
+// The full boot screen, built once and wired to the page's
+// tasks as a second step. buildBootScreen raises the screen
+// (the wordmark clone, the spinner, the painting and its fill
+// machinery) with no tasks yet; wireTasks gives it the page's
+// task list, building the log lines and setting the fill in
+// motion. A screen nobody has wired yet idles with its
+// spinner turning, its log empty, and its painting at empty:
+// the honest picture of work not yet announced.
+function buildBootScreen(boot) {
   const log = boot.querySelector("[data-boot-log]");
   const logoSlot = boot.querySelector("[data-boot-logo]");
   const wordmark = document.querySelector(".wordmark");
@@ -308,6 +398,7 @@ function runFullBoot(tasks) {
   }
 
   let settled = 0;
+  let taskTotal = 0;
   let tasksSettled = false;
   let exitScheduled = false;
 
@@ -334,8 +425,8 @@ function runFullBoot(tasks) {
 
   const settle = () => {
     settled += 1;
-    fillTarget = Math.round(settled * (ICON_TOTAL / tasks.length));
-    if (settled !== tasks.length) return;
+    fillTarget = Math.round(settled * (ICON_TOTAL / taskTotal));
+    if (settled !== taskTotal) return;
     tasksSettled = true;
     maybeExit();
   };
@@ -343,52 +434,95 @@ function runFullBoot(tasks) {
   // One row per task, up front with its spinner turning; the row
   // resolves in place the moment its task settles. Nothing here is
   // on a timer except the timeout race beside each task.
-  for (const task of tasks) {
-    const line = document.createElement("li");
-    line.className = "boot__line";
+  function wireTasks(taskList) {
+    taskTotal = taskList.length;
+    for (const task of taskList) {
+      const line = document.createElement("li");
+      line.className = "boot__line";
 
-    const mark = span("boot__mark", SPINNER[frame]);
-    const result = span("boot__value is-pending", "_");
-    marks.push(mark);
+      const mark = span("boot__mark", SPINNER[frame]);
+      const result = span("boot__value is-pending", "_");
+      marks.push(mark);
 
-    line.append(
-      mark,
-      span("boot__task", task.label),
-      // Longer than any gap it has to fill; the overflow is clipped.
-      span("boot__dots", ".".repeat(80)),
-      result
-    );
-    log.append(line);
+      line.append(
+        mark,
+        span("boot__task", task.label),
+        // Longer than any gap it has to fill; the overflow is clipped.
+        span("boot__dots", ".".repeat(80)),
+        result
+      );
+      log.append(line);
 
-    const timedOut = new Promise((resolve) => {
-      timers.push(setTimeout(() => resolve({ timedOut: true }), TASK_TIMEOUT));
-    });
+      const timedOut = new Promise((resolve) => {
+        timers.push(setTimeout(() => resolve({ timedOut: true }), TASK_TIMEOUT));
+      });
 
-    Promise.race([task.promise, timedOut]).then(
-      (value) => {
-        if (!boot.isConnected) return; // the visitor skipped ahead
-        mark.dataset.done = "1";
-        result.className = "boot__value";
-        if (value && value.timedOut) {
-          mark.textContent = "!";
-          result.textContent = "still working";
-        } else {
-          mark.textContent = "✓";
-          result.textContent = task.format(value);
+      Promise.race([task.promise, timedOut]).then(
+        (value) => {
+          if (!boot.isConnected) return; // the visitor skipped ahead
+          mark.dataset.done = "1";
+          result.className = "boot__value";
+          if (value && value.timedOut) {
+            mark.textContent = "!";
+            result.textContent = "still working";
+          } else {
+            mark.textContent = "✓";
+            result.textContent = task.format(value);
+          }
+          settle();
+        },
+        () => {
+          if (!boot.isConnected) return;
+          mark.dataset.done = "1";
+          mark.textContent = "×";
+          result.className = "boot__value";
+          result.textContent = "failed";
+          settle();
         }
-        settle();
-      },
-      () => {
-        if (!boot.isConnected) return;
-        mark.dataset.done = "1";
-        mark.textContent = "×";
-        result.className = "boot__value";
-        result.textContent = "failed";
-        settle();
-      }
-    );
+      );
+    }
   }
 
+  const screen = {
+    boot,
+    startedAt,
+    // The early open's failsafe timer, when this screen was
+    // raised ahead of the page's module; adoption clears it.
+    watchdog: null,
+    adopted: false,
+    isDone: () => bootDone,
+    done,
+    adopt() {
+      screen.adopted = true;
+      if (screen.watchdog) {
+        clearTimeout(screen.watchdog);
+        screen.watchdog = null;
+      }
+    },
+    wireTasks,
+  };
+  return screen;
+}
+
+function runFullBoot(tasks) {
+  const boot = document.querySelector("[data-boot]");
+  if (!boot) return false;
+  if (earlyScreen && earlyScreen.screen) {
+    // The early open raised this screen ahead of the page's
+    // module graph; adopt it and wire the tasks into it, so
+    // the ceremony the reader has been watching is the one
+    // that completes. A screen the reader already skipped,
+    // or the failsafe already took down, is not reopened over
+    // the page in front of them: the caller falls back to
+    // the indicator for this load's work.
+    const screen = earlyScreen.screen;
+    if (screen.boot !== boot || screen.isDone()) return false;
+    screen.adopt();
+    screen.wireTasks(tasks);
+    return true;
+  }
+  const screen = buildBootScreen(boot);
+  screen.wireTasks(tasks);
   return true;
 }
 
@@ -1511,11 +1645,18 @@ export function runBoot(tasks, { t0 = performance.now() } = {}) {
 
   if (surface === "none" || tasks.length === 0) return surface;
 
-  if (surface === "full") {
+  // A screen the early open already raised is this load's
+  // surface, whatever the flag says on this second decision:
+  // the early open spent the flag itself when it opened, so
+  // reading it again here would demote the load to the
+  // indicator and strand the open screen.
+  const earlyFull = !!(earlyScreen && earlyScreen.screen);
+  if (surface === "full" || earlyFull) {
     // The flag is written as the screen opens, so a load that
     // never shows it does not spend it, and a fresh tab or session
-    // sees it again. Badge pages never write it.
-    if (!experimental) markSessionBootSeen();
+    // sees it again. Badge pages never write it. An adopted
+    // screen's flag was already written by openBootEarly.
+    if (!experimental && !earlyFull) markSessionBootSeen();
     // Every full boot presents as a covering screen, not a
     // block above visible content: the document is marked
     // before the screen opens, so the page stays hidden
@@ -1523,7 +1664,7 @@ export function runBoot(tasks, { t0 = performance.now() } = {}) {
     document.documentElement.dataset.bootHide = "";
     if (runFullBoot(tasks)) {
       watchBootHide();
-      return surface;
+      return "full";
     }
     delete document.documentElement.dataset.bootHide;
     // A page with no boot screen in its markup gets the small
