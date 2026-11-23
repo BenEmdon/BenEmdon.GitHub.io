@@ -96,9 +96,24 @@
    these from the light's position and sets data-level; nothing
    here transitions or transforms, so a cell only ever swaps shade
    whole, in place. */
+/* The negative z-index is the stacking fix (Ben's report,
+   2026-11-22: bloom pixels still layered over the whoami section
+   below the block). The sections are position:static, so a cell
+   at z-index 0 painted in a layer above all section content: the
+   geometric neighbour census read zero (the strip cells stop a
+   couple of pixels short of the section's border box) while the
+   field still stacked over the section, its frame included, and
+   any cell that ever reached the box would have covered its text.
+   At -1 a cell paints below every section's content and above
+   the page ground only, which is the model's own claim made
+   literal: pixels shining through from BEHIND the page's blocks.
+   The wrapper stays position:relative with z-index auto, so the
+   cells take part in the page's stacking context directly; give
+   the wrapper its own stacking context and the cells would be
+   trapped back above the sections. */
 .hiring__frame-cell {
   position: absolute;
-  z-index: 0;
+  z-index: -1;
   inline-size: 8px;
   block-size: 8px;
   pointer-events: none;
