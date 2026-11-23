@@ -7,7 +7,7 @@
     <title>Art · Ben Emdon</title>
     <meta
       name="description"
-      content="Pixel art by Mochi: four scenes drawn in code, and how they are made."
+      content="Pixel art by Mochi: five scenes drawn in code, and how they are made."
     />
     <!-- An experiment, kept unlisted on purpose: reachable from the meadow's
          credit line and nowhere else, and out of search indexes. -->
@@ -67,6 +67,14 @@
       <script>window.SiteChrome && SiteChrome.nav("top")</script>
 
       <pre class="divider" aria-hidden="true">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+
+      <section class="section">
+        <h2 class="section__title" id="greenhouse-light"><span class="prompt" aria-hidden="true">$</span> greenhouse light<a class="anchor" href="#greenhouse-light" aria-label="Link to this section">#</a></h2>
+        <figure class="mochi-figure">
+          <img data-greenhouse-light src="assets/img/greenhouse-light.gif" width="576" height="360" style="display: block; width: 100%; height: auto; image-rendering: pixelated" alt="Pixel art of farmland: a greenhouse in the fields with shelves and plant rows showing through its glass, a small farmhouse with smoke rising from its chimney, a lane, fences, and a wide sky. At night the greenhouse glows warm with fireflies over the fields; by day the same scene sits in morning light." />
+          <figcaption>One lit greenhouse in dark farmland, fireflies over the fields, and smoke from the farmhouse chimney.</figcaption>
+        </figure>
+      </section>
 
       <section class="section">
         <h2 class="section__title" id="overworld"><span class="prompt" aria-hidden="true">$</span> overworld<a class="anchor" href="#overworld" aria-label="Link to this section">#</a></h2>
@@ -231,6 +239,37 @@ function paint() {
     <script>window.SiteChrome && SiteChrome.keys([["1","art"],["2","overworld"],["3","seaside"],["4","highland"]])</script>
 
 
+    <!-- Greenhouse Light ships as GIFs, not a scene module: the same
+         scene drawn twice, night and morning. It follows the page
+         theme the way the canvas scenes do (a pinned data-theme when
+         one is set, the OS preference otherwise, swaps included),
+         and under reduced motion it shows the still frame instead,
+         the same promise the scenes keep. -->
+    <script>
+      (function () {
+        var greenhouse = document.querySelector("[data-greenhouse-light]");
+        if (!greenhouse) return;
+        var reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+        var systemDark = window.matchMedia("(prefers-color-scheme: dark)");
+        var pick = function () {
+          var theme =
+            document.documentElement.dataset.theme ||
+            (systemDark.matches ? "dark" : "light");
+          var base =
+            theme === "dark"
+              ? "assets/img/greenhouse-light"
+              : "assets/img/greenhouse-light-day";
+          greenhouse.src = base + (reduced.matches ? ".png" : ".gif");
+        };
+        pick();
+        new MutationObserver(pick).observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ["data-theme"],
+        });
+        systemDark.addEventListener("change", pick);
+        reduced.addEventListener("change", pick);
+      })();
+    </script>
     <script type="module" src="assets/js/art.js?v=20261122s"></script>
     <script type="module" src="assets/js/keycaps.js"></script>
     <script type="module" src="assets/js/gallery-map.js"></script>
