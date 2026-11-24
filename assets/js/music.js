@@ -1491,13 +1491,13 @@ function renderResult(song, buffer, renderMs) {
   };
 }
 
-// A no-op task handle for quiet renders. The proactive
-// catalogue pass (below, at the boot) reports one loader
-// line per song of its own, so a quiet render's per-step
-// tasks (the single render, the bins, the verification)
-// stand down rather than flood the batch with a dozen
-// songs' internals. The render itself runs exactly as it
-// did; only its reporting is muted.
+// A no-op task handle for quiet renders. A caller that
+// reports a render as one loader line of its own can mute
+// the render's per-step tasks (the single render, the
+// bins, the verification) through this handle, so they
+// stand down rather than flood the batch with the render's
+// internals. The render itself runs exactly as it did;
+// only its reporting is muted.
 const QUIET_TASK = {
   update() {},
   status() {},
@@ -1762,11 +1762,9 @@ async function obtainVerifiedRender(song, key, announce, quiet = false) {
   // one inside renderSong, and verification registers its
   // own below. The loader only observes; the gate runs
   // exactly as it did, and each failure reaches the task
-  // that owns the step that failed. A quiet render (the
-  // proactive catalogue pass) mutes every one of those
-  // per-step tasks through QUIET_TASK: the pass reports one
-  // line per song of its own, and the gate's steps are the
-  // same steps, unreported.
+  // that owns the step that failed. A quiet render mutes
+  // every one of those per-step tasks through QUIET_TASK:
+  // the gate's steps are the same steps, unreported.
   if (announce && !samplesReady) setStatus("loading samples\u2026");
   await loadSamples();
   const hit = await readRender(key);
@@ -1899,8 +1897,29 @@ async function startPlayback() {
   await loadSamples();
   if (gen !== playGeneration) return; // a stop landed while starting
   if (player.dirty || !player.rendered) {
-    const rendered = await obtainRender(player.song);
-    if (gen !== playGeneration) return; // a stop landed while rendering
+    const song = player.song;
+    const rendered = await obtainRender(song);
+    if (gen !== playGeneration) {
+      // A stop landed while rendering. The render is
+      // verified and paid for; if its song is still the
+      // current one, stage it before standing down, so
+      // the play gate tells the truth about a song that
+      // is in fact ready. With no catalogue pass warming
+      // every song at load, this landing may be the only
+      // one this pick ever gets, and dropping it would
+      // leave the gate closed behind nothing.
+      if (player.song === song) {
+        player.rendered = rendered;
+        player.dirty = false;
+        player.pending = null;
+        renderedKeys = keySetOf(song);
+        pendingRenderKeys = null;
+        window.__lastRender = rendered;
+        refreshPlayGate();
+        setStatus(readyText());
+      }
+      return;
+    }
     player.rendered = rendered;
     player.dirty = false;
     player.pending = null;
@@ -2192,6 +2211,24 @@ function songChanged(parsed, { restart = false } = {}) {
         player.pending = rendered;
         pendingRenderKeys = keySetOf(parsed);
         window.__lastRender = rendered;
+      }
+      if (player.song === parsed && !player.playing) {
+        // A stop landed while this render ran. Stage it
+        // the way the stopped path stages its render, so
+        // the picked song is ready to play instead of
+        // sitting dirty behind a gate nothing reopens:
+        // with no catalogue pass warming every song at
+        // load, this landing is the only one this pick
+        // will ever get.
+        player.rendered = rendered;
+        player.dirty = false;
+        player.pending = null;
+        renderedKeys = keySetOf(parsed);
+        pendingRenderKeys = null;
+        window.__lastRender = rendered;
+        refreshNoteStates();
+        refreshPlayGate();
+        setStatus(readyText());
       }
     })
     .catch(() => {
@@ -3131,48 +3168,15 @@ const renderTask = (async () => {
     renderMs: rendered.renderMs,
   };
 })();
-// The proactive catalogue pass: once the selected song's
-// own render has settled, every other song in the catalogue
-// renders in the background, in parallel, so a later switch
-// is a cache read instead of a wait. The selected song is
-// not in the set: it went first through the boot path
-// above, and its readiness never waits for this pass. Each
-// song is one loader line of its own, registered under its
-// name: the render runs quiet (its per-step tasks stand
-// down), the line completes when the song's render settles
-// and shows its measured duration, and a signature-verified
-// cache hit sets the line's status to "from cache" instead
-// of a render time it never spent. A song that fails to
-// parse is skipped, as the picker skips it; a render that
-// fails fails its line with the reason and leaves the song
-// to the ordinary path when it is picked. The renders run
-// through obtainRender like every other caller, so the
-// in-flight map still keeps one render per song, and an
-// edit's re-render keeps its own behaviour throughout.
-const proactivePass = renderTask.then(
-  () =>
-    Promise.all(
-      Object.keys(SONGS)
-        .filter((key) => key !== "storms")
-        .map(async (key) => {
-          const parsed = parseSong(SONGS[key].text + "\n");
-          if (!parsed.ok) return;
-          const work = registerTask("rendering " + songName(parsed));
-          try {
-            const rendered = await obtainRender(parsed, {
-              announce: false,
-              quiet: true,
-            });
-            if (rendered.fromCache) work.status("from cache");
-            work.complete();
-          } catch (err) {
-            work.fail(err && err.message ? err.message : "render failed");
-          }
-        })
-    ),
-  () => {}
-);
-void proactivePass;
+// Nothing else renders at load. Every other song in the
+// catalogue renders on demand, the first time it is
+// picked: the pick runs through songChanged's background
+// render while stopped and the swap render while playing,
+// or through the play gate's obtainRender when play is
+// pressed first, and each finished render lands in the
+// same persistent cache, so a song costs one render in
+// its life, paid by the visit that first asks to hear it,
+// not by every page load up front.
 
 runBoot(
   [
